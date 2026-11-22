@@ -27,3 +27,12 @@ Status: **PAUSED BY USER**, 22 Nov 2026. Resume only after user returns; no auto
 6. Verify end-to-end on TEST: qualifying pick -> quote (if available) -> issued ledger -> FT settlement -> incremental Snapshot -> both UI pages, with repeated-run idempotence, PC/mobile QA and unchanged protected worker versions. NO automatic Production deployment.
 
 Important user decision: **Save now and resume tomorrow (23 Nov 2026).**
+
+
+## 23 Nov 2026 — source-confirmed price contract and TEST parser (NOT DEPLOYED)
+- Official API documentation https://5dollarfootballapi.com/docs confirms `GET /v1/fixtures/{id}/odds?market=goalline_fixed` supplies Bet365 `bookmakers[].odds.goal_line_fixed[]`, including line 2.5, `closing: {over,under}` if quoted. `market=goalline` supplies the moving main `goal_line.closing` with `{line,over,under}`.
+- In a pre-kickoff fetch, `closing` means the latest currently available prematch quote, NOT the eventual price at kickoff. A null fixed `closing` signifies withdrawn quote. No per-quote recorded timestamp is available on this snapshot endpoint: trusted receipt time must be captured locally.
+- Implemented pure O/U 2.5 parser `qa/prematch-history-20261120/ou-verified-price-ingest-v1-test.mjs` and ten offline deterministic QA cases `ou-verified-price-ingest-v1.test.mjs`. Requires named Bet365 bookmaker, exact fixture ID, target 2.5, both decimal prices, trusted receipt pre-kickoff; rejects numeric HUB line-only prices, another O/U line, stale/past kickoff, withdrawn prices and unknown bookmaker.
+- Offline GitHub Actions SUCCESS: https://github.com/mccareysupon-png/nomadtips3-live-test/actions/runs/45078216341. 10 tests, no provider calls, no Worker deploy and no credentials in QA workflow.
+- Status: parser committed on TEST branch only; no automated quote pickup, TEST Worker deployment, priced P/L or Production changes yet. Do not claim O/U market payouts imported.
+- Next: inspect CURRENT TEST versions; reuse preexisting paid responses if present, otherwise design guarded quote retrieval ONLY for qualified O/U fixtures using shared account quota authority. Never secretly spend provider calls or borrow BTTS daily slots. Persist evidence/received-at before kickoff, then separately validate ROI and P/L with properly priced results. Model-only ledger remains valid and immutable.
