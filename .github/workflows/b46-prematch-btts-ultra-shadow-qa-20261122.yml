@@ -1,0 +1,22 @@
+name: BALL46 PreMatch BTTS Ultra Independent Shadow QA
+on:
+  push:
+    branches: [fix/ball46-prematch-btts-ultra-shadow-test-20261122]
+    paths:
+      - .github/workflows/b46-prematch-btts-ultra-shadow-qa-20261122.yml
+permissions:
+  contents: read
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and regression including immutable 1X2 and HCR
+        run: |
+          node --check qa/prematch-history-20261120/btts-ultra-shadow.mjs
+          node --check qa/prematch-history-20261120/prematch-only-worker.mjs
+          node --test qa/prematch-history-20261120/btts-ultra-shadow.test.mjs qa/prematch-history-20261120/evaluate-btts-signal.test.mjs qa/prematch-history-20261120/market-1x2.test.mjs qa/prematch-history-20261120/test-pick-ledger.test.mjs qa/prematch-history-20261120/league-original-restore.test.mjs qa/prematch-history-20261120/history-cargo-full-payload.test.mjs qa/prematch-history-20261120/history-cargo-registry.test.mjs
