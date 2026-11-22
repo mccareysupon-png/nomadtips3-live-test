@@ -1,0 +1,47 @@
+name: BALL46 TEST inspect duplicate 17:30 kickoff native card DOM
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths: [.github/workflows/b46-pm-duplicate-kickoff-inspect-20261122.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Identify duplicate kickoff DOM owner in target fixture
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch();
+          try{
+            for(const mobile of [false,true]){
+              const ctx=await browser.newContext({timezoneId:'Asia/Bangkok',viewport:mobile?{width:390,height:844}:{width:1440,height:900},isMobile:mobile});
+              const p=await ctx.newPage();
+              await p.goto('https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/?b46pm=predictions',{waitUntil:'domcontentloaded',timeout:50000});
+              await p.waitForFunction(()=>document.querySelectorAll('#b46-prematch-panel [data-b46-pm-mirror-fixture]').length>20,null,{timeout:25000});
+              const data=await p.evaluate(()=>{
+                const root=document.getElementById('b46-prematch-panel');
+                const cards=[...root.querySelectorAll('[data-b46-pm-mirror-fixture]')];
+                const target=cards.filter(c=>/Torrevieja|Bunol|Buñol/i.test(c.textContent||''));
+                const simplified=c=>({
+                  id:c.dataset.b46PmMirrorFixture,
+                  text:(c.textContent||'').slice(0,450),
+                  scoreHtml:c.querySelector('.score-cell')?.outerHTML?.slice(0,5000),
+                  statusHtml:c.querySelector('.b46gn-cardhead')?.outerHTML?.slice(0,3800),
+                  timeNodes:[...c.querySelectorAll('time')].map(x=>({html:x.outerHTML,utc:x.dateTime})),
+                  scoreChildNodes:[...c.querySelector('.score-cell')?.childNodes||[]].map(x=>({type:x.nodeType,name:x.nodeName,cls:x.className||'',text:(x.textContent||'').slice(0,120),html:x.outerHTML?.slice(0,500)}))
+                });
+                return {total:cards.length,target:target.map(simplified),otherDupes:cards.filter(c=>/(\d\d:\d\d)\1/.test(c.textContent||'')).slice(0,8).map(simplified)};
+              });
+              console.log('PM_KICKOFF_DOM_'+(mobile?'MOBILE':'PC')+' '+JSON.stringify(data));
+              await ctx.close();
+            }
+          }finally{await browser.close()}
+          JS
