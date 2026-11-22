@@ -2,7 +2,7 @@
 // NO HTTP, no provider keys, no modification of 1X2/HCR, no publication.
 // John 2026-11-21: BTTS is NOT in bulk fixtures; read Bet365 per-fixture
 // /v1/fixtures/{id}/odds if already supplied; null means NOT_OFFERED.
-import {lastMatches} from './history.mjs';
+import {bttsLastMatches} from './btts-history-private.mjs';
 import {evaluateBttsSignal} from './evaluate-btts-signal.mjs';
 
 const pos=x=>/^[1-9]\d*$/.test(String(x??''))&&Number.isSafeInteger(Number(x));
@@ -70,8 +70,8 @@ export function evaluateBttsUltra(db,fixtures,now,storedQuotes={},limit=250,view
  for(const f of fixtures){
   if(!safeFixture(f)||f.kickoff_ts<=now||seen.has(String(f.id)))continue;
   seen.add(String(f.id));totals.upcoming++;
-  const home=lastMatches(db,Number(f.teams.home.id),f.kickoff_ts,now,10);
-  const away=lastMatches(db,Number(f.teams.away.id),f.kickoff_ts,now,10);
+  const home=bttsLastMatches(db,Number(f.teams.home.id),f.kickoff_ts,now,10);
+  const away=bttsLastMatches(db,Number(f.teams.away.id),f.kickoff_ts,now,10);
   const complete=home.length===10&&away.length===10;
   if(complete)totals.historyReady++;else totals.historyIncomplete++;
   const cached=storedQuotes[String(f.id)];
