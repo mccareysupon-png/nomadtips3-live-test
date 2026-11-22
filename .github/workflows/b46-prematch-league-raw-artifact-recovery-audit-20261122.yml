@@ -1,0 +1,59 @@
+name: BALL46 PreMatch John Original Raw League Recovery Audit READ ONLY
+on:
+  push:
+    branches:
+      - fix/ball46-prematch-league-id-registry-20261122
+    paths:
+      - .github/workflows/b46-prematch-league-raw-artifact-recovery-audit-20261122.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: real-prematch-raw-and-progress
+          run-id: 44759126984
+          github-token: ${{ github.token }}
+          path: prior
+      - name: Match original 5USD raw fixture IDs and team IDs to 75 TEST picks without calling provider
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const d=await(await fetch('https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/__b46_prematch_data',{signal:AbortSignal.timeout(20000)})).json();
+          assert(Array.isArray(d.testLedger?.rows),'MISSING_TEST_PICKS');
+          const present=d.testMonitor?.monitor??{};
+          const missing=d.testLedger.rows.filter(x=>!present[String(x.fixture_id)]?.leagueName);
+          const files=fs.readdirSync('prior').filter(x=>/^scheduled-\d+\.json$/.test(x));
+          const data=new Map();const conflict=new Set();let records=0;
+          for(const file of files){
+           const j=JSON.parse(fs.readFileSync('prior/'+file,'utf8'));
+           for(const f of j.body?.data??[]){
+            const id=Number(f.id),home=Number(f.teams?.home?.id),away=Number(f.teams?.away?.id),l=Number(f.league?.id),name=typeof f.league?.name==='string'?f.league.name.trim():'';
+            records++;
+            if(!Number.isSafeInteger(id)||!Number.isSafeInteger(home)||!Number.isSafeInteger(away)||!Number.isSafeInteger(l)||!name)continue;
+            const entry={fixtureId:id,homeId:home,awayId:away,leagueId:l,leagueName:name,kickoff:f.kickoff_ts};
+            const old=data.get(id);
+            if(old&&JSON.stringify(old)!==JSON.stringify(entry))conflict.add(id);
+            else data.set(id,entry);
+           }
+          }
+          const matching=[],notFound=[],identityMismatch=[];
+          for(const p of missing){
+           const row=data.get(Number(p.fixture_id));
+           if(!row||conflict.has(Number(p.fixture_id))){notFound.push(Number(p.fixture_id));continue}
+           if(row.homeId!==Number(p.home_id)||row.awayId!==Number(p.away_id)){identityMismatch.push(Number(p.fixture_id));continue}
+           matching.push(row);
+          }
+          const summary={originalRunId:44759126984,rawScheduledPages:files.length,rawFixtureRows:records,uniqueOriginalFixtures:data.size,
+           testPicks:d.testLedger.rows.length,currentlyWithoutName:missing.length,verifiedRecoverable:matching.length,
+           notInOriginalArtifact:notFound.length,identityMismatch:identityMismatch.length,
+           samples:matching.slice(0,12).map(x=>({fixtureId:x.fixtureId,leagueId:x.leagueId,leagueName:x.leagueName})),
+           zeroProviderRequests:true,noWrites:true};
+          console.log('B46_LEAGUE_ORIGINAL_RAW_MATCH_AUDIT '+JSON.stringify(summary));
+          JS
