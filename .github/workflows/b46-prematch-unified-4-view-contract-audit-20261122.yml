@@ -1,0 +1,88 @@
+name: BALL46 Prematch four-view unified UI contract TEST READ ONLY
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-prematch-unified-4-view-contract-audit-20261122.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Audit active client functions, all market data, snapshot invariants, and candidate separation
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,acc=process.env.CLOUDFLARE_ACCOUNT_ID;assert(token&&acc);
+          const cloud='https://api.cloudflare.com/client/v4/accounts/'+acc+'/workers';
+          async function cf(p){const r=await fetch(cloud+p,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(25000)});
+           const d=await r.json();assert(r.ok&&d.success,'CF_'+p+':'+r.status);return d.result;}
+          const frontend='ball46-premium-match-colors-test-20261120',backend='ball46-prematch-only-test-20261120';
+          async function ver(n){const d=await cf('/scripts/'+n+'/deployments?per_page=1');return d.deployments[0].versions[0].version_id;}
+          const [fv,bv]=await Promise.all([ver(frontend),ver(backend)]);
+          const worker=(await cf('/workers/'+frontend+'/versions/'+fv+'?include=modules')).modules[0];
+          const body=Buffer.from(worker.content_base64,'base64').toString('utf8');
+          const m=body.match(/var prematchClientScript = ("(?:\\.|[^"\\])*");/);assert(m);
+          const script=JSON.parse(m[1]);
+          const functionDecls=[...script.matchAll(/(?:async\s+)?function\s+([\w]+)\s*\([^)]*\)\s*\{/g)].map(x=>({fn:x[1],at:x.index}));
+          const significant=['draw','show','load','premiumMatchRow','perfSource','activeDaily','dailyReport',
+           'buildDaily','updateMenu','renderBttsCandidateCard','makeBttsCandidateCard','makeBttsCandidatesSection',
+           'statsCard','marketLedger','formatOdds','setPeriod','drawChart'];
+          const excerpts={};
+          for(const needle of significant){
+           const decl=functionDecls.find(x=>x.fn===needle);
+           if(decl)excerpts[needle]=script.slice(decl.at,decl.at+12000).slice(0,
+             ['draw','show','premiumMatchRow','perfSource'].includes(needle)?10000:2500);
+          }
+          const anchorTerms=[
+            'const visible=',"const activeLedger=","mode==='all'","mode==='1x2'","mode==='btts'","mode==='predictions'",
+            'const mirrorOn=',"allLedger.rows","bttsLedger.rows","dailySeries","marketDailyBooks","history",
+            'b46pm-premium-summary','b46pm-stats','b46pm-chart'
+          ];
+          const anchors={};
+          for(const term of anchorTerms){let i=-1,count=0;const hits=[];while((i=script.indexOf(term,i+1))>=0&&count++<4){
+            hits.push({offset:i,snippet:script.slice(Math.max(0,i-150),i+350).replace(/\s+/g,' ')});
+           }anchors[term]=hits;}
+          const owner='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const root='https://'+frontend+'.mccarey-supon.workers.dev';
+          const back='https://'+backend+'.mccarey-supon.workers.dev';
+          async function req(url,auth=false){
+           const r=await fetch(url,{headers:auth?{authorization:owner}:{},cache:'no-store',signal:AbortSignal.timeout(25000)});
+           assert(r.ok,'READ_'+r.status+' '+url);return r.json()
+          }
+          const [p,audit,registry,bulk,screen]=await Promise.all([
+            req(root+'/__b46_prematch_data'),
+            req(back+'/prematch-stats-registry-audit-test',true),
+            req(back+'/prematch-stats-registry-test?days=90',true),
+            req(back+'/btts-bulk-v2-state',true),
+            req(back+'/btts-preview-data?filter=ALL&page=1')
+          ]);
+          const summary={version:fv,backendVersion:bv,clientBytes:script.length,scriptFunctionNames:functionDecls.map(x=>x.fn),
+           activeBackendMode:bulk.config.mode,markets:registry.markets,statsAudit:audit,
+           frontend:{markets:p.marketDailyBooks,recorded:{
+             oneX2:{n:p.testLedger.rows.length,stats:p.testLedger.stats,first:p.testLedger.rows[0]??null},
+             btts:{n:p.bttsLedger.rows.length,stats:p.bttsLedger.stats,first:p.bttsLedger.rows[0]??null},
+             all:{n:p.allLedger.rows.length,stats:p.allLedger.stats,first:p.allLedger.rows[0]??null}
+           },dailyKeys:Object.keys(p),dailySamples:{
+             btts:(p.bttsDailySeries??[]).slice(-2),all:(p.allDailySeries??[]).slice(-2)},
+             headerStats:p.statsRegistry},
+           bttsScreen:screen.totals,
+           hasCandidateCards:script.includes('b46pm-btts-candidates'),
+           globalCSSBytes:body.slice(body.indexOf('<style'),body.indexOf('</style>')).length,
+           backendProviderCallsAdded:0,productionWrites:0};
+          console.log('B46_PREMATCH_UNIFIED_AUDIT_SUMMARY '+JSON.stringify(summary));
+          console.log('B46_PREMATCH_UNIFIED_AUDIT_ANCHORS '+JSON.stringify(anchors));
+          for(const [key,fragment] of Object.entries(excerpts)){
+            if(['draw','show','premiumMatchRow','perfSource'].includes(key)){
+              let cursor=0,section=0;
+              while(cursor<fragment.length){
+               console.log('B46_PREMATCH_UNIFIED_FN_'+key.toUpperCase()+'_'+(++section)+' '+JSON.stringify(fragment.slice(cursor,cursor+3000)));
+               cursor+=3000;
+              }
+            }else console.log('B46_PREMATCH_UNIFIED_FN_'+key.toUpperCase()+' '+JSON.stringify(fragment));
+          }
+          JS
