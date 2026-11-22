@@ -1,0 +1,64 @@
+name: BALL46 BTTS stagger module postdeploy verify read only
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-v2-stagger-postdeploy-audit-20261122.yml]
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Confirm new active module and runtime slot without API charges
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&account);
+          const worker='ball46-prematch-only-test-20261120';
+          const cloud='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          async function cf(path){
+           const r=await fetch(cloud+path,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(23000)});
+           const v=await r.json();assert(r.ok&&v.success,'CF_'+r.status);return v.result;
+          }
+          const deploy=await cf('/scripts/'+worker+'/deployments?per_page=2');
+          const v=deploy.deployments[0].versions[0].version_id;
+          const script=await cf('/workers/'+worker+'/versions/'+v+'?include=modules');
+          const module=script.modules.find(x=>x.name==='btts-bulk-truck-v2-test.mjs');
+          const code=module?.content_base64?Buffer.from(module.content_base64,'base64').toString('utf8'):'';
+          const main=script.modules.find(x=>x.name==='prematch-only-worker.mjs');
+          const mainCode=main?.content_base64?Buffer.from(main.content_base64,'base64').toString('utf8'):'';
+          const auth='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const host='https://'+worker+'.mccarey-supon.workers.dev';
+          async function owner(p){
+           const r=await fetch(host+p,{headers:{authorization:auth},cache:'no-store',signal:AbortSignal.timeout(26000)});
+           assert(r.ok,p+':'+r.status);return r.json();
+          }
+          const [state,hcr,stats,ledger]=await Promise.all([
+           owner('/btts-bulk-v2-state'),owner('/history-cargo-registry?detail=0'),
+           owner('/prematch-stats-registry-audit-test'),owner('/test-ledger')
+          ]);
+          const localHour=Number(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',hourCycle:'h23'}).format(new Date()));
+          const expected=localHour>=8&&localHour<12?1:localHour>=12&&localHour<16?2:
+             localHour>=16&&localHour<20?3:localHour>=20?4:localHour<6?5:0;
+          const result={version:v,oldVersion:'0f276292-1fd6-4585-887e-4b15617e86b7',
+           changed: v!=='0f276292-1fd6-4585-887e-4b15617e86b7',
+           sourceHasOffset:code.includes("btTsScheduledLocal:['08:00','12:00','16:00','20:00','00:00']"),
+           sourceNoOld08Call:code.includes("if(state.slot===0)return {state:'NOT_IN_BTTS_WINDOW'"),
+           mainOneX2StillPresent:mainCode.includes('syncNormalHub'),
+           mainOldHistoryGateUnmodified:mainCode.includes('if(!bulkActive&&history.completed<5)'),
+           mode:state.config.mode,actualSlot:state.transport.slot,expectedSlot:expected,
+           LondonHour:localHour,newProviderCallsToday:state.transport.providerCalls,
+           latestRounds:state.transport.rounds,hcrFT:hcr.inventory.finishedFixtures,
+           oneX2Ledger:ledger.rows.length,statsVerified:stats.verified,paidCallsForAudit:0,productionWrites:0};
+          console.log('B46_BTTS_STAGGER_RUNTIME_AUDIT '+JSON.stringify(result));
+          assert(result.changed&&result.sourceHasOffset&&result.sourceNoOld08Call,'BTTS_V2_CODE_NOT_DEPLOYED');
+          assert.equal(result.mode,'ACTIVE');
+          assert.equal(result.actualSlot,result.expectedSlot,'BTTS_STAGGER_RUNTIME_NOT_APPLIED');
+          assert.equal(result.statsVerified,true);
+          assert(result.oneX2Ledger>=76);
+          JS
