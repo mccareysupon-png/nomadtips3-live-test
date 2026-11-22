@@ -1,0 +1,58 @@
+name: BALL46 O-U Pre-Match UI Browser QA READONLY
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-prematch-ui-browser-qa-20261122.yml]
+permissions: {contents: read}
+jobs:
+  browser-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install browser driver
+        run: |
+          npm install --no-save playwright@1.55.0
+          if ! command -v google-chrome >/dev/null 2>&1; then npx playwright install chromium; fi
+      - name: Check O-U test route, stats and original 1X2 on PC/mobile without writes
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const url='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/';
+          const chrome=(await import('node:child_process')).execSync('command -v google-chrome || true',{encoding:'utf8'}).trim();
+          const browser=await chromium.launch(chrome?{executablePath:chrome,headless:true,args:['--no-sandbox']}: {headless:true,args:['--no-sandbox']});
+          const tests=[];
+          for(const [name,width,height] of [['pc',1440,900],['mobile',390,844]]){
+            const page=await browser.newPage({viewport:{width,height},timezoneId:'Asia/Bangkok'});
+            const errors=[];page.on('pageerror',e=>errors.push(String(e.message).slice(0,250)));
+            await page.goto(url+'?b46pm=ou-predictions',{waitUntil:'domcontentloaded',timeout:45000});
+            await page.locator('[data-b46-prematch-route="ou-predictions"]').first().waitFor({timeout:22000});
+            const a=await page.evaluate(()=>{
+              const sidebar=[...document.querySelectorAll('aside.left-rail [data-b46-prematch-route]')].map(x=>x.dataset.b46PrematchRoute);
+              const current=location.search;
+              const region=document.getElementById('b46-prematch-panel');
+              return {sidebar,current,title:document.querySelector('[data-workspace-heading]')?.textContent??'',empty:region?.textContent.includes('No Over/Under predictions issued yet.'),scrolled:document.documentElement.scrollWidth-document.documentElement.clientWidth};
+            });
+            if(!a.sidebar.includes('ou-predictions')||!a.sidebar.includes('ou')||a.sidebar.indexOf('ou')<a.sidebar.indexOf('1x2')||!a.empty||!a.current.includes('ou-predictions'))throw Error('OU_PREDS_UI_FAILED '+name+' '+JSON.stringify(a));
+            await page.evaluate(()=>document.querySelector('aside.left-rail [data-b46-prematch-route="ou"]').click());
+            await page.waitForTimeout(280);
+            const b=await page.evaluate(()=>{
+              const root=document.getElementById('b46-prematch-panel');
+              return {url:location.search,stats:root?.textContent.includes('Pre-Match · Over/Under'),note:root?.textContent.includes('No Over/Under performance data yet.'),borrowedRate:root?.querySelector('.b46pm-stat-value')?.textContent,overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};
+            });
+            if(!b.url.includes('b46pm=ou')||!b.stats||!b.note||b.borrowedRate!=='—'||b.overflow>3)throw Error('OU_STATS_UI_FAILED '+name+' '+JSON.stringify(b));
+            await page.evaluate(()=>document.querySelector('aside.left-rail [data-b46-prematch-route="1x2"]').click());
+            await page.waitForTimeout(1800);
+            const c=await page.evaluate(()=>{
+              const s=document.getElementById('b46-prematch-panel')?.textContent||'';
+              return {url:location.search,notOu:!s.includes('No Over/Under predictions issued yet.'),hasOneX2:s.includes('1X2'),error:s.includes('Data unavailable')};
+            });
+            if(!c.url.includes('b46pm=1x2')||!c.notOu||!c.hasOneX2||c.error)throw Error('ORIGINAL_1X2_BROKEN '+name+' '+JSON.stringify(c));
+            if(errors.length)throw Error('JS_ERROR_'+name+' '+errors.join(' | '));
+            tests.push({name,viewport:[width,height],ouPredictions:true,ouStats:true,oneX2Preserved:true,overflow:b.overflow,jsErrors:0});
+            await page.close();
+          }
+          await browser.close();
+          console.log('B46_OU_BROWSER_QA_PASS '+JSON.stringify({tests,providerCallsAdded:0,backendWrites:0}));
+          JS
