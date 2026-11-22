@@ -48,14 +48,13 @@ export function patchTotalOneXTwoOnlyClient(original){
    "r.id==='predictions'?String(stats.pending??'—'):r.id==='btts'?rate(btts):r.id==='1x2'?rate(oneX2):rate(stats)",
    "r.id==='predictions'?String(predictionsStats.pending??'—'):r.id==='btts'?rate(btts):rate(oneX2)",
    'TOTAL_NAV_RATE_EXCLUDES_BTTS');
- // Combined Predictions deliberately still reads allLedger to display 1X2+BTTS.
- if(!s.includes(":(allLedger??ledger);")||!s.includes("marketDailyBooks?.all")||
+ // Combined Predictions deliberately retain allLedger, and BTTS retains its own ledger.
+ if(!s.includes(":(allLedger??ledger);")||
+    !s.includes("marketDailyBooks?.all")||
+    !s.includes("const active=bttsLedger;")||
     !s.includes("r.id==='predictions'?String(predictionsStats.pending")||
-    !s.includes("mode==='btts'?bttsLedger:allLedger".replace('allLedger','bttsLedger'))) {
-   // Explicitly verify independent BTTS rendering below; avoid accepting a
-   // source that has accidentally dropped Predictions or BTTS.
-   if(!s.includes("const active=bttsLedger;"))throw Error('BTTS_LEDGER_LOST');
- }
+    !s.includes("r.id==='btts'?rate(btts):rate(oneX2)"))
+    throw Error('BTTS_INDEPENDENCE_OR_PREDICTIONS_VIEW_LOST');
  if(s.includes("Pre-Match · Total (1X2 + BTTS)")||
     s.includes("mode==='all'?'ALL'")||
     s.includes("if(mode==='btts'||mode==='all')")||
