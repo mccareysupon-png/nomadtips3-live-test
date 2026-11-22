@@ -1,0 +1,34 @@
+name: BALL46 BTTS Actual Test Fixture Preview READ ONLY
+on:
+  push:
+    branches: [fix/ball46-btts-backend-only-test-20261122]
+    paths: [.github/workflows/b46-btts-preview-actual-fixture-readonly-20261122.yml]
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Print grounded BTTS test page fixtures and kickoff status without any provider calls
+        run: |
+          node --input-type=module <<'JS'
+          const base='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          const now=Math.floor(Date.now()/1000);
+          for(const page of [1,2,5,10,20]){
+            const r=await fetch(base+'/btts-preview-data?page='+page+'&filter=ALL',{signal:AbortSignal.timeout(18000)});
+            const j=await r.json();
+            const rows=j.preview?.rows||[];
+            console.log('B46_BTTS_CURRENT_PAGE_REAL '+JSON.stringify({
+              now,iso:new Date(now*1000).toISOString(),page,http:r.status,
+              count:j.totals?.upcoming,all:j.preview?.total,pages:j.preview?.pages,
+              first:rows.slice(0,4).map(x=>({
+                id:x.fixtureId,league:x.leagueName,kickoff:x.kickoff,
+                date:Number.isFinite(x.kickoff)?new Date(x.kickoff*1000).toISOString():null,
+                status:x.status,home:x.home
+              })),
+              statuses:Object.fromEntries([...new Set(rows.map(x=>String(x.status)))].map(s=>[s,rows.filter(x=>x.status===s).length])),
+              afterOneHour:rows.filter(x=>x.kickoff>now+3600).length
+            }));
+          }
+          JS
