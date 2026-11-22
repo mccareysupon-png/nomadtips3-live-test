@@ -1,0 +1,56 @@
+name: BALL46 PreMatch 1X2 Receiver vs Immutable Snapshot FINAL check READ ONLY
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-prematch-1x2-receiver-vs-snapshot-final-20261122.yml]
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Compare real 1X2 Receiver graph lifetime totals with PreMatch immutable 1X2 ledger and Total Snapshot
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const t=process.env.CLOUDFLARE_API_TOKEN;assert(t);
+          const root='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          const back='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          const auth='Bearer '+crypto.createHmac('sha256',t).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          async function req(url,headers={}){
+           const r=await fetch(url,{headers,cache:'no-store',signal:AbortSignal.timeout(22000)});
+           if(!r.ok)return {http:r.status,error:(await r.text()).slice(0,200)};
+           return r.json();
+          }
+          const [graph,stats,data]=await Promise.all([
+           req(root+'/__b46_prematch_graph?market=1X2&variant=all&filter=all&range=all'),
+           req(back+'/prematch-stats-registry-test?days=90',{authorization:auth}),
+           req(root+'/__b46_prematch_data')
+          ]);
+          assert(stats?.markets?.['1X2']);
+          assert(data?.testLedger?.stats);
+          const receiver=graph?.summary??null;
+          const source=stats.markets['1X2'];
+          const comparison=receiver?{
+           settledMatches:receiver.rows===source.settled,
+           wins:receiver.wins===source.win,
+           losses:receiver.losses===source.loss,
+           draws:receiver.pushes===source.push,
+           units:Math.abs(receiver.net-source.units)<0.001
+          }:null;
+          console.log('B46_PREMATCH_RECEIVER_SNAPSHOT_FINAL_CHECK '+JSON.stringify({
+           receiver:{http:graph.http??200,scope:graph.scope,ok:graph.ok,source:graph.source,
+             schema:graph.schema,market:graph.market,range:graph.range,summary:receiver,
+             unitsPoints:graph.series?.units?.length,roiPoints:graph.series?.roi?.length,
+             ratePoints:graph.series?.rate?.length},
+           PreMatchSnapshot1X2:source,PreMatchLedger1X2:data.testLedger.stats,
+           PreMatchSnapshotTotal:stats.markets.TOTAL,
+           PreMatchSnapshotBTTS:stats.markets.BTTS,
+           differences:comparison,
+           chartAndSnapshotConsistent:comparison?Object.values(comparison).every(Boolean):null,
+           newPaid5USDCalls:0,backendWrites:0,productionWrites:0
+          }));
+          JS
