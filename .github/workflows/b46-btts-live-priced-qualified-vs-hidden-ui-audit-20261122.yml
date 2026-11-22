@@ -1,0 +1,112 @@
+name: BALL46 BTTS actual prices vs qualified vs hidden UI audit READ ONLY
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-live-priced-qualified-vs-hidden-ui-audit-20261122.yml]
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Audit actual stored quote evidence, full qualification, web UI filters and issued ledger without buying any new quotes
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,acc=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&acc,'MISSING_READ_ONLY_AUTH');
+          const api='https://api.cloudflare.com/client/v4/accounts/'+acc+'/workers';
+          const test='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          const back='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          const owner='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          async function fetchJson(url,auth=''){
+            const res=await fetch(url,{headers:auth?{authorization:auth}:{},cache:'no-store',signal:AbortSignal.timeout(32000)});
+            assert(res.ok,'READ_FAIL_'+res.status+'_'+url);
+            return res.json();
+          }
+          async function cf(path){
+            const r=await fetch(api+path,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(26000)});
+            const d=await r.json();assert(r.ok&&d.success,'CF_READ_FAIL_'+r.status);
+            return d.result;
+          }
+          async function version(name){
+            const o=await cf('/scripts/'+name+'/deployments?per_page=1');
+            return o.deployments[0].versions[0].version_id;
+          }
+          const [frontendVersion,backendVersion]=await Promise.all([
+            version('ball46-premium-match-colors-test-20261120'),
+            version('ball46-prematch-only-test-20261120')]);
+          const live=await cf('/workers/ball46-premium-match-colors-test-20261120/versions/'+frontendVersion+'?include=modules');
+          const source=Buffer.from(live.modules[0].content_base64,'base64').toString('utf8');
+          const clientMatch=source.match(/var prematchClientScript = ("(?:\\.|[^"\\])*");/);
+          assert(clientMatch,'FRONTEND_CLIENT_MISSING');
+          const client=JSON.parse(clientMatch[1]);
+          const visibleFilters={
+            requestsOnlyWAITING_PRICE:client.includes("getBttsCandidatesPreview('WAITING_PRICE')"),
+            requestsNOT_OFFERED:client.includes("getBttsCandidatesPreview('NOT_OFFERED')"),
+            requestsQUALIFIED_TEST:client.includes("getBttsCandidatesPreview('QUALIFIED_TEST')"),
+            forcesPriceNull:client.includes("status:'PENDING',price:null,pick:"),
+            deletesPriceBadge:client.includes("pick.querySelector('.b46pm-premium-odds')?.remove()"),
+            uses1X2CardRenderer:client.includes("const card=premiumMatchRow(source,null,false)"),
+          };
+          const [shadow,all,qualified,waiting,noOffer,notQualified,ledger]=await Promise.all([
+            fetchJson(back+'/btts-shadow',owner),
+            fetchJson(back+'/btts-preview-data?filter=ALL&page=1'),
+            fetchJson(back+'/btts-preview-data?filter=QUALIFIED_TEST&page=1'),
+            fetchJson(back+'/btts-preview-data?filter=WAITING_PRICE&page=1'),
+            fetchJson(back+'/btts-preview-data?filter=NOT_OFFERED&page=1'),
+            fetchJson(back+'/btts-preview-data?filter=NOT_QUALIFIED&page=1'),
+            fetchJson(test+'/__b46_prematch_data')
+          ]);
+          function present(r){return {
+            fixtureId:r.fixtureId,marketStatus:r.status,screenState:r.state,signal:r.signal,
+            home:r.home,away:r.away,probabilityYes:r.probabilityYes,probabilityNo:r.probabilityNo,
+            oddsYes:r.oddsYes,oddsNo:r.oddsNo,
+            history:[r.homeHistory,r.awayHistory]
+          }}
+          assert.equal(shadow.mode,'READ_ONLY_BTTS_SHADOW');
+          assert.equal(all.providerCalls,0);
+          assert.equal(qualified.providerCalls,0);
+          assert.equal(waiting.providerCalls,0);
+          assert.equal(noOffer.providerCalls,0);
+          assert.equal(notQualified.providerCalls,0);
+          assert.equal(ledger.bttsLedger.mode,'TEST_ONLY');
+          // Count and audit any actual qualified (priced, complete) candidates, across its small expected pages.
+          const allQualified=[...qualified.preview.rows];
+          for(let p=2;p<=Math.min(qualified.preview.pages,10);p++){
+            const page=await fetchJson(back+'/btts-preview-data?filter=QUALIFIED_TEST&page='+p);
+            assert.equal(page.providerCalls,0);allQualified.push(...page.preview.rows);
+          }
+          // If priced but not fully qualified exists among the NOT_QUALIFIED results,
+          // inspect remaining pages to distinguish rejected Bet365 quotes from absent quotes.
+          let pricedRejected=notQualified.preview.rows.filter(r=>r.oddsYes!=null||r.oddsNo!=null).map(present);
+          if(all.totals.availableQuote>allQualified.length){
+            for(let p=2;p<=Math.min(notQualified.preview.pages,40);p++){
+              const page=await fetchJson(back+'/btts-preview-data?filter=NOT_QUALIFIED&page='+p);
+              assert.equal(page.providerCalls,0);
+              pricedRejected.push(...page.preview.rows.filter(r=>r.oddsYes!=null||r.oddsNo!=null).map(present));
+            }
+          }
+          const anyAwaitingWithOdds=waiting.preview.rows.filter(r=>r.oddsYes!=null||r.oddsNo!=null).map(present);
+          console.log('B46_BTTS_REAL_PRICE_AND_UI_VISIBILITY_AUDIT '+JSON.stringify({
+            frontendVersion,backendVersion,storedQuoteRecords:shadow.storedBet365QuoteRecords,
+            shadowInputs:shadow.inputs,stats:all.totals,
+            availableQuote:all.totals.availableQuote,
+            qualifiedTotal:qualified.preview.total,
+            qualifiedPreview:allQualified.map(present),
+            missingPriceTotal:waiting.preview.total,
+            missingPriceWithActualOdds:anyAwaitingWithOdds,
+            bookmakerNotOfferedTotal:noOffer.preview.total,
+            pricedButRejected:pricedRejected,
+            unqualifiedTotal:notQualified.preview.total,
+            issuedBttsLedgerCount:ledger.bttsLedger.rows.length,
+            issuedOneX2LedgerCount:ledger.testLedger.rows.length,
+            currentFrontendCode:visibleFilters,
+            diagnostic:'QUALIFIED_TEST rows not fetched by BTTS screening UI; candidate adapter intentionally nulls price',
+            calledPaid5usdApi:0,backendWrites:0,productionWrites:0
+          }));
+          JS
