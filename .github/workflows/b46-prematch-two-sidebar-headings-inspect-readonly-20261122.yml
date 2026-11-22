@@ -1,4 +1,4 @@
-name: BALL46 TEST sidebar headings readonly inspect
+name: BALL46 TEST sidebar headings readonly post-change inspect
 on:
   push:
     branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
@@ -61,8 +61,8 @@ jobs:
             await page.locator('#b46pm-stats-navigation').waitFor({state:'attached',timeout:25000});
             const out=await page.evaluate(()=>{
               const scope=[...document.querySelectorAll('aside.left-rail *, #b46m-drawer *')];
-              return scope.filter(e=>/^(statistics|pre-match\s*·\s*test|live statistics)$/i.test((e.textContent||'').trim()))
-                .filter(e=>![...e.children].some(c=>/^(statistics|pre-match\s*·\s*test|live statistics)$/i.test((c.textContent||'').trim())))
+              return scope.filter(e=>/^(statistics|pre-match\s*·\s*test|pre-match statistics|live statistics)$/i.test((e.textContent||'').trim()))
+                .filter(e=>![...e.children].some(c=>/^(statistics|pre-match\s*·\s*test|pre-match statistics|live statistics)$/i.test((c.textContent||'').trim())))
                 .map(e=>({tag:e.tagName,className:e.className,html:e.outerHTML.slice(0,700),parent:e.parentElement?.outerHTML.slice(0,1000)})).slice(0,15);
             });
             console.log('B46_SIDEBAR_DOM_'+device+' '+JSON.stringify(out));
