@@ -1,0 +1,36 @@
+name: BALL46 BTTS Ultra Candidate Seasons READ ONLY
+on:
+  push:
+    branches: [fix/ball46-btts-backend-only-test-20261122]
+    paths: [.github/workflows/b46-btts-ultra-season-metadata-candidates-20261122.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+    steps:
+      - name: Inspect only two BTTS target league seasons, 8 seconds apart
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          assert.equal(process.env.GITHUB_RUN_ATTEMPT,'1');
+          assert(process.env.FIVEDOLLAR_API_KEY);
+          const a=[];
+          for(const leagueId of [229,36001]){
+            if(a.length)await new Promise(r=>setTimeout(r,8500));
+            const r=await fetch('https://api.5dollarfootballapi.com/v1/leagues/'+leagueId,{
+              headers:{authorization:'Bearer '+process.env.FIVEDOLLAR_API_KEY,accept:'application/json'},
+              redirect:'manual',signal:AbortSignal.timeout(20000)});
+            const j=await r.json();
+            a.push({leagueId,http:r.status,name:j.data?.name??null,
+             valid:r.ok&&j.success===1&&Number(j.data?.id)===leagueId,
+             seasons:Array.isArray(j.data?.seasons)?j.data.seasons.slice(-14):null,
+             remaining:r.headers.get('x-ratelimit-remaining')});
+          }
+          console.log('B46_BTTS_ULTRA_LEAGUE_SEASON_CHOICES '+JSON.stringify({
+            readOnly:true,providerCalls:a.length,leagues:a,productionWrites:0,oneX2Writes:0,HCRWrites:0
+          }));
+          JS
