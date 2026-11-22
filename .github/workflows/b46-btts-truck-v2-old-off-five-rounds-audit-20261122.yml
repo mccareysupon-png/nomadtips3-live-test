@@ -1,0 +1,96 @@
+name: BALL46 BTTS Verify old truck OFF new V2 FIVE rounds TEST
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-truck-v2-old-off-five-rounds-audit-20261122.yml]
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Read only verify transport state and active deployed code ZERO provider requests
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&account,'MISSING_CF_READ_TOKEN');
+          const name='ball46-prematch-only-test-20261120';
+          const base='https://'+name+'.mccarey-supon.workers.dev';
+          const auth='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          async function owner(p){
+           const r=await fetch(base+p,{headers:{authorization:auth},cache:'no-store',signal:AbortSignal.timeout(28000)});
+           assert(r.ok,'TEST_OWNER_HTTP_'+r.status+'_'+p);
+           return r.json();
+          }
+          const [state,old,mission,btts,hcr,stats]=await Promise.all([
+           owner('/btts-bulk-v2-state'),owner('/history-round-state'),
+           owner('/daily-mission-state'),owner('/btts-shadow'),
+           owner('/history-cargo-registry?detail=0'),owner('/prematch-stats-registry-audit-test')
+          ]);
+          assert.equal(state.system,'BTTS_ULTRA_BULK_V2_TEST');
+          assert.equal(state.config.mode,'ACTIVE','NEW_V2_TRUCK_NOT_ACTIVE');
+          assert.equal(state.transport.cap.maxRoundsPerDay,5,'ROUNDS_NOT_FIVE');
+          assert.equal(state.transport.cap.maxProviderCallsPerRound,1,'NOT_ONE_CALL_PER_ROUND');
+          assert.equal(state.transport.cap.maxRowsPerRound,100,'NOT_100_PER_ROUND');
+          assert.equal(state.transport.cap.maxDailyProviderCalls,5,'DAILY_API_LIMIT_NOT_FIVE');
+          assert.equal(state.transport.cap.maxDailyRows,500,'DAILY_ROWS_LIMIT_NOT_500');
+          assert.equal(mission.mission?.transport,'BTTS_ULTRA_BULK_V2','LEGACY_DAILY_MISSION_STILL_ACTIVE');
+          assert.equal(hcr.registry.code,'HCR-V1');
+          assert.equal(stats.verified,true);
+          const cloud='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          async function cf(p){
+           const r=await fetch(cloud+p,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(21000)});
+           const j=await r.json();
+           assert(r.ok&&j.success,'CLOUDFLARE_READ_FAILED_'+r.status);
+           return j.result;
+          }
+          const deployments=await cf('/scripts/'+name+'/deployments?per_page=1');
+          const active=deployments.deployments?.[0]?.versions?.[0]?.version_id;
+          assert(active,'NO_ACTIVE_WORKER');
+          const version=await cf('/workers/'+name+'/versions/'+active+'?include=modules');
+          const main=version.modules.find(m=>m.name==='prematch-only-worker.mjs');
+          assert(main?.content_base64,'MISSING_MAIN_MODULE');
+          const source=Buffer.from(main.content_base64,'base64').toString('utf8');
+          assert(source.includes("if(!bulkActive&&history.completed<5)"),'OLD_HISTORY_IMPORT_NOT_GATED_OFF');
+          assert(source.includes("if(!bulkActive&&updatedHistory.completed!==5)"),'LEGACY_DEPENDENCY_NOT_GATED_OFF');
+          assert(source.includes("path==='/btts-bulk-v2-trip'"),'V2_TRIP_ROUTE_MISSING');
+          assert(source.includes("path==='/btts-bulk-v2-control'"),'CONTROL_ROUTE_MISSING');
+          assert(source.includes("BTTS_ULTRA_BULK_V2_TRANSPORT"),'V2_CRON_WIRING_MISSING');
+          assert(source.includes("event.cron!=='*/15 * * * *'"),'SCHEDULE_NOT_PRESENT');
+          const newModule=version.modules.find(m=>m.name==='btts-bulk-truck-v2-test.mjs');
+          assert(newModule?.content_base64,'V2_DRIVER_MISSING');
+          const sourceV2=Buffer.from(newModule.content_base64,'base64').toString('utf8');
+          assert(sourceV2.includes("b46_btts_bulk_v2_originals"),'V2_RAW_ARCHIVE_MISSING');
+          assert(sourceV2.includes("b46_btts_bulk_v2_rounds"),'V2_ROUND_LEDGER_MISSING');
+          const actualOld=(old.records||[]).map(r=>({round:r.round_no,
+           attemptedAt:r.attempted_at,source:r.source,state:r.state,imported:r.imported,
+           beforeV2Activation:Number(r.attempted_at)<Number(state.config.startedAt)}));
+          assert(actualOld.every(x=>x.beforeV2Activation),'OLD_TRUCK_IMPORTED_AFTER_V2_ACTIVATION');
+          console.log('B46_BTTS_TRUCK_V2_OLD_OFF_FIVE_ROUND_AUDIT '+JSON.stringify({
+           code:'B46_BTTS_TRUCK_V2_OLD_OFF_FIVE_ROUND_AUDIT',
+           checkedAtUTC:new Date().toISOString(),deployedVersion:active,
+           newTransportMode:state.config.mode,newActivatedAtUTC:new Date(state.config.startedAt*1000).toISOString(),
+           newTransportCaps:state.transport.cap,
+           currentDay:state.transport.businessDay,
+           currentRound:state.transport.slot,
+           newRounds:state.transport.rounds,
+           newProviderCallsToday:state.transport.providerCalls,
+           newReceivedToday:state.transport.received,
+           oldTruck:'OFF_FOR_HISTORY_IMPORT',
+           oldLastRoundsPreserved:actualOld,
+           botMissionTransport:mission.mission?.transport,
+           bttsHistoryReady:btts.totals.historyReady,
+           bttsModelReady:btts.totals.modelProbabilityReady,
+           bttsWaitingQuote:btts.totals.quoteRequired,
+           hcrFT:hcr.inventory.finishedFixtures,
+           statsAuditVerified:stats.verified,
+           additionalProviderCalls:0,
+           productionChanges:0,
+           verdict:'PASS'
+          }));
+          JS
