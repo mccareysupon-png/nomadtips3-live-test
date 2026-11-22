@@ -1,0 +1,80 @@
+name: BALL46 Unified 4 views TEST Worker active deployment verify
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-prematch-4view-active-test-worker-verify-20261122.yml]
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Verify TEST Worker active version, all 4 pages and backend; no writes or 5USD calls
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          assert(account&&token,'CLOUDFLARE_TEST_READ_ACCESS_MISSING');
+          const api='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const frontend='ball46-premium-match-colors-test-20261120';
+          const backend='ball46-prematch-only-test-20261120';
+          const expectedUI='1af0070a-a112-4ef4-add3-cfc1251a0291';
+          const expectedBackend='ac0338f3-9e32-453e-92ef-e3c70976f874';
+          async function cf(path){
+            const res=await fetch(api+path,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(25000)});
+            const doc=await res.json();
+            assert(res.ok&&doc.success,'CF_READ_FAILED_'+path+'_'+res.status);
+            return doc.result;
+          }
+          async function version(name){
+            const x=await cf('/scripts/'+name+'/deployments?per_page=1');
+            const v=x.deployments?.[0]?.versions?.[0]?.version_id;
+            assert(v,'CF_VERSION_NOT_FOUND_'+name);
+            return v;
+          }
+          const [uiVersion,btVersion]=await Promise.all([version(frontend),version(backend)]);
+          assert.equal(uiVersion,expectedUI,'TEST_UI_NOT_AT_APPROVED_UNIFIED_VERSION_STOP');
+          assert.equal(btVersion,expectedBackend,'BTTS_BACKEND_VERSION_CHANGED_STOP');
+          const deployed=await cf('/workers/'+frontend+'/versions/'+uiVersion+'?include=modules');
+          const source=Buffer.from(deployed.modules[0].content_base64,'base64').toString('utf8');
+          const m=source.match(/var prematchClientScript = ("(?:\\.|[^"\\])*");/);
+          assert(m,'CURRENT_PREMATCH_CLIENT_MISSING');
+          const client=JSON.parse(m[1]);
+          for(const needle of [
+            "dataset.b46PmCombinedMarkets='1X2,BTTS'",
+            'b46pm-btts-candidates',
+            'Pre-Match · Total (1X2 + BTTS)',
+            'b46pm-unified-market-stack',
+            'function perfSource()',
+            'window.B46PreMatchLiveMirror.render('
+          ])assert(client.includes(needle),'UNIFIED_UI_FEATURE_MISSING_'+needle);
+          const root='https://'+frontend+'.mccarey-supon.workers.dev';
+          const views={};
+          for(const view of ['predictions','all','1x2','btts']){
+            const url=root+'/?b46pm='+view;
+            const r=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(30000)});
+            assert(r.ok,'TEST_VIEW_HTTP_ERROR_'+view+'_'+r.status);
+            assert.equal(r.headers.get('x-b46-page-scope'),'PREMATCH_TEST_ONLY','NON_TEST_VIEW_'+view);
+            const html=await r.text();
+            assert(html.includes('b46'),'PREMATCH_VIEW_CONTENT_MISSING_'+view);
+            views[view]={status:r.status,scope:r.headers.get('x-b46-page-scope'),bytes:html.length};
+          }
+          const [data,candidates]=await Promise.all([
+            fetch(root+'/__b46_prematch_data',{cache:'no-store',signal:AbortSignal.timeout(28000)}).then(r=>{assert(r.ok);return r.json()}),
+            fetch(root+'/__b46_pm_btts_candidates?filter=WAITING_PRICE&page=1',{cache:'no-store',signal:AbortSignal.timeout(28000)}).then(r=>{assert(r.ok);return r.json()})
+          ]);
+          assert.equal(data.testLedger.mode,'TEST_ONLY');
+          assert.equal(data.bttsLedger.mode,'TEST_ONLY');
+          assert.equal(data.allLedger.stats.total,data.testLedger.stats.total+data.bttsLedger.stats.total);
+          assert.equal(candidates.mode,'READ_ONLY_BTTS_SHADOW');
+          assert.equal(candidates.providerCalls,0);
+          console.log('B46_UNIFIED_4VIEW_ACTIVE_TEST_WORKER_VERIFIED '+JSON.stringify({
+            uiWorker:frontend,uiVersion,backendWorker:backend,backendVersion:btVersion,
+            views,issued:{oneX2:data.testLedger.rows.length,btts:data.bttsLedger.rows.length,total:data.allLedger.rows.length},
+            candidatePreviewRows:candidates.preview?.rows?.length??0,
+            testOnly:true,productionWrites:0,paid5usdCalls:0,redeployNeeded:false,verdict:'PASS'
+          }));
+          JS
