@@ -1,0 +1,27 @@
+name: BALL46 TEST O/U verified 10s HUB quota gate - module-only deploy
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-price-verified-10s-gate-deploy-20261123.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-prematch-only-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify SQLite quote tests, safe quota checks and JS source
+        run: |
+          node --check qa/prematch-history-20261120/deploy-ou-10s-quota-gate-test-20261123.mjs
+          node --check qa/prematch-history-20261120/ou-price-pickup-v1-test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-price-pickup-v1.test.mjs
+      - name: Deploy changed O/U module to TEST only, no paid call in deployment QA
+        run: node qa/prematch-history-20261120/deploy-ou-10s-quota-gate-test-20261123.mjs
