@@ -48,7 +48,8 @@ const [oldLedger,oldAudit,oldHCR,oldBulk]=await Promise.all([
  owner('/test-ledger'),owner('/prematch-stats-registry-audit-test'),
  owner('/history-cargo-registry?detail=0'),owner('/btts-bulk-v2-state')
 ]);
-assert(oldLedger.mode==='TEST_ONLY'&&oldAudit.verified&&oldBulk.config.mode==='ACTIVE','BASELINE_INVALID');
+console.log('OU_BASELINE_STATUS '+JSON.stringify({ledgerMode:oldLedger.mode,auditVerified:oldAudit.verified,bulkMode:oldBulk.config?.mode,bulkCap:oldBulk.transport?.cap?.maxDailyProviderCalls}));
+assert(oldLedger.mode==='TEST_ONLY'&&oldAudit.verified&&oldBulk.transport?.cap?.maxDailyProviderCalls===5,'BASELINE_INVALID');
 const oldHash=hash(JSON.stringify({rows:oldLedger.rows,stats:oldLedger.stats}));
 console.log('OU_MATH_TEST_DEPLOY_PREFLIGHT '+JSON.stringify({backendBefore:expected,oneX2Rows:oldLedger.rows.length,
  protected:beforeProtected,bulkCap:oldBulk.transport.cap.maxDailyProviderCalls,providerCalls:0}));
