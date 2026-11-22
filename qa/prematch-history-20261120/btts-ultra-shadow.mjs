@@ -14,7 +14,7 @@ const safeFixture=f=>pos(f?.id)&&pos(f?.teams?.home?.id)&&pos(f?.teams?.away?.id
  String(f.teams.home.id)!==String(f.teams.away.id)&&safeTs(f?.kickoff_ts)&&f?.status==='scheduled';
 
 export const BTTS_ULTRA_TEST_POLICY=Object.freeze({
- version:'btts-ultra-history10-shadow-v1',historyPerTeam:10,
+ version:'btts-ultra-history10-shadow-v1',historyPerTeam:10,minHistory:3,
  minProbability:.60,minEdge:.05,minEV:.05,minPrice:1.5,maxPrice:10,
  publish:false,providerRequests:0,source:'BET365_ONLY'
 });
@@ -72,7 +72,7 @@ export function evaluateBttsUltra(db,fixtures,now,storedQuotes={},limit=250,view
   seen.add(String(f.id));totals.upcoming++;
   const home=bttsLastMatches(db,Number(f.teams.home.id),f.kickoff_ts,now,10);
   const away=bttsLastMatches(db,Number(f.teams.away.id),f.kickoff_ts,now,10);
-  const complete=home.length===10&&away.length===10;
+  const complete=home.length>=BTTS_ULTRA_TEST_POLICY.minHistory&&away.length>=BTTS_ULTRA_TEST_POLICY.minHistory;
   if(complete)totals.historyReady++;else totals.historyIncomplete++;
   const cached=storedQuotes[String(f.id)];
   const direct=f.storedBet365;
@@ -85,7 +85,7 @@ export function evaluateBttsUltra(db,fixtures,now,storedQuotes={},limit=250,view
    const args={homeLast10:home,awayLast10:away,asOf:now,kickoff:f.kickoff_ts};
    const inputs=selected?{...args,odds:{bookmaker:'bet365',yes:selected.prices.BTTS_YES,
      no:selected.prices.BTTS_NO,observed:selected.observed}}:args;
-   const evaluated=evaluateBttsSignal(inputs,{enabled:true,minHistory:10,minProbability:BTTS_ULTRA_TEST_POLICY.minProbability,
+   const evaluated=evaluateBttsSignal(inputs,{enabled:true,minHistory:BTTS_ULTRA_TEST_POLICY.minHistory,minProbability:BTTS_ULTRA_TEST_POLICY.minProbability,
      minEdge:BTTS_ULTRA_TEST_POLICY.minEdge,minEV:BTTS_ULTRA_TEST_POLICY.minEV,
      minPrice:BTTS_ULTRA_TEST_POLICY.minPrice,maxPrice:BTTS_ULTRA_TEST_POLICY.maxPrice});
    metrics=evaluated.metrics;
