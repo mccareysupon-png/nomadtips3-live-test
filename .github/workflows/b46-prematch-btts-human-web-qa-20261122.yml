@@ -1,0 +1,23 @@
+name: BALL46 PreMatch BTTS Human Website TEST QA
+on:
+  push:
+    branches: [fix/ball46-prematch-btts-human-web-test-20261122]
+    paths:
+      - .github/workflows/b46-prematch-btts-human-web-qa-20261122.yml
+permissions:
+  contents: read
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test responsive human-readable BTTS page and unchanged 1X2/HCR
+        run: |
+          node --check qa/prematch-history-20261120/btts-human-web.mjs
+          node --check qa/prematch-history-20261120/btts-ultra-shadow.mjs
+          node --check qa/prematch-history-20261120/prematch-only-worker.mjs
+          node --test qa/prematch-history-20261120/btts-human-web.test.mjs qa/prematch-history-20261120/btts-ultra-shadow.test.mjs qa/prematch-history-20261120/evaluate-btts-signal.test.mjs qa/prematch-history-20261120/market-1x2.test.mjs qa/prematch-history-20261120/test-pick-ledger.test.mjs qa/prematch-history-20261120/history-cargo-registry.test.mjs
