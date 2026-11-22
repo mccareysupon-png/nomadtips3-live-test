@@ -13,7 +13,7 @@ export const OUV1_PICKUP_POLICY=Object.freeze({
  maxProviderCallsPerLondonDay:1,maxProviderCallsPerTick:1,
  minimumSecondsBeforeKickoff:900,maximumSecondsBeforeKickoff:3*86400,
  maximumFeedAgeSec:3600,maximumHubSnapshotAgeMs:600000,
- maxHubRequestsPerMinute:10,minimumHubRefreshMs:30000,
+ maxHubRequestsPerMinute:10,minimumHubRefreshMs:10000,
  maxProviderTimeoutMs:15000,productionWrites:0,sharedQuotaGuarantee:false
 });
 export function initOuPricePickup(db){
@@ -66,7 +66,18 @@ export function inspectOuPickupHealth(h){
    h.estimatedBulkRequestsPerMinute>OUV1_PICKUP_POLICY.maxHubRequestsPerMinute||
    !Number.isFinite(h.refreshMs)||h.refreshMs<OUV1_PICKUP_POLICY.minimumHubRefreshMs)
   return {allowed:false,reason:'UNVERIFIED_SHARED_CAPACITY'};
- return {allowed:true,reason:'HEALTHY_ONE_REQUEST_PER_DAY_BEST_EFFORT'};
+ // During accelerated 10s/15s LIVE refresh, inspect the account-wide 5USD
+ // quota evidence already observed and validated by the existing HUB V3.
+ // Not an atomic shared reservation: still strictly one external call/day.
+ if(h.refreshMs<30000&&(
+  h.bulkSpeedV3Ready!==true||
+  h.bulkSpeedV3?.quotaObserved!==true||
+  h.bulkSpeedV3?.accelerationAvailable!==true||
+  h.bulkSpeedV3?.configuredSeconds*1000!==h.refreshMs
+ ))return {allowed:false,reason:'ACCELERATED_HUB_QUOTA_NOT_VERIFIED'};
+ return {allowed:true,reason:h.refreshMs<30000?
+  'HUB_ACCOUNT_HEADROOM_OBSERVED_BEST_EFFORT_ONE_PER_DAY':
+  'HEALTHY_ONE_REQUEST_PER_DAY_BEST_EFFORT'};
 }
 const safeError=v=>String(v??'UNKNOWN').replace(/[^A-Z0-9_-]/gi,'_').slice(0,70);
 export async function runOuPricePickup(db,{fixtures,now,feedAt,hubreview,provider,
