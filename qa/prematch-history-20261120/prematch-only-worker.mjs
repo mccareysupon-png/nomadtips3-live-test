@@ -408,6 +408,11 @@ export class PrematchStore extends DurableObject{
       !auditPreMarketStatsRegistry(this.db).verified)
      return json({state:'PREFLIGHT_UNMET',privateFT:bttsArchive.privateFT,historyReady:verified.totals.historyReady,
       providerCalls:0,productionWrites:0});
+   // John Bulk proof 44995564511 imported page 1 of these five leagues
+   // and confirmed has_more=true. Resume on page 2, never pay for page 1 twice.
+   if(prior.mode!=='ACTIVE')for(const leagueId of [229,12115,10409,800,354]){
+    this.db.exec('INSERT INTO b46_btts_bulk_v2_cursors(league_id,next_page,updated_at,exhausted) VALUES(?,?,?,0) ON CONFLICT DO NOTHING',leagueId,2,now)
+   }
    const next={mode:'ACTIVE',startedAt:now,proofRun:data.proofRun,previousMode:prior.mode};
    await this.ctx.storage.put('bttsBulkModeV2',next);
    return json({state:'ACTIVATED',config:next,oldHistoryCargoVehicle:'STOPPED_WHILE_ACTIVE',
