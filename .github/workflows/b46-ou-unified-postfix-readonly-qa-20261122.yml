@@ -1,0 +1,63 @@
+name: BALL46 O-U merged Predictions post-hotfix READONLY QA
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-unified-postfix-readonly-qa-20261122.yml]
+permissions: {contents: read}
+jobs:
+  browser-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          if ! command -v google-chrome >/dev/null 2>&1; then npx playwright install chromium; fi
+      - name: Inspect hydrated unified Predictions, O-U stats and 1X2 after deploy
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/';
+          const chrome=(await import('node:child_process')).execSync('command -v google-chrome || true',{encoding:'utf8'}).trim();
+          const browser=await chromium.launch(chrome?{executablePath:chrome,headless:true,args:['--no-sandbox']}:{headless:true,args:['--no-sandbox']});
+          const all=[];
+          for(const [name,width,height] of [['pc',1440,900],['mobile',390,844]]){
+            const page=await browser.newPage({viewport:{width,height},timezoneId:'Asia/Bangkok'});
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            const results={device:name};
+            for(const route of ['predictions','ou','1x2']){
+              await page.goto(base+'?b46pm='+route,{waitUntil:'domcontentloaded',timeout:45000});
+              await page.locator('aside.left-rail [data-b46-prematch-route="ou"]').waitFor({state:'attached',timeout:30000});
+              await page.waitForFunction(()=>{
+                const panel=document.getElementById('b46-prematch-panel');
+                return !!panel&&panel.textContent.length>120;
+              },null,{timeout:30000});
+              await page.waitForTimeout(route==='1x2'?3000:850);
+              const x=await page.evaluate(()=>{
+                const p=document.getElementById('b46-prematch-panel');
+                const menu=[...document.querySelectorAll('aside.left-rail [data-b46-prematch-route]')].map(e=>e.dataset.b46PrematchRoute);
+                return {url:location.search,heading:document.querySelector('[data-workspace-heading]')?.textContent,
+                  text:(p?.innerText||'').slice(0,600),
+                  menu,visible:!!p&&!p.hidden,
+                  overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};
+              });
+              results[route]=x;
+            }
+            await page.goto(base+'?b46pm=ou-predictions',{waitUntil:'domcontentloaded',timeout:45000});
+            await page.waitForURL(/b46pm=predictions/,{timeout:20000});
+            results.aliasOK=true;results.errors=errors;
+            all.push(results);
+            await page.close();
+          }
+          await browser.close();
+          console.log('B46_OU_MERGED_POSTFIX_BROWSER_INSPECT '+JSON.stringify(all));
+          for(const d of all){
+            if(d.errors.length||d.predictions.menu.includes('ou-predictions')||
+              !d.predictions.menu.includes('predictions')||!d.predictions.menu.includes('ou')||
+              !d.predictions.visible||!d.ou.visible||!d['1x2'].visible||
+              !d.ou.text.includes('Over/Under')||!d.aliasOK||
+              [d.predictions,d.ou,d['1x2']].some(x=>x.overflow>3))
+              throw Error('POSTFIX_QA_FAILED_'+d.device);
+          }
+          JS
