@@ -1,0 +1,81 @@
+name: BALL46 OU bot TEST read-only preflight
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-bot-readonly-preflight-20261122.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Read current TEST worker versions, capabilities and UI anchors
+        run: |
+          node --input-type=module <<'JS'
+          import crypto from 'node:crypto';
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          const root='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers';
+          const h={authorization:'Bearer '+t};
+          async function cf(url){
+            const r=await fetch(root+url,{headers:h,signal:AbortSignal.timeout(40000)});
+            const j=await r.json();if(!j.success)throw Error('CF_FAILED_'+url);
+            return j.result;
+          }
+          const workers=['ball46-prematch-only-test-20261120','ball46-premium-match-colors-test-20261120'];
+          for(const w of workers){
+            const x=await cf('/scripts/'+w+'/deployments?per_page=1');
+            const ver=x.deployments[0].versions[0].version_id;
+            const active=await cf('/workers/'+w+'/versions/'+ver+'?include=modules');
+            const files=active.modules.map(m=>m.name);
+            console.log('OU_PREFLIGHT_WORKER '+JSON.stringify({worker:w,version:ver,moduleCount:files.length,
+              main:active.main_module,moduleNames:files,bindings:(await cf('/scripts/'+w+'/settings')).bindings.map(x=>x.name)}));
+            if(w.includes('premium-match')){
+              const source=Buffer.from(active.modules[0].content_base64,'base64').toString('utf8');
+              const m=source.match(/var prematchClientScript = ("(?:\\.|[^"\\])*");/);
+              if(!m)throw Error('MISSING_UI_PREMATCH_CLIENT');
+              const client=JSON.parse(m[1]), lines=client.split('\n');
+              const keys=['function groupPreMatchIssuedRows','function draw(pageOnly','function renderEmptyOuScreen','function prematchMarketStrip','function renderLeague','function render','function load','const activeLedger','const selectedBook','if(mode===','function perfSource','const routes','const issuedByFixture','for(const item of','if(item.market'];
+              const match=[];
+              for(let n=0;n<lines.length;n++){
+                if(keys.some(k=>lines[n].includes(k))){
+                  const lo=Math.max(0,n-5),hi=Math.min(lines.length,n+15);
+                  match.push({line:n+1,code:lines.slice(lo,hi).map((x,i)=>(lo+i+1)+': '+x).join('\n')});
+                }
+                if(match.length>=28)break;
+              }
+              console.log('OU_PREFLIGHT_FRONT_UI '+JSON.stringify({bytes:client.length,match}));
+            }
+          }
+          const key=crypto.createHmac('sha256',t).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const host='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          async function owner(path){
+            const r=await fetch(host+path,{headers:{authorization:'Bearer '+key},cache:'no-store',signal:AbortSignal.timeout(35000)});
+            if(!r.ok)throw Error('OWNER_HTTP_'+path+'_'+r.status);
+            return r.json();
+          }
+          const [reg,history,bulk,ledger]=await Promise.all([
+            owner('/prematch-stats-registry-test'),
+            owner('/merge-summary'),
+            owner('/btts-bulk-v2-state'),
+            owner('/test-ledger')]);
+          const now=Math.floor(Date.now()/1000);
+          const print={registryMarkets:reg.markets,history:history.stored,teams:history.teams,teamsWith10:history.teamsWith10,
+            bulk:{providerCalls:bulk.transport?.providerCalls,cap:bulk.transport?.cap},
+            oneX2Rows:ledger.rows?.length,checkedAt:now};
+          console.log('OU_PREFLIGHT_DATA '+JSON.stringify(print));
+          // Owner-only list of current stored O/U quote keys, counts and field paths; never expose team identifiers.
+          const source=await cf('/workers/ball46-prematch-only-test-20261120/versions/'+
+            (await cf('/scripts/ball46-prematch-only-test-20261120/deployments?per_page=1')).deployments[0].versions[0].version_id+
+            '?include=modules');
+          const main=Buffer.from(source.modules.find(m=>m.name===source.main_module).content_base64,'base64').toString();
+          console.log('OU_BACKEND_ANCHORS '+JSON.stringify({
+            hasOuRoute:main.includes("path==='/ou-"),hasOuModule:source.modules.some(m=>m.name.includes('over-under')),
+            hasHistoryAccess:main.includes('result_version'),hasStoredFixtures:main.includes("this.ctx.storage.get('botFixtures')"),
+            hasStatRegistry:main.includes('initPreMarketStatsRegistry')
+          }));
+          JS
