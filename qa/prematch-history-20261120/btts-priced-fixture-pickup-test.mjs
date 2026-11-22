@@ -35,7 +35,7 @@ const eligible=(c,now)=>c&&c.state==='BET365_PRICE_NEEDED'&&
  c.homeHistory>=3&&c.awayHistory>=3&&
  (Number(c.probabilityYes)>=.60||Number(c.probabilityNo)>=.60);
 
-export async function runBttsPricePickup(db,{fixtures,quotes={},now,provider,hubreview,onQuote,feedAt}={}){
+export async function runBttsPricePickup(db,{fixtures,quotes={},now,provider,hubreview,onQuote,feedAt,clock=()=>Math.floor(Date.now()/1000)}={}){
  if(!Number.isSafeInteger(now)||now<=0||!Array.isArray(fixtures)||
     typeof provider!=='function'||typeof onQuote!=='function')
    throw Error('INVALID_BTTS_PRICE_PICKUP_INPUT');
@@ -78,7 +78,7 @@ export async function runBttsPricePickup(db,{fixtures,quotes={},now,provider,hub
    try{
      const raw=await provider(path);
      remain=raw?.remaining??null;
-     const observed=Math.floor(Date.now()/1000);
+     const observed=clock();
      if(!raw?.ok){
        item.state=raw?.status===429?'FAIL_429':'FAIL_PROVIDER_'+asText(raw?.status);
        item.error='HTTP_'+asText(raw?.status);
@@ -119,7 +119,7 @@ export async function runBttsPricePickup(db,{fixtures,quotes={},now,provider,hub
      item.error=String(err?.message??err).slice(0,140);
    }
    db.exec('UPDATE b46_btts_price_pickup_test SET completed_at=?,state=?,price_yes=COALESCE(?,price_yes),price_no=COALESCE(?,price_no),error=? WHERE business_day=? AND fixture_id=?',
-    Math.floor(Date.now()/1000),item.state,item.oddsYes??null,item.oddsNo??null,item.error??null,day,Number(f.id));
+    clock(),item.state,item.oddsYes??null,item.oddsNo??null,item.error??null,day,Number(f.id));
    run.push(item);
    if(item.state==='FAIL_429'||item.sharedQuotaLow||item.state.startsWith('FAIL_'))break;
  }
