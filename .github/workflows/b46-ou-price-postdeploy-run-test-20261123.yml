@@ -1,4 +1,4 @@
-name: BALL46 O/U TEST new Worker propagation and live quote tick verification
+name: BALL46 O/U TEST verified 10s quota gate live quote run
 on:
   push:
     branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
@@ -21,7 +21,7 @@ jobs:
           import assert from 'node:assert/strict';
           const token=process.env.CLOUDFLARE_API_TOKEN,a=process.env.CLOUDFLARE_ACCOUNT_ID;
           const root='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers';
-          const backend='ball46-prematch-only-test-20261120',expected='dd7b0b9b-daf8-4186-9863-acd04b19c328';
+          const backend='ball46-prematch-only-test-20261120',expected='ebf8f95e-4379-4cae-9b27-aeea9c87b13d';
           const protectedNames=['ball46-production','nomadtips3-engine-343','nomadtips3-5usd-hub-343',
             'ball46-premium-match-colors-test-20261120'];
           async function cf(p){
