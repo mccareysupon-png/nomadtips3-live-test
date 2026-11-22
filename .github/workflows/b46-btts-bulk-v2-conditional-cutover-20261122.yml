@@ -1,0 +1,25 @@
+name: BALL46 BTTS Bulk V2 Conditional Cutover TEST 1 REAL page
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-bulk-v2-conditional-cutover-20261122.yml]
+permissions: {contents: read}
+concurrency:
+  group: b46-prematch-worker-deploy-v2-test-only
+  cancel-in-progress: false
+jobs:
+  cutover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check conditional cutover test syntax
+        run: node --check qa/prematch-history-20261120/activate-btts-bulk-v2-test-20261122.mjs
+      - name: Activate ONLY when proof-ready, run max 1 real 5USD request, auto-pause on any failure
+        run: node qa/prematch-history-20261120/activate-btts-bulk-v2-test-20261122.mjs
