@@ -112,6 +112,12 @@ test('paid O/U FT patch keeps formula and independent ledgers unchanged',()=>{
 });
 test('HUB health acceptance needs measurable, conservative live headroom',()=>{
  assert.equal(inspectOuPickupHealth(h).allowed,true);
+ const fast={...h,refreshMs:10000,estimatedBulkRequestsPerMinute:6,
+  bulkSpeedV3Ready:true,bulkSpeedV3:{quotaObserved:true,accelerationAvailable:true,configuredSeconds:10}};
+ assert.equal(inspectOuPickupHealth(fast).allowed,true);
+ assert.equal(inspectOuPickupHealth({...fast,bulkSpeedV3:{...fast.bulkSpeedV3,quotaObserved:false}}).allowed,false);
+ assert.equal(inspectOuPickupHealth({...fast,bulkSpeedV3:{...fast.bulkSpeedV3,accelerationAvailable:false}}).allowed,false);
+ assert.equal(inspectOuPickupHealth({...fast,bulkSpeedV3Ready:false}).allowed,false);
  for(const bad of [{...h,estimatedBulkRequestsPerMinute:12},{...h,refreshMs:6000},
    {...h,ageMs:1000000},{...h,retryAfterSec:60},{...h,lastError:'429'}]){
   assert.equal(inspectOuPickupHealth(bad).allowed,false);
