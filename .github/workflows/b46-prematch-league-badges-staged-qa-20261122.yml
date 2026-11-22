@@ -1,0 +1,30 @@
+name: BALL46 Pre-Match league and result badges staged QA (NO DEPLOY)
+on:
+  push:
+    branches:
+      - fix/ball46-prematch-league-result-badges-20261122
+    paths:
+      - qa/prematch-native-ui-20261121/prematch-client.mjs
+      - qa/prematch-native-ui-20261121/prematch-live-score-mirror.mjs
+      - qa/prematch-native-ui-20261121/league-result-badges.test.mjs
+      - .github/workflows/b46-prematch-league-badges-staged-qa-20261122.yml
+permissions:
+  contents: read
+jobs:
+  offline-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript module syntax validation
+        run: |
+          node --check qa/prematch-native-ui-20261121/prematch-client.mjs
+          node --check qa/prematch-native-ui-20261121/prematch-live-score-mirror.mjs
+      - name: Verify league and settlement badges; accounting unchanged
+        run: node --test qa/prematch-native-ui-20261121/league-result-badges.test.mjs
+      - name: Assert this workflow has NO Cloudflare deployment step
+        run: |
+          echo 'STAGED_TEST_ONLY - no Wrangler, no Cloudflare token, no deploy, no HCR or production change'
