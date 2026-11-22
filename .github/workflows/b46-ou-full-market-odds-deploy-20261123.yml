@@ -1,0 +1,28 @@
+name: BALL46 O/U TEST full Native odds page - safe deploy
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-full-market-odds-deploy-20261123.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-prematch-only-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify both O/U markets and no invented or mismatched line quotes
+        run: |
+          node --check qa/prematch-history-20261120/deploy-ou-full-market-odds-test-20261123.mjs
+          node --check qa/prematch-history-20261120/ou-price-pickup-v1-test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-price-pickup-v1.test.mjs
+          node --test qa/prematch-history-20261120/ou-verified-price-ingest-v1.test.mjs
+      - name: Deploy only isolated TEST Worker; no 5USD request during deployment
+        run: node qa/prematch-history-20261120/deploy-ou-full-market-odds-test-20261123.mjs
