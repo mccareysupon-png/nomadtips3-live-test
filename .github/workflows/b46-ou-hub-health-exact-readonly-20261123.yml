@@ -1,0 +1,26 @@
+name: BALL46 O/U live HUB health gates READONLY 2026-11-23
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-hub-health-exact-readonly-20261123.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Inspect public HUB health only; no provider calls
+        run: |
+          node --input-type=module <<'JS'
+          const url='https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/health';
+          const r=await fetch(url,{signal:AbortSignal.timeout(20000),cache:'no-store'});
+          const b=await r.json().catch(()=>null);
+          console.log('B46_OU_PUBLIC_HUB_HEALTH '+JSON.stringify({http:r.status,
+            ok:b?.ok,stale:b?.stale,ageMs:b?.ageMs,lastError:b?.lastError,retryAfterSec:b?.retryAfterSec,
+            accountLimitPerMinute:b?.accountLimitPerMinute,
+            estimatedBulkRequestsPerMinute:b?.estimatedBulkRequestsPerMinute,
+            refreshMs:b?.refreshMs,control:b?.control,
+            keys:b&&typeof b==='object'?Object.keys(b):[]}));
+          JS
