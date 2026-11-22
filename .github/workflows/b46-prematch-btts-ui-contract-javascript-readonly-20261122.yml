@@ -1,0 +1,40 @@
+name: BALL46 BTTS Existing Premium TEST Contract JS READ ONLY
+on:
+  push:
+    branches: [fix/ball46-prematch-btts-human-web-test-20261122]
+    paths: [.github/workflows/b46-prematch-btts-ui-contract-javascript-readonly-20261122.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Inspect active UI test only without writing changes
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&account);
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          async function cf(path){const r=await fetch(root+path,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(18000)});const j=await r.json();assert(r.ok&&j.success);return j.result}
+          const n='ball46-premium-match-colors-test-20261120';
+          const d=await cf('/scripts/'+n+'/deployments?per_page=1');
+          const active=d.deployments[0].versions[0].version_id;
+          const v=await cf('/workers/'+n+'/versions/'+active+'?include=modules');
+          for(const m of v.modules){
+            if(!m.content_base64||!/\.js$|\.mjs$/.test(m.name))continue;
+            const s=Buffer.from(m.content_base64,'base64').toString('utf8');
+            const patterns=['b46pmPeriod','__b46_prematch_data','btts','BTTS','prematch-only-test','PREMATCH_STORE','/preview-data','/prematch-data'];
+            const locations={};
+            for(const pat of patterns){
+              const idx=[];let at=-1;while((at=s.indexOf(pat,at+1))!==-1){idx.push(at);if(idx.length>200)break}
+              locations[pat]={count:idx.length,samples:idx.slice(0,9).map(at=>({at,excerpt:s.slice(Math.max(0,at-240),Math.min(s.length,at+420)).replace(/\s+/g,' ').slice(0,660)}))};
+            }
+            const head=s.slice(0,500),tail=s.slice(-1400);
+            console.log('B46_BTTS_EXISTING_PREMIUM_UI_JS '+JSON.stringify({worker:n,active,module:m.name,length:s.length,head,tail,locations}));
+          }
+          JS
