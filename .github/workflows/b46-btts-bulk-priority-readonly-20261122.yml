@@ -1,0 +1,31 @@
+name: BALL46 BTTS prioritize high yield leagues for bulk backfill (READ ONLY)
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-bulk-priority-readonly-20261122.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Rank stored scheduled leagues without any paid provider calls
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const key=process.env.CLOUDFLARE_API_TOKEN;assert(key);
+          const h={'authorization':'Bearer '+crypto.createHmac('sha256',key).update('BALL46_PREMATCH_ONLY_V1').digest('hex')};
+          const base='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          async function get(p){const r=await fetch(base+p,{headers:h,cache:'no-store',signal:AbortSignal.timeout(28000)});assert(r.ok,p+':'+r.status);return r.json()}
+          const [x,s,b]=await Promise.all([get('/btts-history-private-test'),get('/btts-shadow'),get('/history-cargo-registry?detail=0')]);
+          console.log('B46_BULK_PRIORITY_READONLY '+JSON.stringify({
+            registered:x.archive,leagues:x.leagues,
+            upcoming:s.totals.upcoming,ready:s.totals.historyReady,
+            hcrFT:b.inventory.finishedFixtures,providerCalls:0,
+            paidRequestsAuthorized:false
+          }));
+          JS
