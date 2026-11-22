@@ -1,0 +1,20 @@
+name: BALL46 O/U TEST verified quote pickup offline SQLite QA
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-price-pickup-unit-test-20261123.yml]
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Validate O/U modules and no provider calls in tests
+        run: |
+          node --check qa/prematch-history-20261120/ou-price-pickup-v1-test.mjs
+          node --check qa/prematch-history-20261120/patch-ou-priced-ft-settlement-test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-price-pickup-v1.test.mjs
+          node --test qa/prematch-history-20261120/ou-verified-price-ingest-v1.test.mjs
