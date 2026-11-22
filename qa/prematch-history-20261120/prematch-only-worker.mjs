@@ -137,7 +137,7 @@ export class PrematchStore extends DurableObject{
    page:params.get('page'),q:params.get('q'),filter:params.get('filter')
   });
   return json({system:'BALL46_PREMATCH_TEST',mode:btts.mode,
-   policy:{historyPerTeam:btts.policy.historyPerTeam,publish:false},totals:btts.totals,
+   policy:{historyPerTeam:btts.policy.historyPerTeam,minHistory:btts.policy.minHistory,publish:false},totals:btts.totals,
    preview:btts.preview,providerCalls:0,published:0});
  }
  if(path==='/preview-data'&&req.method==='GET'){
