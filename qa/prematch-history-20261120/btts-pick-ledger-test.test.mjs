@@ -18,9 +18,9 @@ const bttsFixture=(id=999)=>({id:String(id),status:'scheduled',kickoff_ts:1200,l
 const finished=(i,h,a,kickoff=300)=>({id:i,league:{id:5},
  teams:{home:{id:h},away:{id:a}},kickoff_ts:kickoff,
  status:'finished',status_code:'full',goals:{home:2,away:1}});
-function ready(x){
- const rows1=Array.from({length:10},(_,i)=>finished(100+i,11,2000+i,201+i));
- const rows2=Array.from({length:10},(_,i)=>finished(200+i,22,3000+i,201+i));
+function ready(x,h=10,a=10){
+ const rows1=Array.from({length:h},(_,i)=>finished(100+i,11,2000+i,201+i));
+ const rows2=Array.from({length:a},(_,i)=>finished(200+i,22,3000+i,201+i));
  importBttsTeamFallback(x,rows1,600,{teamId:11});
  importBttsTeamFallback(x,rows2,600,{teamId:22});
 }
@@ -41,6 +41,18 @@ test('passing Bet365 BTTS history 10/10 creates exactly one immutable BTTS predi
  assert.equal(bttsPickLedger(d).stats.pending,1);
  assert.equal(bttsPickLedger(d).rows[0].market,'BTTS');
  assert.equal(bttsPickLedger(d).published,0);
+});
+test('BTTS picks accept 3–10 per team and persist actual home/away sample size',()=>{
+ for(const [h,a] of [[3,3],[3,10],[10,3],[10,10]]){
+  const d=db();ready(d,h,a);const f=bttsFixture(),now=700;
+  const picks=bttsPicksFromScreen(evaluateBttsUltra(d,[f],now,{},1000),[f],now);
+  assert.equal(picks.length,1);assert.equal(picks[0].homeCount,h);assert.equal(picks[0].awayCount,a);
+  assert.equal(recordBttsPicks(d,picks,now).added,1);
+  assert.equal(recordBttsPicks(d,picks,now).duplicate,1);
+  assert.equal(bttsPickLedger(d).rows[0].home_count,h);assert.equal(bttsPickLedger(d).rows[0].away_count,a);
+ }
+ const d=db();ready(d,2,10);const f=bttsFixture();
+ assert.equal(bttsPicksFromScreen(evaluateBttsUltra(d,[f],700,{},1000),[f],700).length,0);
 });
 test('combine preserves 1X2 on same fixture; two independent cards chronological and win-rate totals',()=>{
  const d=db();ready(d);const f=bttsFixture();const now=700;
