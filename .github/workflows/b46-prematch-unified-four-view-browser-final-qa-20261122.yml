@@ -1,0 +1,174 @@
+name: BALL46 Four View Unified PreMatch UI Final Desktop Mobile TEST QA
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-prematch-unified-four-view-browser-final-qa-20261122.yml]
+permissions: {contents: read}
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install isolated Chromium only
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          npx playwright install chromium
+      - name: Test existing four views and synthetic dual-market fixture visually
+        run: |
+          mkdir -p qa-artifacts
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/';
+          const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+          const summary=[];
+          async function get(page,view){
+            const response=await page.goto(base+'?b46pm='+view,{
+              waitUntil:'domcontentloaded',timeout:60000});
+            assert(response?.ok(),'PAGE_'+view+'_'+response?.status());
+            await page.waitForSelector('#b46-prematch-panel',{state:'visible',timeout:40000});
+            if(view==='predictions')await page.waitForSelector('[data-b46-pm-unified-fixture]',{state:'visible',timeout:50000});
+            else await page.waitForSelector('.b46pm-performance-subtitle',{state:'visible',timeout:50000});
+            await page.waitForTimeout(1100);
+          }
+          try{
+            for(const device of [
+              {name:'PC1440',width:1440,height:900,mobile:false},
+              {name:'Laptop1024',width:1024,height:768,mobile:false},
+              {name:'Mobile390',width:390,height:844,mobile:true},
+              {name:'Mobile320',width:320,height:700,mobile:true}
+            ]){
+              const ctx=await browser.newContext({viewport:{
+                width:device.width,height:device.height},
+                isMobile:device.mobile,hasTouch:device.mobile});
+              const page=await ctx.newPage();const errors=[];
+              page.on('pageerror',e=>errors.push(String(e.message).slice(0,180)));
+              const perDevice={device:device.name};
+              for(const view of ['1x2','btts','all','predictions']){
+                await get(page,view);
+                const v=await page.evaluate(()=>{
+                  const b=document.querySelector('#b46-prematch-panel');
+                  const subtitle=b?.querySelector('.b46pm-performance-subtitle')?.textContent??null;
+                  const cards=[...b.querySelectorAll('[data-b46-pm-unified-fixture]')];
+                  return {
+                    subtitle,mode:new URLSearchParams(location.search).get('b46pm'),
+                    original1x2CardCount:b.querySelectorAll('.b46pm-list .b46pm-match').length,
+                    nativeMirrorCount:b.querySelectorAll('.b46pm-live-mirror-fixture').length,
+                    candidateCount:b.querySelectorAll('[data-b46-btts-candidate-fixture]').length,
+                    displayedFixtureCount:cards.length,
+                    uniqueFixtures:new Set(cards.map(x=>x.dataset.b46PmUnifiedFixture)).size,
+                    combinedCount:b.querySelectorAll('[data-b46-pm-combined-markets]').length,
+                    hasGraph:!!b.querySelector('.b46pm-performance-chart'),
+                    noHorizontalScroll:document.documentElement.scrollWidth<=innerWidth+2,
+                    viewportWidth:innerWidth,documentWidth:document.documentElement.scrollWidth
+                  }
+                });
+                if(view==='1x2')assert(v.subtitle==='Pre-Match · 1X2','WRONG_1X2_SUBTITLE_'+device.name);
+                if(view==='all')assert(v.subtitle==='Pre-Match · Total (1X2 + BTTS)',
+                  'WRONG_TOTAL_SUBTITLE_'+device.name+'_'+v.subtitle);
+                if(view==='btts'){
+                  assert(v.subtitle?.startsWith('Pre-Match · BTTS'),'WRONG_BTTS_SUBTITLE_'+device.name);
+                  assert(v.candidateCount>0,'BTTS_SCREENING_CARDS_DISAPPEARED_'+device.name);
+                }
+                if(view==='predictions'){
+                  assert(v.nativeMirrorCount>=75,'NATIVE_1X2_MIRROR_MISSING_'+device.name);
+                  assert(v.uniqueFixtures===v.displayedFixtureCount,'DUPLICATE_FIXTURE_'+device.name);
+                }
+                assert(v.noHorizontalScroll,'PAGE_OVERFLOWS_'+view+'_'+device.name);
+                perDevice[view]=v;
+                if(['1x2','btts','all','predictions'].includes(view))
+                  await page.screenshot({path:'qa-artifacts/unified-'+device.name.toLowerCase()+'-'+view+'.png',fullPage:false});
+                if(view==='all'){
+                  const roi=page.locator('[data-b46pm-perf-metric="roi"]').first();
+                  await roi.click({timeout:15000});
+                  await page.waitForTimeout(350);
+                  const active=await roi.getAttribute('aria-pressed');
+                  assert.equal(active,'true','ROI_CONTROL_INACTIVE_'+device.name);
+                  const still=await page.locator('.b46pm-performance-subtitle').first().textContent();
+                  assert.equal(still,'Pre-Match · Total (1X2 + BTTS)');
+                }
+              }
+              assert.equal(errors.length,0,'BROWSER_JS_ERROR_'+device.name+' '+JSON.stringify(errors));
+              summary.push(perDevice);await ctx.close();
+            }
+            // Isolated browser-only synthetic issued BTTS evidence. It is
+            // never written to GitHub, Durable Object, 5USD, or production.
+            // Ensure one fixture with 1X2+BTTS becomes ONE match card.
+            for(const device of [
+              {name:'PC_MOCK',width:1440,height:900,mobile:false},
+              {name:'Mobile_MOCK',width:390,height:844,mobile:true}
+            ]){
+              const ctx=await browser.newContext({
+                viewport:{width:device.width,height:device.height},
+                isMobile:device.mobile,hasTouch:device.mobile});
+              const page=await ctx.newPage();const errors=[];
+              page.on('pageerror',e=>errors.push(String(e.message).slice(0,180)));
+              let syntheticFixtureId=null;
+              await page.route('**/__b46_prematch_data',async route=>{
+                const live=await route.fetch(),d=await live.json();
+                assert.equal(d.testLedger.mode,'TEST_ONLY');
+                const pick=d.testLedger.rows[0];assert(pick?.fixture_id);
+                syntheticFixtureId=String(pick.fixture_id);
+                const fake={...pick,market:'BTTS',pick:'BTTS_YES',
+                  price:1.85,probability:.65,edge:.08,ev:.2025,
+                  status:'PENDING',settled_at:null,units:null,hg:null,ag:null,
+                  home_count:10,away_count:10};
+                d.bttsLedger.rows=[fake];d.bttsLedger.stats={
+                  total:1,pending:1,win:0,loss:0,push:0,draw:0,settled:0,units:0,winRate:null};
+                d.allLedger.rows=[...d.testLedger.rows.map(x=>({...x,market:'1X2'})),fake]
+                  .sort((a,b)=>Number(a.kickoff)-Number(b.kickoff)||
+                    Number(a.fixture_id)-Number(b.fixture_id)||a.market.localeCompare(b.market));
+                d.allLedger.stats={...d.testLedger.stats,total:d.testLedger.stats.total+1,
+                  pending:d.testLedger.stats.pending+1};
+                await route.fulfill({response:live,body:JSON.stringify(d),
+                  headers:{'content-type':'application/json'}});
+              });
+              await get(page,'predictions');
+              await page.waitForFunction(id=>{
+                const n=document.querySelector('[data-b46-pm-unified-fixture="'+id+'"]');
+                return n?.dataset.b46PmCombinedMarkets==='1X2,BTTS'&&
+                   n.querySelectorAll('[data-b46-pm-market]').length===2;
+              },syntheticFixtureId,{timeout:45000});
+              const result=await page.evaluate(id=>{
+                const all=[...document.querySelectorAll('[data-b46-pm-unified-fixture="'+id+'"]')];
+                const card=all[0];return {
+                  sameFixtureCards:all.length,
+                  parentClass:card.className,fixtureId:id,
+                  marketTags:[...card.querySelectorAll('[data-b46-pm-market]')].map(x=>({
+                    market:x.dataset.b46PmMarket,text:x.textContent})),
+                  combined:card.dataset.b46PmCombinedMarkets,
+                  realMirrorRetained:card.classList.contains('b46pm-live-mirror-fixture'),
+                  overflow:document.documentElement.scrollWidth>innerWidth+2
+                };
+              },syntheticFixtureId);
+              assert.equal(result.sameFixtureCards,1,'DUPLICATE_FIXTURE_IN_PREDICTIONS_MOCK');
+              assert.equal(result.marketTags.length,2);
+              assert.deepEqual(result.marketTags.map(x=>x.market),['1X2','BTTS']);
+              assert(result.marketTags[1].text.includes('YES'));
+              assert(result.marketTags[1].text.includes('1.85'));
+              assert.equal(result.combined,'1X2,BTTS');
+              assert(result.realMirrorRetained,'NATIVE_1X2_MIRROR_REPLACED');
+              assert(!result.overflow,'SYNTHETIC_MARKET_ROW_OVERFLOW');
+              assert.deepEqual(errors,[],'SYNTHETIC_MARKET_JS_ERROR');
+              await page.locator('[data-b46-pm-unified-fixture="'+syntheticFixtureId+'"]').scrollIntoViewIfNeeded();
+              await page.screenshot({path:'qa-artifacts/unified-'+device.name.toLowerCase()+'.png',fullPage:false});
+              console.log('B46_PREMATCH_SYNTHETIC_DOUBLE_MARKET_BROWSER_PASS '+JSON.stringify({
+                device:device.name,...result,syntheticBrowserOnly:true,providerCalls:0,backendWrites:0}));
+              await ctx.close();
+            }
+            console.log('B46_PREMATCH_UNIFIED_FOUR_VIEW_BROWSER_PASS '+JSON.stringify({
+              views:summary,marketGroupingMockPassed:true,orig1X2NativeMirror:true,
+              providerCalls:0,backendWrites:0,productionWrites:0}));
+          }finally{await browser.close()}
+          JS
+      - name: Preserve all view screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b46-prematch-unified-four-view-browser-20261122
+          path: qa-artifacts/
+          if-no-files-found: warn
+          retention-days: 14
