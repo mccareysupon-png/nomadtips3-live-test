@@ -1,0 +1,59 @@
+name: BALL46 BTTS one real Bet365 quote pickup in TEST with guard
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-one-real-quote-pickup-after-deploy-20261122.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-btts-quote-pickup-test
+  cancel-in-progress: false
+jobs:
+  once:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Trigger one idempotent capped real BTTS quote scan and compare actual bot outcome
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,acc=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&acc);
+          const name='ball46-prematch-only-test-20261120';
+          const base='https://'+name+'.mccarey-supon.workers.dev';
+          const bearer='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          async function owner(path,method='GET'){
+            const r=await fetch(base+path,{method,headers:{authorization:bearer},cache:'no-store',signal:AbortSignal.timeout(90000)});
+            const text=await r.text();
+            assert(r.ok,'OWNER_HTTP_'+r.status+'_'+path+'_'+text.slice(0,200));
+            return JSON.parse(text);
+          }
+          const [before,state,hcr,one]=await Promise.all([
+            owner('/btts-shadow'),owner('/btts-price-pickup-state'),
+            owner('/history-cargo-registry?detail=0'),owner('/test-ledger')
+          ]);
+          const pickHash=crypto.createHash('sha256').update(JSON.stringify({rows:one.rows,stats:one.stats})).digest('hex');
+          console.log('B46_BTTS_PRICE_INITIAL '+JSON.stringify({state:state.transport,modelReady:before.totals.modelProbabilityReady,
+             waiting:before.totals.quoteRequired,priced:before.totals.availableQuote,qualified:before.totals.qualified,
+             originalOneX2:one.rows.length,hcrFT:hcr.inventory.finishedFixtures}));
+          const scan=await owner('/btts-price-pickup-tick','POST');
+          const [after,next,hcr2,one2,audit]=await Promise.all([
+            owner('/btts-shadow'),owner('/btts-price-pickup-state'),
+            owner('/history-cargo-registry?detail=0'),owner('/test-ledger'),owner('/prematch-stats-registry-audit-test')
+          ]);
+          assert(scan.providerCalls<=2,'OVER_CAP_TEST_QUOTE_CALLS');
+          assert(next.transport.calls<=12,'DAILY_PRICE_CAP_BREACH');
+          assert.equal(audit.verified,true);
+          assert.equal(hcr2.inventory.finishedFixtures,hcr.inventory.finishedFixtures);
+          assert.equal(crypto.createHash('sha256').update(JSON.stringify({rows:one2.rows,stats:one2.stats})).digest('hex'),pickHash,'1X2_CHANGED');
+          console.log('B46_BTTS_REAL_BET365_QUOTES_TO_BOT_RESULT '+JSON.stringify({
+            state:scan.state,requests:scan.providerCalls,attempts:scan.selected??[],
+            dailyPriceTransport:next.transport,after:{ready:after.totals.modelProbabilityReady,
+             pendingPrice:after.totals.quoteRequired,availableQuote:after.totals.availableQuote,
+             fullyQualified:after.totals.qualified,storedQuoteRecords:after.storedBet365QuoteRecords},
+            oneX2Preserved:true,hcrPreserved:true,statsVerified:true,productionWrites:0
+          }));
+          JS
