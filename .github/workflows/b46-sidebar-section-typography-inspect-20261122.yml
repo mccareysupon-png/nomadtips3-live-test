@@ -37,6 +37,25 @@ jobs:
               return {headings,direct,mobile};
             });
             console.log('B46_SECTION_TYPE_'+device+' '+JSON.stringify(data));
+            const debug=await p.evaluate(()=>{
+              const el=document.querySelector('aside.left-rail .rail-title');
+              const tag=document.getElementById('b46-sidebar-section-type-v1');
+              const sel='html body aside.left-rail .rail-card .rail-title';
+              const same=document.querySelector('aside.left-rail .rail-card .rail-title');
+              const list=[];
+              for(const sheet of [...document.styleSheets]){
+                try{
+                  for(const rule of [...sheet.cssRules]){
+                    if(rule.selectorText?.includes('.rail-title'))list.push({selector:rule.selectorText,css:rule.cssText.slice(0,500),source:sheet.href?.slice(-90)});
+                    if(rule.cssRules)for(const nested of rule.cssRules){if(nested.selectorText?.includes('.rail-title'))list.push({selector:nested.selectorText,css:nested.cssText.slice(0,500),source:sheet.href?.slice(-90)});}
+                  }
+                }catch{}
+              }
+              return {hasStyle:!!tag,styleText:tag?.textContent,styleSheetRules:tag?.sheet?.cssRules?.length,
+                count:new Set([el,same]).size,matching:el?.matches(sel),computed:el?getComputedStyle(el).fontSize:null,
+                inline:el?.getAttribute('style'),rules:list.slice(-20)};
+            });
+            console.log('B46_TYPE_DEBUG_'+device+' '+JSON.stringify(debug));
             await p.close();
           }
           await b.close();
