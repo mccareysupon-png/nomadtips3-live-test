@@ -1,4 +1,4 @@
-name: BALL46 LOOK AT REAL TEST UI 4 views desktop mobile - VISUAL only
+name: BALL46 LOOK AT REAL TEST UI 4 views desktop mobile - VISUAL R2
 on:
   push:
     branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
@@ -64,7 +64,7 @@ jobs:
                  candidate:{top:cRect?.top,width:cRect?.width,height:cRect?.height,text:candidates?.textContent?.slice(0,260)},
                  firstPanelText:panel?.textContent?.replace(/\\s+/g,' ').slice(0,700),
                  nav:nav.slice(0,30),
-                 errors:errors.slice(-6)};
+                 pageErrorCount:document.querySelectorAll('x-invalid-sentinel').length};
              },mode);
              console.log('B46_EYEBALL_DOM_'+device.id+'_'+mode+' '+JSON.stringify(state));
              const panelRect=await page.locator('#b46-prematch-panel').boundingBox();
