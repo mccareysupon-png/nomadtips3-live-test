@@ -52,3 +52,16 @@ Code: `qa/prematch-history-20261120/btts-bulk-truck-v2-test.mjs`, integrated in 
 - High priority next functional gap: retrieve valid Bet365 BTTS prices for **qualified probability candidates only**; 21 currently await quotes. Never invent odds, and do not adjust BTTS probability/edge/EV thresholds without explicit approval.
 - Unfinished long-tail historical coverage remains: only 43/698 upcoming fixtures are history-ready at first cutover, not all 698.
 - Retain hard separation among BALL46 Live Predictions/Engine, Production 1X2/Statistics, test BTTS, HCR, and Full Cargo.
+
+## 22 Nov 2026 — BTTS-only +2h schedule offset / 1X2 untouched
+The user chose to focus on BTTS Bulk V2 while leaving the 1X2 car/bot/workflow alone. **Do NOT interpret this as approval to modify, disable, pause, shift or redeploy 1X2.**
+
+- Modified **only** `btts-bulk-truck-v2-test.mjs` runtime logic in the existing TEST Worker.
+- New BTTS request slots **08:00, 12:00, 16:00, 20:00, 00:00 Europe/London**, staggered two hours from the prior 06:00/10:00/14:00/18:00/22:00 time markers. 06:00–07:59 London is a **BTTS no-request window**. The accounting cutoff remains 06:00 London, so 00:00–05:59 belongs to previous business day and BTTS slot 5.
+- Still **five** slots and **maximum five paid 5USD league-Bulk history calls** per business day, one per slot and max 100 FT rows each, provider response full original preserved. No additional team-based vehicle.
+- Deployed BTTS-only module version `ac0338f3-9e32-453e-92ef-e3c70976f874`; main Worker source, 1X2, HCR, stats registry, Live and Production versions untouched.
+- Dedicated tests passed: [run 44997046056](https://github.com/mccareysupon-png/nomadtips3-live-test/actions/runs/44997046056).
+- Initial deployment [run 44997128452](https://github.com/mccareysupon-png/nomadtips3-live-test/actions/runs/44997128452) uploaded the code but immediately failed on old slot value during Cloudflare propagation; **do not retry deploy**.
+- Independent no-provider production-route/post-propagation check **PASSED**: [run 44997191554](https://github.com/mccareysupon-png/nomadtips3-live-test/actions/runs/44997191554), installed source contains new offset and runtime slot 0 at London 07:xx, V2 ACTIVE, 1 historical request and 100 FT on Nov22, HCR 1433, 1X2 ledger 76, stats audit verified, **0 new paid requests**.
+- Important: BTTS slot 1 of Nov22 was consumed *before* changing hours; do not trigger extra request to compensate. Subsequent eligible slot is 12:00 London. Never replay slot 1.
+- Existing legacy HCR shared history importer remains gated in TEST while V2 is ACTIVE, as it was at original cutover; this edit **did not change or restore that path**. The 1X2 cached HUB score-monitor/settlement and Bot routes remain wired. Any future restoration of shared 1X2 historical archive requires a separate deliberate decision. Do not conflate this with 1X2 being disabled in Production.
