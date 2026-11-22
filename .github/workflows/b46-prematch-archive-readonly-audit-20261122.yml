@@ -1,0 +1,41 @@
+name: BALL46 Pre-Match five-round history cache READ ONLY audit
+on:
+  push:
+    branches: [test/ball46-prematch-v1-20261120]
+    paths: [.github/workflows/b46-prematch-archive-readonly-audit-20261122.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Inspect five-round history, archived data, coverage (GET only)
+        run: |
+          node --input-type=module <<'NODE'
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          if(!token)throw Error('MISSING_TOKEN');
+          const auth='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const host='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          const paths=['/history-round-state','/daily-mission-state','/merge-summary','/daily-state','/bot-state','/health','/shadow-compare'];
+          const out={audit:'READ_ONLY',worker:'ball46-prematch-only-test-20261120',checkedAtUTC:new Date().toISOString(),GETPaths:paths,providerRequests:0};
+          for(const path of paths){
+            const r=await fetch(host+path,{method:'GET',headers:{authorization:auth,accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(20000)});
+            if(!r.ok)throw Error('TEST_WORKER_'+path+'_'+r.status);
+            const data=await r.json();
+            if(path==='/history-round-state')out.rounds=data;
+            if(path==='/daily-mission-state')out.mission={mission:data.mission,history:data.history,feed:data.feed,bot:data.bot,extraProviderCalls:data.extraProviderCalls};
+            if(path==='/merge-summary')out.archive={stored:data.stored,teams:data.teams,teamsWith10:data.teamsWith10,distribution:data.distribution};
+            if(path==='/daily-state')out.dailyState=data;
+            if(path==='/bot-state')out.botState={dailyBook:data.dailyBook,mission:data.mission,config:data.config,lastRun:data.lastRun,inputs:data.inputs,feed:data.feed,networkCalls:data.networkCalls};
+            if(path==='/health')out.health={stored:data.stored,hubReadOnly:data.hubReadOnly,historyRounds:data.historyRounds,dailyMission:data.dailyMission,providerCalls:data.providerCalls};
+            if(path==='/shadow-compare')out.coverage={stored:data.stored,inputCount:data.inputCount,coverage:data.coverage,storage:data.storage,providerCalls:data.providerCalls,published:data.published};
+          }
+          if(out.rounds?.source!=='NORMAL_HUB_CACHED_FINISHED')throw Error('HISTORY_SOURCE_CHANGED');
+          if(out.rounds.providerCalls!==0)throw Error('UNEXPECTED_PROVIDER_HISTORY_CALLS');
+          if(out.rounds.imported>500||out.rounds.records?.length>5)throw Error('HISTORY_CAP_VIOLATION');
+          console.log('B46_ARCHIVE_READONLY_REPORT '+JSON.stringify(out));
+          NODE
