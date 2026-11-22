@@ -1,0 +1,37 @@
+name: BALL46 O/U shared quota bridge contract READONLY 2026-11-23
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-provider-bridge-contract-20261123.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Inspect active HUB protected provider-bridge contract, NO NETWORK TO PROVIDER
+        run: |
+          node --input-type=module <<'JS'
+          const token=process.env.CLOUDFLARE_API_TOKEN,a=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const root='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers',h={authorization:'Bearer '+token};
+          async function get(p){const r=await fetch(root+p,{headers:h});const j=await r.json();if(!r.ok||!j.success)throw Error('CLOUDFLARE_'+p);return j.result}
+          const id=(await get('/scripts/nomadtips3-5usd-hub-343/deployments?per_page=1')).deployments[0].versions[0].version_id;
+          const active=await get('/workers/nomadtips3-5usd-hub-343/versions/'+id+'?include=modules');
+          for(const m of active.modules){
+            if(!['central-actor.mjs','provider-bridge.mjs','owner-auth.mjs','speed-policy.mjs','speed-gateway.mjs','index-viewer-safe.js'].includes(m.name))continue;
+            const src=Buffer.from(m.content_base64,'base64').toString('utf8');
+            if(m.name==='index-viewer-safe.js'){
+              const lines=src.split('\n');
+              for(const [a,b] of [[440,450],[458,480]])console.log('OU_BRIDGE_CODE '+JSON.stringify({module:m.name,part:a,code:lines.slice(a-1,b).map((x,i)=>(a+i)+': '+x).join('\n')}).slice(0,13500));
+            }else if(m.name==='speed-policy.mjs'){
+              console.log('OU_BRIDGE_CODE '+JSON.stringify({module:m.name,code:src.slice(0,11000)}));
+            }else{
+              console.log('OU_BRIDGE_CODE '+JSON.stringify({module:m.name,code:src.slice(0,13000)}));
+            }
+          }
+          JS
