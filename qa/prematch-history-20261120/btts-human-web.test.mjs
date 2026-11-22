@@ -24,7 +24,7 @@ test('web UI is responsive and contains a visible BTTS explanation, search, pagi
  assert.match(bttsTestHtml,/BTTS · Both Teams to Score/);
  assert.match(bttsTestHtml,/TEST ONLY/);
  assert.match(bttsTestHtml,/Search team, league or fixture ID/);
- assert.match(bttsTestHtml,/10 matches per team required/);
+ assert.match(bttsTestHtml,/3–10 matches per team accepted/);
  assert.match(bttsTestHtml,/btts-preview-data/);
  assert.match(bttsTestHtml,/No predictions are published/);
  assert.match(bttsTestHtml,/textContent/);
