@@ -40,7 +40,7 @@ export async function runBttsPricePickup(db,{fixtures,quotes={},now,provider,hub
     typeof provider!=='function'||typeof onQuote!=='function')
    throw Error('INVALID_BTTS_PRICE_PICKUP_INPUT');
  const before=bttsPricePickupState(db,now),day=before.day;
- if(!Number.isSafeInteger(feedAt)||feedAt>now+60||now-feedAt>3600)
+ if(!Number.isSafeInteger(feedAt)||feedAt<=0||feedAt>now+60||now-feedAt>3600)
    return {state:'FRESH_SCHEDULED_FEED_REQUIRED',providerCalls:0,transport:before};
  if(before.remaining===0)return {state:'DAILY_PRICE_REQUEST_CAP',providerCalls:0,transport:before};
  const fail=all(db,"SELECT 1 AS x FROM b46_btts_price_pickup_test WHERE business_day=? AND state IN ('FAIL_429','FAIL_LOW_SHARED_QUOTA') LIMIT 1",day);
