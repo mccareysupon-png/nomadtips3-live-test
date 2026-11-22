@@ -34,20 +34,57 @@ export function leagueNameRegistryFromFixtures(old,rows,fixtures){
  return result;
 }
 
-export function enrichLeagueNamesOnMonitor(monitorResult,rows,fixtures,registry){
+// Preserve the available league names from EVERY fixture in the already fetched
+// normal HUB cache, independently of whether that fixture has usable 1X2 odds.
+// The registry is indexed by provider league ID; no network calls or guesses.
+export function leagueCatalogFromCachedHub(previous,snapshot,storedFixtures=[]){
+ const catalog={};
+ if(previous&&typeof previous==='object'&&!Array.isArray(previous)){
+  for(const [key,value] of Object.entries(previous)){
+   const leagueId=id(key),name=validName(value);
+   if(leagueId&&name)catalog[leagueId]=name;
+  }
+ }
+ const groups=new Map();
+ const observe=(league)=>{
+  const leagueId=id(league?.id),name=validName(league?.name);
+  if(!leagueId||!name)return;
+  if(!groups.has(leagueId))groups.set(leagueId,new Set());
+  groups.get(leagueId).add(name);
+ };
+ if(snapshot?.ok===true&&snapshot?.cacheOnly===true&&Array.isArray(snapshot.fixtures)){
+  for(const fixture of snapshot.fixtures)observe(fixture?.league);
+ }
+ for(const fixture of (Array.isArray(storedFixtures)?storedFixtures:[]))observe(fixture?.league);
+ const conflicts=[];
+ for(const [leagueId,names] of groups){
+  if(names.size===1)catalog[leagueId]=[...names][0];
+  else {delete catalog[leagueId];conflicts.push(leagueId)}
+ }
+ return {catalog,conflicts,observedLeagueIds:groups.size};
+}
+
+export function enrichLeagueNamesOnMonitor(monitorResult,rows,fixtures,registry,catalog={},historyLeagueIds={}){
  const result=monitorResult&&typeof monitorResult==='object'?monitorResult:{};
  const source=result.monitor&&typeof result.monitor==='object'?result.monitor:{};
  const known=leagueNameRegistryFromFixtures(registry,rows,fixtures);
+ const fixtureMap=new Map((Array.isArray(fixtures)?fixtures:[]).filter(f=>id(f?.id)).map(f=>[id(f.id),f]));
  const enriched={...source};
  for(const row of Array.isArray(rows)?rows:[]){
    const key=id(row?.fixture_id);
    if(!key)continue;
-   const name=known[key]?.name;
-   if(!name)continue;
    const existing=source[key]&&typeof source[key]==='object'?source[key]:{};
-   // Keep authoritative name already provided by the matched normal HUB.
-   if(validName(existing.leagueName))continue;
-   enriched[key]={...existing,leagueName:name};
+   if(validName(existing.leagueName))continue; // Already verified by fixture ID and both team IDs.
+   const fixture=fixtureMap.get(key);
+   const matching=matches(row,fixture);
+   const fromFixture=matching?validName(fixture.league?.name):null;
+   const leagueId=matching&&id(fixture.league?.id)
+     ?id(fixture.league.id)
+     :id(historyLeagueIds?.[key]);
+   // The historical league ID came from the exact fixture and both team IDs.
+   const fromCatalog=leagueId?validName(catalog?.[leagueId]):null;
+   const name=fromFixture||known[key]?.name||fromCatalog;
+   if(name)enriched[key]={...existing,leagueName:name};
  }
  return {...result,monitor:enriched};
 }
