@@ -1,0 +1,21 @@
+name: BALL46 BTTS automated Bet365 price pickup unit TEST only
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-priced-odds-pickup-test-20261122.yml]
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Check code syntax and fake-provider unit tests without paid API or deploy
+        run: |
+          node --check qa/prematch-history-20261120/btts-priced-fixture-pickup-test.mjs
+          node --check qa/prematch-history-20261120/patch-btts-price-bridge-into-existing-test-worker.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/btts-priced-fixture-pickup.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/btts-ultra-shadow.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/btts-pick-ledger-test.test.mjs
