@@ -68,3 +68,29 @@ test('invalid feed and stale future observation rejected',()=>{
  assert.throws(()=>matchNormalHub({...s(),cacheOnly:false},[row],now));
  assert.throws(()=>matchNormalHub({...s(),fetchedAt:1795990000000},[row],now));
 });
+
+test('league name is forwarded from verified matched HUB fixture without any new provider calls',()=>{
+ const named={...fixture,league:{...fixture.league,name:'Premier League'}};
+ const r=matchNormalHub(s([named]),[row],now);
+ assert.equal(r.monitor[203962150].leagueName,'Premier League');
+ assert.equal(r.finals.length,1);
+ assert.equal(r.finals[0].league.id,121);
+ assert.equal(r.providerCalls,0);
+});
+test('unverified identity never exposes a league name',()=>{
+ const named={...fixture,league:{...fixture.league,name:'Premier League'}};
+ for(const f of [{...named,away:{id:'999'}},{...named,fixtureId:'999'}, {...named,home:{id:'999'}}]){
+  const r=matchNormalHub(s([f]),[row],now);
+  assert.equal(r.monitor[203962150]?.leagueName,undefined);
+  assert.equal(r.finals.length,0);
+ }
+});
+test('missing or blank league name remains null while status processing stays intact',()=>{
+ for(const name of [undefined,'','  ']){
+  const f={...fixture,league:{id:'121',name}};
+  const r=matchNormalHub(s([f]),[row],now);
+  assert.equal(r.monitor[203962150].leagueName,null);
+  assert.equal(r.monitor[203962150].phase,'FINISHED');
+  assert.equal(r.finals.length,1);
+ }
+});
