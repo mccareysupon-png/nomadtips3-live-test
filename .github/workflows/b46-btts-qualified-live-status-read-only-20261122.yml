@@ -29,11 +29,11 @@ jobs:
           }
           const [shadow,qualified,picks,pickup,bulk,stats]=await Promise.all([
             read('/btts-shadow'),read('/btts-preview-data?filter=QUALIFIED_TEST&page=1'),
-            read('/btts-pick-ledger-test'),read('/btts-price-pickup-state'),
+            read('/preview-data'),read('/btts-price-pickup-state'),
             read('/btts-bulk-v2-state'),read('/prematch-stats-registry-audit-test')
           ]);
-          const preview=qualified.rows??qualified.matches??qualified.items??[];
-          const pickRows=picks.rows??picks.ledger?.rows??[];
+          const preview=qualified.preview?.rows??qualified.preview?.items??qualified.preview??qualified.rows??[];
+          const pickRows=picks.bttsLedger?.rows??[];
           const totals=shadow.totals??shadow.stats??{};
           console.log('B46_BTTS_ACTUAL_QUALIFIED_STATUS '+JSON.stringify({
             checkedAt:new Date().toISOString(),
