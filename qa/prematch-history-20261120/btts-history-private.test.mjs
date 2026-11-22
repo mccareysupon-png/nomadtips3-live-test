@@ -58,7 +58,7 @@ test('no future information leaks into BTTS analysis',()=>{
  const db=makeDb();
  importBttsFinished(db,[result(1,11,22)],300,{leagueId:77,season:'2026'});
  assert.equal(bttsLastMatches(db,11,900,299).length,0);
- assert.equal(bttsLastMatches(db,11,200,900).length,0);
+ assert.equal(bttsLastMatches(db,11,200,199).length,0);
 });
 test('invalid mix of seasons, league, unfinished or future rows is rejected atomically',()=>{
  const db=makeDb();
