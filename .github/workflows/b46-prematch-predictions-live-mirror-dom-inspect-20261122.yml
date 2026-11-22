@@ -29,7 +29,8 @@ jobs:
            const page=await ctx.newPage();const errors=[];
            page.on('pageerror',e=>errors.push(String(e)));
            await page.goto(base,{waitUntil:'domcontentloaded',timeout:60000});
-           await page.waitForSelector('.b46pm-list .b46pm-match',{state:'visible',timeout:60000});
+           await page.waitForSelector('.b46pm-list',{state:'visible',timeout:60000});
+           await page.waitForFunction(()=>document.querySelector('.b46pm-list')?.children.length>0,{timeout:20000});
            await page.waitForTimeout(1300);
            const result=await page.evaluate(()=>{
             const list=document.querySelector('.b46pm-list'),child=[...list.children].find(x=>x.classList.contains('b46pm-match')||x.querySelector('.b46pm-match'));
