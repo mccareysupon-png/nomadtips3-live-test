@@ -1,0 +1,42 @@
+name: BALL46 BTTS Bulk V2 Deployment Route Diagnosis READ ONLY
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-bulk-v2-active-route-diagnose-20261122.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Inspect active TEST worker and owner routes (no upstream calls)
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;assert(token&&account);
+          const worker='ball46-prematch-only-test-20261120';
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const host='https://'+worker+'.mccarey-supon.workers.dev';
+          const auth='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const f=async p=>{const r=await fetch(root+p,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(20000)});
+            const j=await r.json();assert(r.ok&&j.success);return j.result};
+          const d=await f('/scripts/'+worker+'/deployments?per_page=5');
+          const active=d.deployments?.[0]?.versions?.[0]?.version_id;
+          const script=await f('/workers/'+worker+'/versions/'+active+'?include=modules');
+          const main=script.modules?.find(x=>x.name==='prematch-only-worker.mjs');
+          const code=main?.content_base64?Buffer.from(main.content_base64,'base64').toString('utf8'):'';
+          const requests=[];
+          for(const path of ['/btts-bulk-v2-state','/history-cargo-registry?detail=0','/btts-history-private-test','/daily-mission-state']){
+           const r=await fetch(host+path,{headers:{authorization:auth},cache:'no-store',signal:AbortSignal.timeout(20000)});
+           const body=await r.text();requests.push({path,http:r.status,response:body.slice(0,300)});
+          }
+          console.log('B46_BTTS_BULK_V2_ROUTE_DIAG '+JSON.stringify({
+            active,deployments:d.deployments?.slice(0,3).map(x=>({id:x.id,versions:x.versions})),
+            codeHasV2:code.includes('btts-bulk-v2-state'),codeHasStopOld:code.includes('if(!bulkActive&&history.completed<5)'),
+            moduleNames:script.modules?.map(x=>x.name),requests,providerCalls:0,productionWrites:0
+          }));
+          JS
