@@ -11,6 +11,7 @@ import {historyCargoReport} from './history-cargo-registry.mjs';
 import {historyFullCargoReport} from './history-cargo-full-payload.mjs';
 import {scheduledFromNormalHub} from './hub-upcoming-feed.mjs';
 import {londonAccountingWindow} from './london-cutoff.mjs';
+import {evaluateBttsUltra,mergeBet365BttsQuotes,parseBet365BttsOdds} from './btts-ultra-shadow.mjs';
 const AUTO_PROFILE_VERSION='auto-shadow-market-1x2-v1';
 const json=x=>Response.json(x,{headers:{'cache-control':'no-store'}});
 // Only attribute a finished result's league ID to the exact locked fixture and teams.
@@ -184,6 +185,43 @@ export class PrematchStore extends DurableObject{
   if(repaired.stats.restored)
    await this.ctx.storage.put('prematchLeagueNamesV1',repaired.registry);
   return json({code:'PREMATCH_LEAGUE_RESTORE_TEST_ONLY',...repaired.stats,providerCalls:0,ledgerChanged:false});
+ }
+ // Isolated BTTS shadow diagnostics. Owner only, no fetch, no publication.
+ // 1X2 trial, immutable pick ledger, HCR, and shared HUB stay untouched.
+ if(path==='/btts-shadow'&&req.method==='GET'){
+  const fixtures=await this.ctx.storage.get('botFixtures')??[];
+  const savedQuotes=await this.ctx.storage.get('prematchBttsBet365QuotesV1')??{};
+  return json({...evaluateBttsUltra(this.db,fixtures,now,savedQuotes),
+   inputs:fixtures.length,storedBet365QuoteRecords:Object.keys(savedQuotes).length,
+   sourceNote:'Stored Bet365 BTTS only. No 5USD per-fixture requests in this route.'});
+ }
+ // Manual transfer of an ALREADY obtained /v1/fixtures/{id}/odds response.
+ // This route must never call upstream and must not promote a null to a price.
+ if(path==='/btts-quote-import-test'&&req.method==='POST'){
+  const payload=await req.json().catch(()=>null);
+  const wanted=String(payload?.fixtureId??'');
+  const fixtures=await this.ctx.storage.get('botFixtures')??[];
+  const f=fixtures.find(x=>String(x.id)===wanted);
+  if(!f||!Number.isSafeInteger(payload?.observed)||payload.observed<=0||
+     (payload?.response?.fixture_id!=null&&String(payload.response.fixture_id)!==wanted)||
+     (payload?.response?.fixtureId!=null&&String(payload.response.fixtureId)!==wanted))
+   return new Response(JSON.stringify({error:'INVALID_FIXTURE_EVIDENCE'}),{status:400,headers:{'content-type':'application/json'}});
+  const parsed=parseBet365BttsOdds(payload.response,{
+   fixtureId:f.id,homeId:f.teams.home.id,awayId:f.teams.away.id,
+   observed:payload.observed,kickoff:f.kickoff_ts,now
+  });
+  if(!['PRICED','NOT_OFFERED'].includes(parsed.state))
+   return new Response(JSON.stringify({error:parsed.state}),{status:422,headers:{'content-type':'application/json'}});
+  const previous=await this.ctx.storage.get('prematchBttsBet365QuotesV1')??{};
+  if(Object.keys(previous).length>1000)return new Response('TEST_BTTS_CAPACITY_LIMIT',{status:409});
+  let updated;
+  try{updated=mergeBet365BttsQuotes(previous,f,parsed,now)}
+  catch(error){return new Response(JSON.stringify({error:String(error.message)}),{status:409,headers:{'content-type':'application/json'}})}
+  if(JSON.stringify(updated.quotes)!==JSON.stringify(previous))
+   await this.ctx.storage.put('prematchBttsBet365QuotesV1',updated.quotes);
+  return json({mode:'BET365_BTTS_TEST_ONLY',fixtureId:wanted,state:updated.state,
+   sourceQuote:parsed.sourceQuote??null,providerCalls:0,published:0,
+   oneX2LedgerChanged:false});
  }
  if(path==='/test-ledger-start'&&req.method==='POST'){
  const j=await req.json();const matches=await this.ctx.storage.get('botFixtures')??[];const map=new Map(matches.map(f=>[String(f.id),f]));
