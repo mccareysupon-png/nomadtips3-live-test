@@ -83,7 +83,7 @@ console.log('B46_BTTS_LAYOUT_CLEAN_V2_PREFLIGHT '+JSON.stringify({
  original1x2Rows:ledger.testLedger.rows.length,
  frontendDeltaBytes:patched.code.length-currentClient.length,
  originalCSSAndRoutesUnchanged:true,
- 5usdRequests:0,productionWrites:0
+ paidProviderRequests:0,productionWrites:0
 }));
 assert.equal(await version(frontend),expected,'CONCURRENT_FRONTEND_VERSION_CHANGED');
 const form=new FormData();
