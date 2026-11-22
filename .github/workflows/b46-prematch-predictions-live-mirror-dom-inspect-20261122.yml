@@ -1,0 +1,66 @@
+name: BALL46 PreMatch Predictions native Live Mirror DOM READ ONLY
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-prematch-predictions-live-mirror-dom-inspect-20261122.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install isolated QA browser
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          npx playwright install chromium
+      - name: Real DOM/click/scroll layout inspection without paid API requests
+        run: |
+          mkdir -p qa-artifacts
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/?b46pm=predictions';
+          const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+          for(const v of [{id:'pc',w:1440,h:900,m:false},{id:'mobile',w:390,h:844,m:true}]){
+           const ctx=await browser.newContext({viewport:{width:v.w,height:v.h},isMobile:v.m,hasTouch:v.m});
+           const page=await ctx.newPage();const errors=[];
+           page.on('pageerror',e=>errors.push(String(e)));
+           await page.goto(base,{waitUntil:'domcontentloaded',timeout:60000});
+           await page.waitForSelector('.b46pm-list .b46pm-match',{state:'visible',timeout:60000});
+           await page.waitForTimeout(1300);
+           const result=await page.evaluate(()=>{
+            const list=document.querySelector('.b46pm-list'),child=[...list.children].find(x=>x.classList.contains('b46pm-match')||x.querySelector('.b46pm-match'));
+            const card=child?.classList.contains('b46pm-match')?child:child?.querySelector('.b46pm-match');
+            const info=e=>{if(!e)return null;const z=getComputedStyle(e),r=e.getBoundingClientRect();
+             return {tag:e.tagName,classes:e.className,display:z.display,grid:z.gridTemplateColumns,
+              flex:z.flexDirection,position:z.position,overflow:z.overflow,width:r.width,height:r.height,
+              children:[...e.children].map(x=>({tag:x.tagName,cls:x.className,position:getComputedStyle(x).position,
+               display:getComputedStyle(x).display,tagText:x.textContent.slice(0,90)})).slice(0,15)
+             }};
+            return {
+             list:info(list),directChild:info(child),card:info(card),
+             firstCardOuterHTML:card?.outerHTML.slice(0,3600),
+             firstCardTotal:document.querySelectorAll('.b46pm-list .b46pm-match').length,
+             navUrl:location.href,
+             pageTitle:document.title,
+             domWidth:document.documentElement.scrollWidth,
+             viewport:innerWidth
+            };
+           });
+           console.log('B46_PREMATCH_PREDICTIONS_MIRROR_DOM '+JSON.stringify({viewport:v.id,errors,...result}));
+           await page.screenshot({path:'qa-artifacts/predictions-original-'+v.id+'.png',fullPage:false});
+           await ctx.close();
+          }
+          await browser.close();
+          JS
+      - name: Keep original screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b46-prematch-predictions-before-group-20261122
+          path: qa-artifacts/
+          if-no-files-found: warn
+          retention-days: 14
