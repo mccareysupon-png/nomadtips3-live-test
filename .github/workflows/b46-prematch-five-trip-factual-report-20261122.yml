@@ -1,4 +1,4 @@
-name: BALL46 HCR Read-only Cargo Inventory and One Real Historical Match
+name: BALL46 HCR Inspect ALL Stored Fields for Fixture 203963222
 on:
   push:
     branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
@@ -12,57 +12,37 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
-      - name: Read existing HCR manifests/full cargo and show one recorded FT example; no provider calls
+      - name: Read-only inspect complete existing raw FT fixture, no external API
         run: |
           node --input-type=module <<'JS'
           import assert from 'node:assert/strict';
           import crypto from 'node:crypto';
-          const token=process.env.CLOUDFLARE_API_TOKEN;assert(token,'TOKEN_MISSING');
+          const token=process.env.CLOUDFLARE_API_TOKEN;assert(token);
           const host='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
           const auth='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
-          async function get(path){
-            const r=await fetch(host+path,{headers:{authorization:auth},cache:'no-store',signal:AbortSignal.timeout(24000)});
-            const data=await r.json().catch(()=>null);
-            assert(r.ok&&data,'TEST_READ_FAIL_'+path+'_'+r.status);return data;
+          async function get(path) {
+            const r=await fetch(host+path,{headers:{authorization:auth},cache:'no-store',signal:AbortSignal.timeout(25000)});
+            assert(r.ok,'TEST_WORKER_GET_'+path+'_HTTP_'+r.status);
+            return r.json();
           }
-          const [hcr,full]=await Promise.all([get('/history-cargo-registry?detail=1'),get('/history-cargo-full')]);
-          assert.equal(hcr.registry.code,'HCR-V1');
-          assert.equal(hcr.registry.providerCalls,0);
-          const rounds=(hcr.rounds||[]).map(r=>({day:r.businessDay,round:r.roundNo,received:r.received,
-            imported:r.imported,source:r.source,status:r.state,manifest:r.manifestStatus,
-            providerCalls:r.providerCalls,archivedItems:r.items?.length??0})).sort((a,b)=>a.day.localeCompare(b.day)||a.round-b.round);
-          const tracked=(hcr.rounds||[]).filter(r=>r.manifestStatus==='TRACKED'&&Array.isArray(r.items))
-            .flatMap(r=>r.items.filter(x=>x.archiveStatus==='FINISHED').map(x=>({...x,manifestDay:r.businessDay,manifestRound:r.roundNo})));
-          let item=null,origin=null,raw=null;
-          if(tracked.length){
-            item=tracked[Math.floor(Math.random()*tracked.length)];origin='HCR_TRACKED_TRIP';
-            const url='/history-cargo-full?day='+encodeURIComponent(item.manifestDay)+
-              '&round='+item.manifestRound+'&fixture='+item.fixtureId+'&detail=1';
-            const source=await get(url);
-            if(source.fixture&&Number(source.fixture.fixtureId)===Number(item.fixtureId))raw=source.fixture;
-          }else{
-            const preview=await get('/preview-data');
-            const records=(preview.results||[]).filter(x=>x.status==='finished');
-            assert(records.length,'NO_FINISHED_SAMPLE_IN_TEST_ARCHIVE');
-            const r=records[Math.floor(Math.random()*records.length)];
-            item={fixtureId:r.fixture_id,leagueId:r.league_id,homeTeamId:r.home_id,awayTeamId:r.away_id,
-              kickoffUTC:new Date(r.kickoff*1000).toISOString(),homeGoals:r.hg,awayGoals:r.ag,
-              archiveStatus:r.status};
-            origin='ARCHIVE_SAMPLE_LEGACY_UNTRACKED_TRIP_UNKNOWN';
+          const [full,hcr]=await Promise.all([
+            get('/history-cargo-full?day=2026-11-22&round=4&fixture=203963222&detail=1'),
+            get('/history-cargo-registry?day=2026-11-22&detail=1')
+          ]);
+          assert.equal(full.registry,'HISTORY-CARGO-FULL-V1');
+          const fixture=full.fixture;
+          assert(fixture,'MISSING_RAW_FIXTURE');
+          assert.equal(String(fixture.fixtureId),'203963222');
+          const trip=hcr.rounds.find(x=>x.businessDay==='2026-11-22'&&x.roundNo===4);
+          assert(trip&&trip.manifestStatus==='TRACKED','MISSING_TRACKED_TRIP');
+          const item=trip.items.find(x=>String(x.fixtureId)==='203963222');
+          assert(item&&item.archiveStatus==='FINISHED','MISSING_ARCHIVED_FT');
+          assert.equal(String(fixture.home.id),String(item.homeTeamId));
+          assert.equal(String(fixture.away.id),String(item.awayTeamId));
+          assert.equal(fixture.goals.home,item.homeGoals);
+          assert.equal(fixture.goals.away,item.awayGoals);
+          console.log('B46_HCR_ALL_FIELDS_META '+JSON.stringify({id:fixture.fixtureId,round:4,day:'2026-11-22',archive:item,fieldCount:Object.keys(fixture).length,fields:Object.keys(fixture),upstreamCalls:0,prodWrites:0}));
+          for(const [field,value] of Object.entries(fixture)) {
+            console.log('B46_HCR_ALL_FIELDS '+JSON.stringify({field,value}));
           }
-          const summary={
-            dataSource:'TEST_DO_HCR_EXISTING_STORED_CARGO_ONLY',archiveFinished:hcr.inventory.finishedFixtures,
-            leagues:hcr.inventory.leagues,roundCount:rounds.length,rounds,
-            fullCargo:{roundsTracked:full.roundsTracked,fixtureRecords:full.fixtureRecords,
-              samples:full.rounds.slice(0,3).map(x=>({day:x.businessDay,round:x.roundNo,
-                stored:x.stored,fixtureFields:x.fixtureFields,nestedFields:x.nestedFields}))},
-            sample:{origin,...item,rawFixture:raw?{
-              fixtureId:raw.fixtureId,league:raw.league,home:raw.home,away:raw.away,
-              status:raw.status,boardState:raw.boardState,statusCode:raw.statusCode,
-              goals:raw.goals,kickoffUtc:raw.kickoffUtc,kickoffAt:raw.kickoffAt,
-              originalFieldNames:Object.keys(raw).sort()
-            }:null},
-            addedProviderRequests:0,productionWrites:0
-          };
-          console.log('B46_HCR_REAL_CARGO_ONE_MATCH '+JSON.stringify(summary));
           JS
