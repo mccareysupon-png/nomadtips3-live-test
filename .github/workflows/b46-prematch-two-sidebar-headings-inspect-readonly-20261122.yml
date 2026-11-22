@@ -47,3 +47,26 @@ jobs:
           }
           console.log('INSPECT_ONLY '+JSON.stringify({version,workerBytes:source.length,clientBytes:client.length,moduleCount:active.modules.length}));
           JS
+      - name: Inspect actual native and Pre-Match headings in desktop/mobile DOM
+        run: |
+          npm install --no-save playwright@1.55.0
+          if ! command -v google-chrome >/dev/null 2>&1; then npx playwright install chromium; fi
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const chrome=(await import('node:child_process')).execSync('command -v google-chrome || true',{encoding:'utf8'}).trim();
+          const browser=await chromium.launch(chrome?{executablePath:chrome,headless:true,args:['--no-sandbox']}:{headless:true,args:['--no-sandbox']});
+          for(const [device,width,height] of [['PC',1440,900],['MOBILE',390,844]]){
+            const page=await browser.newPage({viewport:{width,height}});
+            await page.goto('https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/?b46pm=1x2',{waitUntil:'domcontentloaded',timeout:45000});
+            await page.locator('#b46pm-stats-navigation').waitFor({state:'attached',timeout:25000});
+            const out=await page.evaluate(()=>{
+              const scope=[...document.querySelectorAll('aside.left-rail *, #b46m-drawer *')];
+              return scope.filter(e=>/^(statistics|pre-match\s*·\s*test|live statistics)$/i.test((e.textContent||'').trim()))
+                .filter(e=>![...e.children].some(c=>/^(statistics|pre-match\s*·\s*test|live statistics)$/i.test((c.textContent||'').trim())))
+                .map(e=>({tag:e.tagName,className:e.className,html:e.outerHTML.slice(0,700),parent:e.parentElement?.outerHTML.slice(0,1000)})).slice(0,15);
+            });
+            console.log('B46_SIDEBAR_DOM_'+device+' '+JSON.stringify(out));
+            await page.close();
+          }
+          await browser.close();
+          JS
