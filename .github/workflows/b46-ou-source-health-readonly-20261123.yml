@@ -1,0 +1,41 @@
+name: BALL46 O/U test safe quota & schedule read-only 2026-11-23
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-source-health-readonly-20261123.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Inspect hub health and quota gates only
+        run: |
+          node --input-type=module <<'JS'
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const cf=async p=>{const r=await fetch(root+p,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(40000)}),j=await r.json();if(!j.success)throw Error('CF_'+p);return j.result};
+          for(const name of ['nomadtips3-5usd-hub-343','ball46-prematch-only-test-20261120']){
+           const v=(await cf('/scripts/'+name+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+           const a=await cf('/workers/'+name+'/versions/'+v+'?include=modules');
+           console.log('OU_SAFE_VERSION '+JSON.stringify({name,v}));
+           for(const m of a.modules.filter(x=>x.content_base64)){
+            if(name.includes('prematch-only')&&m.name!=='prematch-only-worker.mjs')continue;
+            const src=Buffer.from(m.content_base64,'base64').toString('utf8');
+            const ls=src.split('\n'),matches=[];
+            for(let i=0;i<ls.length;i++){
+             if(/['"]\/health['"]|pathname ?===? ?['"]\/health|rate.?limit|remaining|retryAfterSec|sharedQuota|\/v1\/fixtures\/|async scheduled\(| async fetch\(|async fetch\(/i.test(ls[i])){
+              // no embedded credentials; cap excerpts, avoid settings.
+              matches.push({line:i+1,code:ls.slice(Math.max(0,i-2),Math.min(ls.length,i+3)).join(' ').slice(0,440)});
+              if(matches.length>=32)break;
+             }
+            }
+            if(matches.length)console.log('OU_SAFE_CODE '+JSON.stringify({worker:name,module:m.name,matches}).slice(0,18500));
+           }
+          }
+          JS
