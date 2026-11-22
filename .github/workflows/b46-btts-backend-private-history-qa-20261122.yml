@@ -20,3 +20,5 @@ jobs:
           node --check qa/prematch-history-20261120/btts-ultra-shadow.mjs
           node --check qa/prematch-history-20261120/prematch-only-worker.mjs
           node --test qa/prematch-history-20261120/btts-history-private.test.mjs qa/prematch-history-20261120/btts-ultra-shadow.test.mjs qa/prematch-history-20261120/evaluate-btts-signal.test.mjs qa/prematch-history-20261120/btts-human-web.test.mjs qa/prematch-history-20261120/market-1x2.test.mjs qa/prematch-history-20261120/test-pick-ledger.test.mjs qa/prematch-history-20261120/history-cargo-registry.test.mjs
+
+# Rerun after adjusting the as-of cutoff test to be before kickoff.
