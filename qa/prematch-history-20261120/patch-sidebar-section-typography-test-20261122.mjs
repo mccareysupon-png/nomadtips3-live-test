@@ -8,7 +8,7 @@ export function patchSidebarSectionTypographyClient(original){
    !original.includes('b46RenameNativeLiveStatsHeading();')||
    !original.includes('  function draw(pageOnly=false){'))
    throw Error('NOT_ACTIVE_TEST_SIDEBAR_HEADING_CLIENT');
- const anchor='    b46RenameNativeLiveStatsHeading();';
+ const anchor='    mobileNav();\n    b46RenameNativeLiveStatsHeading();';
  const css=[
   '@media(min-width:761px){',
   'aside.left-rail .rail-title{',
