@@ -7,9 +7,9 @@ export function patchSectionHeadingFinal(original){
   throw Error('NOT_ACTIVE_B46_SECTION_TYPOGRAPHY_CLIENT');
  const pairs=[
   ['html body aside.left-rail .rail-card .rail-title{',
-   'html:root[data-theme] body .workspace.singlepage > aside.left-rail[data-b46-sidebar="1"] > .rail-card .rail-title{'],
+   'html:root[data-theme] body .workspace.singlepage > aside.left-rail[data-b46-sidebar] > .rail-card .rail-title{'],
   ['html body aside.left-rail .rail-card .rail-title>span{',
-   'html:root[data-theme] body .workspace.singlepage > aside.left-rail[data-b46-sidebar="1"] > .rail-card .rail-title>span{']
+   'html:root[data-theme] body .workspace.singlepage > aside.left-rail[data-b46-sidebar] > .rail-card .rail-title>span{']
  ];
  let code=original;
  for(const [a,b] of pairs){
