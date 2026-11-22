@@ -133,7 +133,7 @@ test('main worker patch only appends BTTS price pipeline without changing old bo
  ].join('\n');
  const p=patchBttsPriceBridgeMain(stub);
  assert(p.changedExistingTransport===false);
- assert(p.code.includes('/v1/fixtures/'));
+ assert(p.code.includes('api.5dollarfootballapi.com'));
  assert(p.code.includes('btts-price-pickup-tick'));
  assert(p.code.includes('initBttsPricePickup(this.db)'));
  assert(p.code.includes("const b=await stub.fetch('https://prematch.internal/btts-cycle-test'"));
