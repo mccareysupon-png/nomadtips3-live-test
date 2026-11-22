@@ -81,3 +81,30 @@ export function candidateBttsLeagues(fixtures,limit=25){
  return [...map.values()].map(x=>({leagueId:x.leagueId,leagueName:x.leagueName,upcoming:x.upcoming,teams:x.teamIds.size}))
   .sort((a,b)=>b.upcoming-a.upcoming||a.leagueId-b.leagueId).slice(0,limit);
 }
+
+ // John's one-off fallback when /v1/leagues/{id} exposes no season metadata.
+ // Can accept actual last-10 finished rows for ONE confirmed team, from mixed
+ // competitions, without making calls in this module or touching shared FT.
+export function importBttsTeamFallback(db,raw,observed,{teamId}={}){
+ if(!positive(teamId)||!Array.isArray(raw)||raw.length<1||raw.length>10||
+    !Number.isSafeInteger(observed)||observed<=0)throw Error('INVALID_BTTS_TEAM_FALLBACK');
+ const normalized=raw.map(normalizeBttsFinished);
+ if(normalized.some(r=>!r||r.kickoff>=observed||r.homeId!==Number(teamId)&&r.awayId!==Number(teamId))||
+   new Set(normalized.map(r=>r.fixtureId)).size!==normalized.length)
+  throw Error('INVALID_BTTS_TEAM_RESULT');
+ const stats={received:raw.length,added:0,corrected:0,duplicates:0,stale:0,conflicts:0};
+ return db.transaction(()=>{
+  for(const r of normalized){
+   const old=rows(db,'SELECT * FROM btts_history_private_test WHERE fixture_id=?',r.fixtureId)[0];
+   if(old&&(old.league_id!==r.leagueId||old.home_id!==r.homeId||old.away_id!==r.awayId)){
+    stats.conflicts++;continue;
+   }
+   if(old?.observed>observed){stats.stale++;continue}
+   if(old&&old.kickoff===r.kickoff&&old.hg===r.hg&&old.ag===r.ag){stats.duplicates++;continue}
+   db.exec('INSERT INTO btts_history_private_test(fixture_id,league_id,kickoff,home_id,away_id,hg,ag,observed,season) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(fixture_id) DO UPDATE SET kickoff=excluded.kickoff,hg=excluded.hg,ag=excluded.ag,observed=excluded.observed,season=excluded.season',
+     r.fixtureId,r.leagueId,r.kickoff,r.homeId,r.awayId,r.hg,r.ag,observed,'TEAM_LAST10');
+   if(old)stats.corrected++;else stats.added++;
+  }
+  return stats;
+ });
+}
