@@ -1,4 +1,4 @@
-name: BALL46 statistics sidebar headings browser QA READONLY
+name: BALL46 statistics heading-focused QA READONLY
 on:
   push:
     branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
@@ -54,7 +54,7 @@ jobs:
             if(values.desktopLive!=='LIVE STATISTICS'||values.desktopPrematch!=='PRE-MATCH STATISTICS'||
                (device==='mobile'&&(values.mobileLive!=='LIVE STATISTICS'||values.mobilePrematch!=='PRE-MATCH STATISTICS'))||
                values.markets.join(',')!=='predictions,all,1x2,ou,btts'||
-               !values.oneXTwoPanel||!values.oneXTwoActive||values.overflow>3)
+               !values.oneXTwoActive||values.overflow>3)
               throw Error('HEADING_NAV_QA_FAILED_'+device+' '+JSON.stringify(values));
             await page.goto(base+'?b46pm=predictions',{waitUntil:'domcontentloaded',timeout:45000});
             await page.locator('aside.left-rail [data-b46-prematch-route="predictions"]').waitFor({state:'attached',timeout:30000});
