@@ -6,6 +6,7 @@ import {initPickLedger,recordPicks,settlePicks,ledger,picksFromBot} from './test
 import {matchNormalHub} from './normal-hub-monitor.mjs';
 import {preMatchDailyBook} from './london-cutoff.mjs';
 import {initHistoryRounds,historyRoundState,importHistoryRoundFromCache} from './history-five-rounds.mjs';
+import {historyCargoReport} from './history-cargo-registry.mjs';
 import {scheduledFromNormalHub} from './hub-upcoming-feed.mjs';
 import {londonAccountingWindow} from './london-cutoff.mjs';
 const AUTO_PROFILE_VERSION='auto-shadow-market-1x2-v1';
@@ -118,6 +119,14 @@ export class PrematchStore extends DurableObject{
  if(!Array.isArray(j.picks)||j.picks.some(p=>{const f=map.get(String(p.id));return !f||f.kickoff_ts!==p.kickoff||Number(f.teams.home.id)!==Number(p.homeId)||Number(f.teams.away.id)!==Number(p.awayId)}))return new Response('Frozen evidence does not match stored fixtures',{status:400});
  const recorded=recordPicks(this.db,j.picks,now);if(recorded.rejected)return json({error:'INVALID_PICK',recorded});
  await this.ctx.storage.put('testLedgerEnabled',true);const settled=settlePicks(this.db,now);return json({recorded,settled,...ledger(this.db)});
+ }
+ // Owner-only inventory: no HUB fetch, no provider call, no Ledger mutation.
+ // The public /preview-data route deliberately never includes cargo records.
+ if(path==='/history-cargo-registry'&&req.method==='GET'){
+  const url=new URL(req.url),day=url.searchParams.get('day'),detail=url.searchParams.get('detail')!=='0';
+  try{
+   return json(historyCargoReport(this.db,now,{day,includeItems:detail,upcoming:await this.ctx.storage.get('botFixtures')??[]}));
+  }catch(e){return new Response(JSON.stringify({error:'HCR_INVALID_REPORT_REQUEST'}),{status:400,headers:{'content-type':'application/json','cache-control':'no-store'}})}
  }
  if(path==='/history-round-state'&&req.method==='GET')return json(historyRoundState(this.db,now));
  if(path==='/monitor'&&req.method==='POST')return json({monitor:await this.syncNormalHub(now),ledger:ledger(this.db).stats,extraProviderCalls:0});
