@@ -1,0 +1,62 @@
+name: BALL46 BTTS Existing TEST UI Contract READ ONLY
+on:
+  push:
+    branches: [fix/ball46-prematch-btts-human-web-test-20261122]
+    paths: [.github/workflows/b46-prematch-btts-existing-ui-contract-readonly-20261122.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Inspect ONLY existing PreMatch TEST UI source and response shape, zero writes
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&account);
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          async function cf(path){
+           const r=await fetch(root+path,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(25000)});
+           const j=await r.json();assert(r.ok&&j.success,'CF_'+r.status+'_'+JSON.stringify(j.errors||[]));return j.result;
+          }
+          const workers=['ball46-premium-match-colors-test-20261120','ball46-prematch-ui-test-v5-20261120'];
+          for(const worker of workers){
+           const v=await cf('/scripts/'+worker+'/deployments?per_page=1');
+           const active=v.deployments?.[0]?.versions?.[0]?.version_id;assert(active,'NO_TEST_VERSION');
+           const data=await cf('/workers/'+worker+'/versions/'+active+'?include=modules');
+           const modules=data.modules?.map(m=>({name:m.name,length:Buffer.from(m.content_base64||'','base64').length}))||[];
+           const code=data.modules?.filter(m=>m.name.endsWith('.mjs')&&m.content_base64).map(m=>({name:m.name,source:Buffer.from(m.content_base64,'base64').toString('utf8')}))||[];
+           const excerpts=[];
+           for(const {name,source} of code){
+            const re=/__b46_prematch_data|b46pmPeriod|b46pm=|btts|BTTS|prematch-data|PREMATCH_STORE/gi;let m,idxs=[];
+            while((m=re.exec(source))!==null){idxs.push(m.index);if(idxs.length>250)break}
+            const unique=[];
+            for(const at of idxs){
+             if(unique.some(x=>Math.abs(x-at)<130))continue;
+             unique.push(at);
+            }
+            for(const at of unique.slice(0,35)){
+             excerpts.push({module:name,at,context:source.slice(Math.max(0,at-220),Math.min(source.length,at+420)).replaceAll(/\s+/g,' ').slice(0,700)});
+            }
+           }
+           console.log('B46_EXISTING_UI_CONTRACT '+JSON.stringify({worker,active,main:data.main_module,modules,excerpts:excerpts.slice(0,55)}));
+          }
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          for(const path of ['/__b46_prematch_data','/?b46pm=btts']){
+           const r=await fetch(base+path,{signal:AbortSignal.timeout(15000)});
+           const kind=r.headers.get('content-type')||'';
+           if(path.startsWith('/__')&&r.ok&&kind.includes('json')){
+            const j=await r.json();
+            console.log('B46_EXISTING_UI_PUBLIC_DATA '+JSON.stringify({
+              path,status:r.status,topKeys:Object.keys(j),testLedgerKeys:Object.keys(j.testLedger||{}),
+              testMonitorKeys:Object.keys(j.testMonitor||{}),otherKeys:Object.keys(j).filter(x=>/btts|pre|pick/i.test(x)),
+              rows:j.testLedger?.rows?.length||0
+            }));
+           }else console.log('B46_EXISTING_UI_PAGE '+JSON.stringify({path,status:r.status,kind}));
+          }
+          JS
