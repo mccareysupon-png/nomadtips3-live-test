@@ -28,7 +28,16 @@ jobs:
           assert(html.includes('Search team, league or fixture ID'),'SEARCH_INPUT_MISSING');
           assert(html.includes('Waiting for 10 matches'),'HISTORY_STATE_MISSING');
           assert(html.includes('btts-preview-data?'),'FETCH_CLIENT_ENDPOINT_MISSING');
-          const d=await(await get('/btts-preview-data?page=1&filter=ALL')).json();
+          let d=null,lastError=null;
+          for(let i=0;i<35;i++){
+            try{
+              const r=await get('/btts-preview-data?page=1&filter=ALL');
+              const body=await r.json();
+              assert.equal(body.mode,'READ_ONLY_BTTS_SHADOW');
+              d=body;break;
+            }catch(error){lastError=error;if(i<34)await new Promise(resolve=>setTimeout(resolve,1200))}
+          }
+          assert(d,'TEST_DO_PUBLIC_DATA_NOT_READY_'+String(lastError));
           assert.equal(d.system,'BALL46_PREMATCH_TEST');
           assert.equal(d.mode,'READ_ONLY_BTTS_SHADOW');
           assert.equal(d.policy.historyPerTeam,10);
