@@ -118,7 +118,7 @@ async function run(){
  report.preflight={archiveFT:beforeHcr.inventory.finishedFixtures,upcoming:shadow.totals.upcoming,
    historyReady:shadow.totals.historyReady,oneX2Rows:beforeLedger.rows.length};
  const options=[];
- for(let page=1;page<=32&&options.length<180;page++){
+ for(let page=1;page<=32;page++){
   const p=await owner('/btts-preview-data?filter=WAITING_HISTORY&page='+page);
   assert.equal(p.mode,'READ_ONLY_BTTS_SHADOW');
   const view=p.preview;
@@ -128,19 +128,23 @@ async function run(){
   }
   if(page>=view.pages)break;
  }
- const select=[],teamSeen=new Set(),nameMap=new Map();
- for(const f of options.sort((a,b)=>a.kickoff-b.kickoff||String(a.fixtureId).localeCompare(String(b.fixtureId)))){
+ const hcr=beforeHcr;
+ const idsByFixture=new Map((hcr.supplyPlanning?.highestPriority||[]).map(x=>[String(x.fixtureId),x]));
+ const optionsById=new Map(options.map(x=>[String(x.fixtureId),x]));
+ // Prefer the archived HCR planner's exact fixture/team mapping rather than
+ // guessing a team ID from display names or selecting unsupported fixtures.
+ const priorityOptions=[...idsByFixture.keys()].map(id=>optionsById.get(id)).filter(Boolean)
+   .sort((a,b)=>a.kickoff-b.kickoff||String(a.fixtureId).localeCompare(String(b.fixtureId)));
+ const select=[],teamSeen=new Set();
+ for(const f of [...priorityOptions,...options]){
    if(select.length>=5)break;
    const a=String(f.home).trim(),b=String(f.away).trim();
    if(!a||!b||a===b||teamSeen.has(a)||teamSeen.has(b))continue;
+   if(!idsByFixture.has(String(f.fixtureId)))continue;
    select.push(f);teamSeen.add(a);teamSeen.add(b);
  }
- assert(select.length>=1,'NO_SUITABLE_SENIOR_UPCOMING_FIXTURES');
+ assert(select.length>=1,'NO_SUITABLE_HCR_MAPPED_UPCOMING_FIXTURES');
  assert(select.length<=5);
- // Read actual fixture team IDs from the existing stored HCR demand planner
- // only; never infer team IDs from names.
- const hcr=beforeHcr;
- const idsByFixture=new Map((hcr.supplyPlanning?.highestPriority||[]).map(x=>[String(x.fixtureId),x]));
  const teamJobs=[];
  for(const f of select){
    const v=idsByFixture.get(String(f.fixtureId));
@@ -192,7 +196,7 @@ async function run(){
    if(!Array.isArray(body.data)||body.data.length>10)throw Error('INVALID_TEAM_RESULTS_'+team.id);
    evidence.teamResponses.push({team,body});
    const now=Math.floor(Date.now()/1000);
-   const passed=body.data.every(f=>validRow(f,team.id,now));
+   const passed=body.data.length>0&&body.data.every(f=>validRow(f,team.id,now));
    const entry={teamId:team.id,name:team.name,fixtureId:String(team.fixture),
      requested:10,received:body.data.length,valid:passed,stored:null,
      sample:body.data.slice(0,10).map(f=>({fixtureId:f.id,date:f.kickoff_ts,
@@ -260,12 +264,12 @@ async function run(){
      }catch(e){report.quoteImported={state:'NOT_IMPORTED',reason:String(e.message).slice(0,250)};}
    }
  }
+ const tested=await owner('/btts-cycle-test',{}); // only local BTTS screening; no provider calls
  const [afterHistory,afterHcr,afterLedger,afterStats,shadowAfter,audit]=await Promise.all([
   owner('/btts-history-private-test'),owner('/history-cargo-registry?detail=0'),
   owner('/test-ledger'),owner('/prematch-stats-registry-test?days=90'),
   owner('/btts-shadow'),owner('/prematch-stats-registry-audit-test')
  ]);
- const tested=await owner('/btts-cycle-test',{}); // only local BTTS screening; no provider calls
  report.screening={before:shadow.totals,after:shadowAfter.totals,cycle:tested.trial};
  report.storedPrivateHistoryAfter=afterHistory.archive.privateFT;
  assert.equal(sha({rows:afterLedger.rows,stats:afterLedger.stats}),origHash,'SOURCE_1X2_MUTATED');
