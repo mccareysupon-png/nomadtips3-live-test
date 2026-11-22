@@ -43,15 +43,17 @@ jobs:
             else data.set(id,entry);
            }
           }
-          const matching=[],notFound=[],identityMismatch=[];
+          const matching=[],notFound=[],identityMismatch=[],days={};
           for(const p of missing){
+           const day=new Date(Number(p.kickoff)*1000).toISOString().slice(0,10);
+           days[day]=(days[day]||0)+1;
            const row=data.get(Number(p.fixture_id));
            if(!row||conflict.has(Number(p.fixture_id))){notFound.push(Number(p.fixture_id));continue}
            if(row.homeId!==Number(p.home_id)||row.awayId!==Number(p.away_id)){identityMismatch.push(Number(p.fixture_id));continue}
            matching.push(row);
           }
           const summary={originalRunId:44759126984,rawScheduledPages:files.length,rawFixtureRows:records,uniqueOriginalFixtures:data.size,
-           testPicks:d.testLedger.rows.length,currentlyWithoutName:missing.length,verifiedRecoverable:matching.length,
+           testPicks:d.testLedger.rows.length,currentlyWithoutName:missing.length,missingKickoffUtcDays:days,verifiedRecoverable:matching.length,
            notInOriginalArtifact:notFound.length,identityMismatch:identityMismatch.length,
            samples:matching.slice(0,12).map(x=>({fixtureId:x.fixtureId,leagueId:x.leagueId,leagueName:x.leagueName})),
            zeroProviderRequests:true,noWrites:true};
