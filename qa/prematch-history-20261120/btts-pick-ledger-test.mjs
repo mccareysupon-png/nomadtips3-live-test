@@ -1,6 +1,7 @@
 // Independent experimental BTTS pick ledger. Never writes 1X2 ledger,
 // normal FT HCR, worker production, receiver statistics, or live signals.
 import {londonAccountingWindow} from './london-cutoff.mjs';
+import {BTTS_ULTRA_TEST_POLICY} from './btts-ultra-shadow.mjs';
 const arr=(db,q,...v)=>Array.from(db.exec(q,...v));
 const id=x=>/^[1-9]\d*$/.test(String(x??''))&&Number.isSafeInteger(Number(x));
 const price=x=>typeof x==='number'&&Number.isFinite(x)&&x>1;
@@ -23,7 +24,9 @@ export function bttsPicksFromScreen(report,fixtures,now){
   const f=map.get(String(row.fixtureId));
   if(!f||f.status!=='scheduled'||f.kickoff_ts<=now||
      !id(f.teams?.home?.id)||!id(f.teams?.away?.id)||!id(f.league?.id)||
-     row.homeHistory!==10||row.awayHistory!==10||!sides.has(row.signal))continue;
+     row.homeHistory<BTTS_ULTRA_TEST_POLICY.minHistory||row.homeHistory>BTTS_ULTRA_TEST_POLICY.historyPerTeam||
+     row.awayHistory<BTTS_ULTRA_TEST_POLICY.minHistory||row.awayHistory>BTTS_ULTRA_TEST_POLICY.historyPerTeam||
+     !sides.has(row.signal))continue;
   const side=row.metrics?.sides?.find(x=>x.signal===row.signal&&x.passed===true);
   if(!side||!price(side.price)||!finite(side.model)||!finite(side.edge)||!finite(side.ev)||
      side.model<0.60||side.edge<0.05||side.ev<0.05||!Number.isSafeInteger(row.oddsObserved)||
@@ -33,7 +36,7 @@ export function bttsPicksFromScreen(report,fixtures,now){
    leagueId:Number(f.league.id),leagueName:String(f.league.name??''),
    home:String(row.home),away:String(row.away),kickoff:f.kickoff_ts,pickedAt:now,
    observed:row.oddsObserved,pick:row.signal,price:side.price,probability:side.model,
-   edge:side.edge,ev:side.ev,homeCount:10,awayCount:10,
+   edge:side.edge,ev:side.ev,homeCount:row.homeHistory,awayCount:row.awayHistory,
    model:'btts-ultra-history10-shadow-v1',source:row.quoteSource});
  }
  return picks;
@@ -48,7 +51,8 @@ export function recordBttsPicks(db,picks,now){
     sides.has(p.pick)&&price(p.price)&&p.price>=1.5&&p.price<=10&&
     finite(p.probability)&&p.probability>=.60&&p.probability<=1&&
     finite(p.edge)&&p.edge>=.05&&finite(p.ev)&&p.ev>=.05&&
-    p.homeCount===10&&p.awayCount===10&&
+    Number.isInteger(p.homeCount)&&p.homeCount>=BTTS_ULTRA_TEST_POLICY.minHistory&&p.homeCount<=BTTS_ULTRA_TEST_POLICY.historyPerTeam&&
+    Number.isInteger(p.awayCount)&&p.awayCount>=BTTS_ULTRA_TEST_POLICY.minHistory&&p.awayCount<=BTTS_ULTRA_TEST_POLICY.historyPerTeam&&
     typeof p.home==='string'&&p.home.trim()&&typeof p.away==='string'&&p.away.trim()&&
     typeof p.leagueName==='string'&&p.leagueName.length<=180&&
     p.model==='btts-ultra-history10-shadow-v1'&&
