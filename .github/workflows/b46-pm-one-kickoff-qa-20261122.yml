@@ -1,0 +1,55 @@
+name: BALL46 TEST one kickoff per match PC and mobile QA
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths: [.github/workflows/b46-pm-one-kickoff-qa-20261122.yml]
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Check Torrevieja CD Bunol kickoff uniqueness at 0 and 65 seconds
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/?b46pm=predictions';
+          const br=await chromium.launch();
+          const examine=async(mobile)=>{
+            const ctx=await br.newContext({timezoneId:'Asia/Bangkok',viewport:mobile?{width:390,height:844}:{width:1440,height:900},isMobile:mobile});
+            const page=await ctx.newPage();
+            await page.goto(base,{waitUntil:'domcontentloaded',timeout:50000});
+            await page.waitForFunction(()=>[...document.querySelectorAll('#b46-prematch-panel [data-b46-pm-mirror-fixture]')].some(c=>/Torrevieja/i.test(c.textContent||'')),null,{timeout:30000});
+            const inspect=async phase=>{
+              const record=await page.evaluate(()=>{
+                const c=[...document.querySelectorAll('#b46-prematch-panel [data-b46-pm-mirror-fixture]')].find(x=>/Torrevieja/i.test(x.textContent||''));
+                if(!c)return null;
+                const t=[...c.querySelectorAll('time.b46pm-kickoff-local')];
+                const clock=(c.textContent||'').match(/17:30/g)||[];
+                return{fixture:c.dataset.b46PmMirrorFixture,clockOccurrences:clock.length,timeNodes:t.length,statusNodes:c.querySelectorAll('.b46-live-status-clock').length,
+                  clockText:t.map(x=>x.querySelector('.b46pm-kickoff-clock')?.textContent||''),dateText:t.map(x=>x.querySelector('.b46pm-kickoff-date')?.textContent||''),
+                  allText:(c.textContent||'').slice(0,300)};
+              });
+              assert(record,'MISSING_TARGET_MATCH_'+phase);
+              assert.equal(record.fixture,'204853005','DIFFERENT_FIXTURE');
+              assert.equal(record.clockOccurrences,1,'DUPLICATE_TIME_'+JSON.stringify({mobile,phase,record}));
+              assert.equal(record.timeNodes,1,'DUPLICATE_TIME_ELEMENTS_'+JSON.stringify({mobile,phase,record}));
+              assert.deepEqual(record.clockText,['17:30']);
+              assert.deepEqual(record.dateText,['22 Nov']);
+              console.log('ONE_KICKOFF_'+phase+' '+JSON.stringify({mobile,...record}));
+            };
+            await inspect('FIRST');
+            await page.waitForTimeout(65000); // after Pre-Match data 60-second refresh
+            await inspect('AFTER_REFRESH');
+            await ctx.close();
+          };
+          try{await Promise.all([examine(false),examine(true)])}finally{await br.close()}
+          console.log('BALL46_SINGLE_KICKOFF_PC_MOBILE_PASS');
+          JS
