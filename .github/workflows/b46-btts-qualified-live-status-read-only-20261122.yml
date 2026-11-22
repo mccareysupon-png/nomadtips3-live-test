@@ -1,0 +1,50 @@
+name: BALL46 BTTS actual qualified decisions read-only status
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-qualified-live-status-read-only-20261122.yml]
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: READ ONLY actual qualified Bet365 BTTS + ledger, zero 5USD calls
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&account,'MISSING_WORKER_AUDIT_ACCESS');
+          const worker='ball46-prematch-only-test-20261120';
+          const url='https://'+worker+'.mccarey-supon.workers.dev';
+          const authorization='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          async function read(route){
+            const r=await fetch(url+route,{headers:{authorization},cache:'no-store',signal:AbortSignal.timeout(18000)});
+            assert(r.ok,'TEST_OWNER_READ_'+route+'_'+r.status);
+            return r.json();
+          }
+          const [shadow,qualified,picks,pickup,bulk,stats]=await Promise.all([
+            read('/btts-shadow'),read('/btts-preview-data?filter=QUALIFIED_TEST&page=1'),
+            read('/btts-pick-ledger-test'),read('/btts-price-pickup-state'),
+            read('/btts-bulk-v2-state'),read('/prematch-stats-registry-audit-test')
+          ]);
+          const preview=qualified.rows??qualified.matches??qualified.items??[];
+          const pickRows=picks.rows??picks.ledger?.rows??[];
+          const totals=shadow.totals??shadow.stats??{};
+          console.log('B46_BTTS_ACTUAL_QUALIFIED_STATUS '+JSON.stringify({
+            checkedAt:new Date().toISOString(),
+            shadowTotals:totals,
+            qualifiedPreviewTotal:qualified.total??qualified.pagination?.total??preview.length,
+            qualifiedPreviewSamples:preview.slice(0,8).map(p=>({fixtureId:p.fixtureId,signal:p.signal,oddsYes:p.oddsYes,oddsNo:p.oddsNo,state:p.status??p.state})),
+            issuedCount:pickRows.length,
+            issuedPicks:pickRows.slice(0,8).map(p=>({fixtureId:p.fixture_id,home:p.home,away:p.away,pick:p.pick,price:p.price,status:p.status})),
+            pricePickup:pickup.transport?{dailyCalls:pickup.transport.calls,priced:pickup.transport.priced,notOffered:pickup.transport.notOffered,cap:pickup.transport.cap,truck:pickup.transport.truck}:null,
+            bulkStatus:bulk.config?.mode,bulkCalls:bulk.transport?.providerCalls,
+            statsVerified:stats.verified,
+            additionalProviderCalls:0,productionWrites:0
+          }));
+          JS
