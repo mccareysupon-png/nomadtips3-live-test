@@ -15,7 +15,7 @@ const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
 const host='https://'+worker+'.mccarey-supon.workers.dev';
 const auth='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
 let calls=0,lastCall=0,remaining=null;
-const output={mode:'BTTS_TEAM_LAST10_ULTRA_FALLBACK_TEST',targetLeague:354,
+const output={mode:'BTTS_TEAM_LAST10_ULTRA_FALLBACK_TEST',targetLeague:null,
  providerCalls:0,maxProviderCalls:3,fixtureId:null,teams:[],before:null,after:null,
  published:0,productionWrites:0,oneX2Writes:0,HCRWrites:0,uiWrites:0};
 async function version(name){
@@ -54,25 +54,31 @@ for(let i=0;i<20;i++){
  catch(e){if(i===19)throw e;await new Promise(r=>setTimeout(r,1000))}
 }
 assert.equal(state.archive.privateFT,0,'BTTS_PRIVATE_FALLBACK_ALREADY_IMPORTED_NO_REQUERY');
-assert(state.leagues.some(l=>l.leagueId===354),'BTTS_TARGET_NO_UPCOMING_LEAGUE');
+assert(state.leagues.length>0,'NO_BTTS_TEST_FIXTURES');
 const [priorLedger,priorHcr,priorBtts]=await Promise.all([
  owner('/test-ledger'),owner('/history-cargo-registry?detail=0'),owner('/btts-shadow')]);
 assert.equal(priorLedger.rows.length,75);assert.equal(priorHcr.registry.code,'HCR-V1');
 const ledgerHash=crypto.createHash('sha256').update(JSON.stringify({rows:priorLedger.rows,stats:priorLedger.stats})).digest('hex');
 output.before={historyFT:state.archive.privateFT,historyReady:priorBtts.totals.historyReady,oneX2Rows:priorLedger.rows.length};
-const preview=await owner('/btts-preview-data?'+new URLSearchParams({page:'1',filter:'ALL',q:'Türkiye 2 Lig Beyaz'}));
-assert.equal(preview.mode,'READ_ONLY_BTTS_SHADOW');
-const now=Math.floor(Date.now()/1000);
-const options=preview.preview.rows.filter(f=>f.kickoff>now+1800&&f.state==='WAITING_HISTORY').sort((a,b)=>a.kickoff-b.kickoff);
-assert(options.length,'NO_FUTURE_TARGET_FIXTURE_WITH_MISSING_HISTORY');
-const f=options[0];output.fixtureId=Number(f.fixtureId);
+const now=Math.floor(Date.now()/1000),options=[];
+for(let page=1;page<=5;page++){
+ const preview=await owner('/btts-preview-data?'+new URLSearchParams({page:String(page),filter:'ALL'}));
+ assert.equal(preview.mode,'READ_ONLY_BTTS_SHADOW');
+ for(const f of preview.preview.rows)if(f.kickoff>now+3600&&f.state==='WAITING_HISTORY')options.push(f);
+ if(options.length)break;
+}
+assert(options.length,'NO_FUTURE_BTTS_TEST_FIXTURE');
+const f=options.filter(x=>!/(?:\\bU\\d{2}\\b|Youth|Reserves|Junior)/i.test(x.leagueName))
+ .sort((a,b)=>a.kickoff-b.kickoff)[0]??options.sort((a,b)=>a.kickoff-b.kickoff)[0];
+output.fixtureId=Number(f.fixtureId);
 const fixturePayload=await provider('/v1/fixtures/'+f.fixtureId,'FIXTURE');
 const raw=fixturePayload.data;
 const home=Number(raw?.teams?.home?.id),away=Number(raw?.teams?.away?.id);
 assert(Number(raw?.id)===Number(f.fixtureId)&&
-  Number(raw?.league?.id)===354&&
+  Number.isSafeInteger(Number(raw?.league?.id))&&Number(raw.league.id)>0&&
   Number.isSafeInteger(home)&&Number.isSafeInteger(away)&&home>0&&away>0&&home!==away&&
   Number(raw.kickoff_ts)===Number(f.kickoff),'PROVIDER_FIXTURE_IDENTITY_MISMATCH');
+output.targetLeague=Number(raw.league.id);
 if(remaining!==null)assert(remaining>=15,'RATE_LIMIT_RESERVE_BELOW_15');
 const payloads=[];
 for(const teamId of [home,away]){
