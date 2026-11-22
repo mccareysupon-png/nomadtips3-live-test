@@ -1,4 +1,4 @@
-name: BALL46 TEST finalize sidebar heading typography
+name: BALL46 TEST sidebar section typography native CSS override
 on:
   push:
     branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
@@ -20,11 +20,11 @@ jobs:
         with: {node-version: '22'}
       - name: Validate heading typography patch and guarded deploy
         run: |
-          node --check qa/prematch-history-20261120/patch-sidebar-section-typography-specificity-test-20261122.mjs
-          node --check qa/prematch-history-20261120/deploy-sidebar-section-specificity-test-20261122.mjs
+          node --check qa/prematch-history-20261120/patch-sidebar-section-typography-final-test-20261122.mjs
+          node --check qa/prematch-history-20261120/deploy-sidebar-section-typography-final-test-20261122.mjs
           node --test qa/prematch-history-20261120/patch-sidebar-section-typography.test.mjs
       - name: Deploy CSS-only section heading harmonization to isolated TEST frontend
-        run: node qa/prematch-history-20261120/deploy-sidebar-section-specificity-test-20261122.mjs
+        run: node qa/prematch-history-20261120/deploy-sidebar-section-typography-final-test-20261122.mjs
       - name: Install Playwright
         run: |
           npm install --no-save playwright@1.55.0
