@@ -1,0 +1,20 @@
+name: BALL46 BTTS Bulk Truck V2 Pure QA no provider
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-bulk-v2-unit-tests-20261122.yml]
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test Bulk V2 driver and immutable existing BTTS rules - ZERO API
+        run: |
+          node --check qa/prematch-history-20261120/btts-bulk-truck-v2-test.mjs
+          node --check qa/prematch-history-20261120/prematch-only-worker.mjs
+          node --test qa/prematch-history-20261120/btts-bulk-truck-v2.test.mjs qa/prematch-history-20261120/btts-history-private.test.mjs qa/prematch-history-20261120/btts-ultra-shadow.test.mjs qa/prematch-history-20261120/history-five-rounds.test.mjs
