@@ -50,7 +50,7 @@ export function patchOuMain(old){
  ].join('\n')+'\n';
  s=once(s," if(path==='/btts-shadow'&&req.method==='GET'){",cycle+" if(path==='/btts-shadow'&&req.method==='GET'){",'OWNER_RESEARCH_ROUTES');
  s=once(s,
-  "const bttsIssued=await this.recordQualifiedBtts(now,fixtures);\n  const statsRegistry=syncPreMarketStatsRegistry(this.db,now);",
+  "const bttsIssued=await this.recordQualifiedBtts(now,fixtures);\n const statsRegistry=syncPreMarketStatsRegistry(this.db,now);",
   "const bttsIssued=await this.recordQualifiedBtts(now,fixtures);\n  let ouRun={state:'NOT_EXECUTED'};\n  try{const trial=screenOu(this.db,fixtures,now,350);const issued=recordOu(this.db,trial,now);const ouSettled=settleOu(this.db,now);const sync=syncOuSnapshot(this.db,now);ouRun={state:'MODEL_ONLY_TEST',counts:trial.counts,issued,settled:ouSettled,snapshotUpdated:sync.processed}}catch(error){ouRun={state:'REVIEW_REQUIRED',error:String(error.message).slice(0,130)}}\n  const statsRegistry=syncPreMarketStatsRegistry(this.db,now);",
   'AUTO_BOT_FLOW');
  s=once(s,
