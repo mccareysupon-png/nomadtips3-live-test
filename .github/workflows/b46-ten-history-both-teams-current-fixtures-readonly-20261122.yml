@@ -1,4 +1,4 @@
-name: BALL46 READ ONLY fixtures with ten history each team
+name: BALL46 READ ONLY fixtures with 3 to 10 history each team
 on:
   push:
     branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
@@ -32,16 +32,16 @@ jobs:
             all.push(...data.preview.rows);
           }
           const future=all.filter(r=>Number(r.kickoff)>at).sort((a,b)=>a.kickoff-b.kickoff);
-          const both10=future.filter(r=>r.homeHistory>=10&&r.awayHistory>=10);
-          const any10=future.filter(r=>r.homeHistory>=10||r.awayHistory>=10);
+          const both10=future.filter(r=>r.homeHistory>=3&&r.awayHistory>=3&&r.homeHistory<=10&&r.awayHistory<=10);
+          const any10=future.filter(r=>(r.homeHistory>=3&&r.homeHistory<=10)||(r.awayHistory>=3&&r.awayHistory<=10));
           const hcr=await get('/history-cargo-registry?detail=0');
-          console.log('BALL46_10_MATCH_HISTORY_CURRENT '+JSON.stringify({
+          console.log('BALL46_3TO10_MATCH_HISTORY_CURRENT '+JSON.stringify({
             checkedAt:new Date(at*1000).toISOString(),source:'PRIVATE_FT_ARCHIVE_STORED',
-            totalUpcoming:future.length,bothTeams10:both10.length,atLeastOneTeam10:any10.length,
-            both10:both10.slice(0,60).map(r=>({home:r.home,away:r.away,fixtureId:r.fixtureId,
+            totalUpcoming:future.length,bothTeams3to10:both10.length,atLeastOneTeam3to10:any10.length,
+            both3to10:both10.slice(0,60).map(r=>({home:r.home,away:r.away,fixtureId:r.fixtureId,
               homeHistory:r.homeHistory,awayHistory:r.awayHistory,
               kickoffTH:new Date((Number(r.kickoff)+25200)*1000).toISOString().slice(0,16).replace('T',' ')})),
-            oneTeam10:any10.slice(0,30).map(r=>({home:r.home,away:r.away,fixtureId:r.fixtureId,
+            oneTeam3to10:any10.slice(0,30).map(r=>({home:r.home,away:r.away,fixtureId:r.fixtureId,
               homeHistory:r.homeHistory,awayHistory:r.awayHistory,
               kickoffTH:new Date((Number(r.kickoff)+25200)*1000).toISOString().slice(0,16).replace('T',' ')})),
             HCR:{finished:hcr.inventory?.finishedFixtures,trackedRounds:hcr.scope?.trackedRounds},
