@@ -5,6 +5,9 @@ on:
     paths:
       - 'qa/prematch-history-20261120/history-cargo-registry.mjs'
       - 'qa/prematch-history-20261120/history-cargo-registry.test.mjs'
+      - 'qa/prematch-history-20261120/hub-upcoming-feed.mjs'
+      - 'qa/prematch-history-20261120/hub-upcoming-feed.test.mjs'
+      - 'qa/prematch-history-20261120/stored-prematch-feed.mjs'
       - 'qa/prematch-history-20261120/history-five-rounds.mjs'
       - 'qa/prematch-history-20261120/history-five-rounds.test.mjs'
       - 'qa/prematch-history-20261120/prematch-only-worker.mjs'
@@ -20,5 +23,5 @@ jobs:
         with: {node-version: '22'}
       - name: Run five-round accounting, manifest and quota regressions offline
         run: |
-          node --test qa/prematch-history-20261120/history-five-rounds.test.mjs qa/prematch-history-20261120/history-cargo-registry.test.mjs qa/prematch-history-20261120/normal-hub-monitor.test.mjs qa/prematch-history-20261120/rescheduled-ledger.test.mjs
+          node --test qa/prematch-history-20261120/history-five-rounds.test.mjs qa/prematch-history-20261120/history-cargo-registry.test.mjs qa/prematch-history-20261120/normal-hub-monitor.test.mjs qa/prematch-history-20261120/rescheduled-ledger.test.mjs qa/prematch-history-20261120/hub-upcoming-feed.test.mjs qa/prematch-history-20261120/stored-prematch-feed.test.mjs
           echo 'HCR-V1 TEST PASS: offline SQLite only, no API, no provider or Production'
