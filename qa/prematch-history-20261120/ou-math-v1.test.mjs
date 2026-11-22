@@ -18,9 +18,31 @@ test('high scoring histories prefer Over, lower scoring histories prefer Under',
  assert.equal(over.price,null);assert.equal(under.ev,null);
  assert.equal(OU_POLICY.providerCalls,0);
 });
-test('fail-closed insufficient history',()=>{
+test('use every available stored match without requiring 3 or 10 per team',()=>{
+ const cases=[
+  [[result(3,0)],[]],
+  [[],[result(0,3,'away')]],
+  [[result(3,0)],[result(0,3,'away')]],
+  [[result(2,1),result(0,0)],[result(1,2,'away')]],
+  [Array.from({length:10},()=>result(2,1)),[result(1,2,'away')]]
+ ];
+ for(const [h,a] of cases){
+  const p=estimateOu25(h,a);
+  assert.notEqual(p.state,'INSUFFICIENT_HISTORY');
+  assert.equal(p.homeCount,h.length);
+  assert.equal(p.awayCount,a.length);
+  assert(Number.isFinite(p.probability)&&p.probability>=.5&&p.probability<=1);
+  assert(Number.isFinite(p.expectedTotalGoals)&&p.expectedTotalGoals>0);
+  assert.equal(p.price,null);
+  assert.equal(p.ev,null);
+  assert.equal(p.calibrated,false);
+ }
+ assert.equal(OU_POLICY.minHistory,0);
+ assert.equal(OU_POLICY.minCombinedHistory,1);
+ assert.equal(OU_POLICY.minProbability,.64);
+});
+test('no match history on either team must not issue a data-free prediction',()=>{
  assert.equal(estimateOu25([],[]).state,'INSUFFICIENT_HISTORY');
- assert.equal(estimateOu25([result(3,0)],[result(0,3)]).state,'INSUFFICIENT_HISTORY');
 });
 test('current TEST backend patch preserves original 1X2 and BTTS routines',()=>{
  const main=readFileSync(new URL('./prematch-only-worker.mjs',import.meta.url),'utf8');
