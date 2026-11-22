@@ -1,0 +1,29 @@
+name: BALL46 BTTS One League Private Ultra Import TEST
+on:
+  push:
+    branches: [fix/ball46-btts-backend-only-test-20261122]
+    paths: [.github/workflows/b46-btts-ultra-one-league-private-import-test-20261122.yml]
+permissions:
+  contents: read
+concurrency:
+  group: b46-btts-private-ultra-one-shot-20261122
+  cancel-in-progress: false
+jobs:
+  import:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate private BTTS import and 1X2/HCR preservation
+        run: |
+          node --check qa/prematch-history-20261120/btts-ultra-league-one-off-test-20261122.mjs
+          node --test qa/prematch-history-20261120/btts-history-private.test.mjs qa/prematch-history-20261120/btts-ultra-shadow.test.mjs qa/prematch-history-20261120/test-pick-ledger.test.mjs
+      - name: Pull one Ultra league season as BTTS-private historical rows only, maximum five paced calls
+        run: node qa/prematch-history-20261120/btts-ultra-league-one-off-test-20261122.mjs
