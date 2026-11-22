@@ -1,0 +1,82 @@
+name: BALL46 TEST O/U available-history post-deploy verification
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-any-history-postdeploy-qa-20261122.yml]
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify new module, active response, model, snapshot and issued picks
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers',worker='ball46-prematch-only-test-20261120';
+          async function cf(p){
+            const r=await fetch(root+p,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(40000)});
+            const j=await r.json();assert(r.ok&&j.success,'CF_FAILED_'+p);return j.result;
+          }
+          const d=await cf('/scripts/'+worker+'/deployments?per_page=1');
+          const ver=d.deployments?.[0]?.versions?.[0]?.version_id;
+          const a=await cf('/workers/'+worker+'/versions/'+ver+'?include=modules');
+          assert.equal(a.modules.length,24);
+          const mod=a.modules.find(x=>x.name==='ou-math-v1-test.mjs');
+          assert(mod?.content_base64);
+          const src=Buffer.from(mod.content_base64,'base64').toString('utf8');
+          assert(src.includes('minHistory:0,minCombinedHistory:1,maxHistory:10'));
+          assert(src.includes("OU_MODEL='ou-poisson-shrinkage-2p5-v1p1-available-history'"));
+          console.log('OU_ANY_HISTORY_MODULE '+JSON.stringify({version:ver,modules:a.modules.length,newPolicySource:true}));
+          const key=crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const host='https://'+worker+'.mccarey-supon.workers.dev';
+          const owner=async(p,method='GET')=>{
+            const r=await fetch(host+p,{method,headers:{authorization:'Bearer '+key},cache:'no-store',signal:AbortSignal.timeout(40000)});
+            return {status:r.status,body:await r.json().catch(()=>null)};
+          };
+          let st,last;
+          for(let i=0;i<40;i++){
+            const r=await owner('/ou-state-test');
+            last={http:r.status,policy:r.body?.policy};
+            if(r.status===200&&r.body?.policy?.minCombinedHistory===1){st=r.body;break}
+            if(i%5===0)console.log('OU_ANY_HISTORY_PROPAGATION '+JSON.stringify({try:i+1,...last}));
+            await new Promise(r=>setTimeout(r,1400));
+          }
+          assert(st,'ANY_HISTORY_NOT_SERVING_'+JSON.stringify(last));
+          assert.equal(st.policy.minHistory,0);
+          assert.equal(st.policy.minProbability,.64);
+          assert.equal(st.policy.providerCalls,0);
+          const preLedger=(await owner('/test-ledger')).body;
+          const preHash=crypto.createHash('sha256').update(JSON.stringify({rows:preLedger?.rows,stats:preLedger?.stats})).digest('hex');
+          const back=await owner('/ou-backtest-test?limit=750');
+          assert.equal(back.status,200);
+          assert.equal(back.body.providerCalls,0);
+          const run=await owner('/ou-cycle-test','POST');
+          assert.equal(run.status,200);
+          assert.equal(run.body.providerCalls,0);
+          const twice=await owner('/ou-cycle-test','POST');
+          assert.equal(twice.status,200);
+          assert.equal(twice.body.recorded.added,0,'DUPLICATE_OU_RECORD');
+          assert.equal(twice.body.sync.processed,0,'DUPLICATE_OU_SNAPSHOT');
+          const preview=await owner('/preview-data');
+          const ledger=await owner('/test-ledger');
+          const audit=await owner('/prematch-stats-registry-audit-test');
+          assert.equal(preview.status,200);
+          assert.equal(preview.body.ouLedger.mode,'TEST_ONLY');
+          assert.equal(preview.body.ouLedger.stats.total,preview.body.ouLedger.rows.length);
+          assert.equal(audit.body.verified,true);
+          assert.equal(crypto.createHash('sha256').update(JSON.stringify({rows:ledger.body?.rows,stats:ledger.body?.stats})).digest('hex'),preHash,'1X2_LEDGER_MUTATED');
+          console.log('OU_ANY_HISTORY_POSTDEPLOY_PASS '+JSON.stringify({
+            version:ver,policy:st.policy,previousModel:'3-games-per-team',screening:run.body.screening,
+            issued:run.body.recorded,settled:run.body.settled,
+            repeat:{added:twice.body.recorded.added,snapshotEvents:twice.body.sync.processed},
+            stats:preview.body.ouLedger.stats,backtest:back.body.stats,providerCalls:0,oneX2Unchanged:true
+          }));
+          JS
