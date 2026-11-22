@@ -1,0 +1,37 @@
+name: BALL46 John Guided Bulk Five Rounds 500 FT MAX TEST REAL 5USD
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-john-bulk-five-rounds-once-20261122.yml]
+permissions:
+  contents: read
+concurrency:
+  group: b46-john-bulk-five-rounds-real-test-oneoff-20261122
+  cancel-in-progress: false
+jobs:
+  deliver:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate code and old BTTS/HCR protections before provider calls
+        run: |
+          node --check qa/prematch-history-20261120/b46-john-bulk-five-rounds-once-20261122.mjs
+          node --test qa/prematch-history-20261120/btts-history-private.test.mjs qa/prematch-history-20261120/btts-ultra-shadow.test.mjs qa/prematch-history-20261120/history-cargo-registry.test.mjs
+      - name: John Bulk one-off run - five rounds x <=100, at most 7 calls total
+        run: node qa/prematch-history-20261120/b46-john-bulk-five-rounds-once-20261122.mjs
+      - name: Preserve exact original responses and per-round proof even on error
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b46-john-bulk-five-rounds-20261122-original-data
+          path: evidence/b46-john-bulk-20261122/
+          if-no-files-found: warn
+          retention-days: 30
