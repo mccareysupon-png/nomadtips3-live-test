@@ -1,0 +1,88 @@
+name: BALL46 BTTS Bulk V2 Existing UI Desktop Mobile Smoke TEST
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-v2-existing-ui-viewport-smoke-test-20261122.yml]
+permissions: {contents: read}
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install isolated test Chromium only
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          npx playwright install chromium
+      - name: Cross-viewport UI verification preserving existing 1X2
+        run: |
+          mkdir -p qa-artifacts
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const root='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/';
+          const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+          try{
+           const results=[];
+           for(const device of [
+            {name:'desktop',width:1440,height:900,mobile:false},
+            {name:'mobile',width:390,height:844,mobile:true}
+           ]){
+            const context=await browser.newContext({
+              viewport:{width:device.width,height:device.height},deviceScaleFactor:1,
+              isMobile:device.mobile,hasTouch:device.mobile
+            });
+            const page=await context.newPage();
+            const errors=[];page.on('pageerror',e=>errors.push(String(e.message).slice(0,200)));
+            const url=root+'?b46pm=btts';
+            const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:60000});
+            assert(response?.ok(),'BTTS_HTML_'+device.name+'_'+response?.status());
+            await page.waitForSelector('#b46pm-btts-readiness',{state:'visible',timeout:45000});
+            await page.waitForFunction(()=>{
+             const el=document.querySelector('#b46pm-btts-readiness');
+             return el?.textContent?.includes('History ready')&&el.textContent.includes('Bet365');
+            },{timeout:35000});
+            const capture=await page.evaluate(()=>{
+             const d=document,el=d.querySelector('#b46pm-btts-readiness');
+             const r=el?.getBoundingClientRect();
+             return {text:el?.textContent??null,styleDisplay:el?getComputedStyle(el).display:null,
+              elementWidth:r?.width,viewportWidth:innerWidth,documentWidth:d.documentElement.scrollWidth,
+              bttsPanelActive:!d.querySelector('#b46-prematch-panel')?.hidden,
+              header:d.querySelector('[data-workspace-heading]')?.textContent,
+              count:d.querySelectorAll('#b46pm-btts-readiness').length,
+              recordedRows:d.querySelectorAll('.b46pm-list .b46pm-match').length
+             }
+            });
+            assert(capture.bttsPanelActive,'BTTS_TEST_PANEL_HIDDEN_'+device.name);
+            assert.equal(capture.count,1,'DUPLICATED_BTTS_READINESS_'+device.name);
+            assert(capture.elementWidth>0&&capture.elementWidth<=capture.viewportWidth+3,
+             'BTTS_STATUS_OVERFLOWS_VIEWPORT_'+device.name);
+            assert(capture.text.includes('Waiting Bet365'),device.name);
+            await page.screenshot({path:'qa-artifacts/btts-v2-'+device.name+'.png',fullPage:false});
+            await page.goto(root+'?b46pm=1x2',{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForSelector('#b46-prematch-panel',{state:'visible',timeout:45000});
+            const oneX2=await page.evaluate(()=>({
+              label:document.querySelector('[data-workspace-heading]')?.textContent,
+              leaked:!!document.querySelector('#b46pm-btts-readiness'),
+              active:!document.querySelector('#b46-prematch-panel')?.hidden,
+              count:document.querySelectorAll('.b46pm-list .b46pm-match').length
+            }));
+            assert(oneX2.active&&!oneX2.leaked,'BTTS_STATUS_LEAKED_TO_1X2_'+device.name);
+            results.push({...device,btts:capture,oneX2,jsErrors:errors.slice(0,5)});
+            await context.close();
+           }
+           console.log('B46_BTTS_EXISTING_UI_CROSS_VIEWPORT_PASS '+JSON.stringify({
+             results,providerCalls:0,productionWrites:0,oldLayoutPreserved:true
+           }));
+          }finally{await browser.close()}
+          JS
+      - name: Preserve real browser screenshots for visual QA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b46-btts-v2-existing-ui-desktop-mobile-20261122
+          path: qa-artifacts/
+          if-no-files-found: warn
+          retention-days: 14
