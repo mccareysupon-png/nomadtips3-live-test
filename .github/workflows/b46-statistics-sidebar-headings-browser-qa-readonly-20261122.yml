@@ -1,0 +1,69 @@
+name: BALL46 statistics sidebar headings browser QA READONLY
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-statistics-sidebar-headings-browser-qa-readonly-20261122.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-premium-match-colors-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy-and-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install Chromium browser driver
+        run: |
+          npm install --no-save playwright@1.55.0
+          if ! command -v google-chrome >/dev/null 2>&1; then npx playwright install chromium; fi
+      - name: Read-only verify visible headings per viewport and preserved routes
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/';
+          const chrome=(await import('node:child_process')).execSync('command -v google-chrome || true',{encoding:'utf8'}).trim();
+          const browser=await chromium.launch(chrome?{executablePath:chrome,headless:true,args:['--no-sandbox']}:{headless:true,args:['--no-sandbox']});
+          const report=[];
+          for(const [device,width,height] of [['pc',1440,900],['mobile',390,844]]){
+            const page=await browser.newPage({viewport:{width,height},timezoneId:'Asia/Bangkok'});
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await page.goto(base+'?b46pm=1x2',{waitUntil:'domcontentloaded',timeout:45000});
+            await page.locator('#b46pm-stats-navigation .b46pm-nav-heading').waitFor({state:'attached',timeout:30000});
+            await page.waitForFunction(()=>{
+              const live=[...document.querySelectorAll('aside.left-rail .rail-title > span')].some(n=>n.textContent.trim()==='LIVE STATISTICS');
+              const pm=document.querySelector('#b46pm-stats-navigation .b46pm-nav-heading')?.textContent.trim()==='PRE-MATCH STATISTICS';
+              const mobile=document.querySelector('#b46pm-mobile-navigation .b46m-grouplabel')?.textContent.trim()==='PRE-MATCH STATISTICS';
+              const mobileLive=document.querySelector('#b46m-drawer [data-b46m-page="statistics"] > span:last-child')?.textContent.trim()==='LIVE STATISTICS';
+              return live&&pm&&(window.innerWidth>760||(mobile&&mobileLive));
+            },null,{timeout:20000});
+            const values=await page.evaluate(()=>{
+              const menu=[...document.querySelectorAll('aside.left-rail [data-b46-prematch-route]')].map(x=>x.dataset.b46PrematchRoute);
+              const main=[...document.querySelectorAll('aside.left-rail .rail-title > span')].map(x=>x.textContent.trim());
+              const mobileLive=document.querySelector('#b46m-drawer [data-b46m-page="statistics"] > span:last-child');
+              const mobilePre=document.querySelector('#b46pm-mobile-navigation .b46m-grouplabel');
+              const panel=document.getElementById('b46-prematch-panel');
+              const selected=document.querySelector('aside.left-rail [data-b46-prematch-route="1x2"]');
+              return {desktopLive:main.find(x=>x==='LIVE STATISTICS')??null,
+                desktopPrematch:document.querySelector('#b46pm-stats-navigation .b46pm-nav-heading')?.textContent.trim(),
+                mobileLive:mobileLive?.textContent.trim(),mobilePrematch:mobilePre?.textContent.trim(),
+                markets:menu,oneXTwoPanel:!!panel&&!panel.hidden,oneXTwoActive:selected?.classList.contains('active'),
+                overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};
+            });
+            if(values.desktopLive!=='LIVE STATISTICS'||values.desktopPrematch!=='PRE-MATCH STATISTICS'||
+               (device==='mobile'&&(values.mobileLive!=='LIVE STATISTICS'||values.mobilePrematch!=='PRE-MATCH STATISTICS'))||
+               values.markets.join(',')!=='predictions,all,1x2,ou,btts'||
+               !values.oneXTwoPanel||!values.oneXTwoActive||values.overflow>3)
+              throw Error('HEADING_NAV_QA_FAILED_'+device+' '+JSON.stringify(values));
+            await page.goto(base+'?b46pm=predictions',{waitUntil:'domcontentloaded',timeout:45000});
+            await page.locator('aside.left-rail [data-b46-prematch-route="predictions"]').waitFor({state:'attached',timeout:30000});
+            await page.goto(base+'?b46pm=ou',{waitUntil:'domcontentloaded',timeout:45000});
+            await page.locator('#b46-prematch-panel').waitFor({state:'attached',timeout:30000});
+            if(errors.length)throw Error('JS_ERRORS_'+device+' '+JSON.stringify(errors));
+            report.push({device,...values,jsErrors:0,routeChecks:'1X2/Predictions/OverUnder'});
+            await page.close();
+          }
+          await browser.close();
+          console.log('B46_STATISTICS_SIDEBAR_HEADINGS_BROWSER_PASS '+JSON.stringify(report));
+          JS
