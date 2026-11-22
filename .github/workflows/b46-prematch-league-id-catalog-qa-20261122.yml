@@ -1,0 +1,23 @@
+name: BALL46 PreMatch League ID Catalog TEST QA
+on:
+  push:
+    branches:
+      - fix/ball46-prematch-league-id-registry-20261122
+    paths:
+      - .github/workflows/b46-prematch-league-id-catalog-qa-20261122.yml
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          node --check qa/prematch-history-20261120/league-name-cache.mjs
+          node --check qa/prematch-history-20261120/stored-prematch-feed.mjs
+          node --check qa/prematch-history-20261120/prematch-only-worker.mjs
+          node --test qa/prematch-history-20261120/league-id-catalog.test.mjs qa/prematch-history-20261120/league-name-cache.test.mjs qa/prematch-history-20261120/stored-prematch-feed.test.mjs qa/prematch-history-20261120/normal-hub-monitor.test.mjs qa/prematch-history-20261120/test-pick-ledger.test.mjs qa/prematch-history-20261120/history-cargo-full-payload.test.mjs qa/prematch-history-20261120/history-cargo-registry.test.mjs
