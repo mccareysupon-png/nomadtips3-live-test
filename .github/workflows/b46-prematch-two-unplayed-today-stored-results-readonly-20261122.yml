@@ -1,0 +1,89 @@
+name: BALL46 two upcoming today historical results READ ONLY no API
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-prematch-two-unplayed-today-stored-results-readonly-20261122.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Compare next unplayed Thailand 22 November fixtures with pre-existing HCR results and stored finished raw; no provider calls
+        run: |
+          node --input-type=module <<'JS'
+          import crypto from 'node:crypto';
+          const tok=process.env.CLOUDFLARE_API_TOKEN;
+          if(!tok)throw Error('MISSING_READ_ONLY_AUTH');
+          const base='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          const auth='Bearer '+crypto.createHmac('sha256',tok).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          async function get(p){
+            const r=await fetch(base+p,{headers:{Authorization:auth},cache:'no-store',signal:AbortSignal.timeout(25000)});
+            if(!r.ok)throw Error('READ_ONLY_'+p+'_'+r.status);
+            return r.json();
+          }
+          const now=Math.floor(Date.now()/1000);
+          const start=Date.parse('2026-11-22T12:19:00Z')/1000;
+          const end=Date.parse('2026-11-22T17:00:00Z')/1000;
+          let previews=[];
+          for(let page=1;page<=22;page++){
+            const data=await get('/btts-preview-data?filter=ALL&page='+page);
+            const pg=data.preview;
+            if(page===1)console.log('B46_TODAY_INVENTORY_META '+JSON.stringify({at:new Date(now*1000).toISOString(),total:pg.total,pages:pg.pages}));
+            previews.push(...pg.rows);
+            if(page>=pg.pages)break;
+          }
+          const upcoming=previews.filter(x=>x.kickoff>Math.max(now,start)&&x.kickoff<end).sort((a,b)=>a.kickoff-b.kickoff);
+          const reg=await get('/history-cargo-registry?detail=1');
+          const index=new Map();
+          for(const round of reg.rounds??[])for(const r of round.items??[]){
+            if(r.archiveStatus!=='FINISHED')continue;
+            for(const t of [r.homeTeamId,r.awayTeamId]){
+              const id=Number(t),list=index.get(id)||[];
+              list.push({fixtureId:r.fixtureId,teamId:id,opponentId:id===Number(r.homeTeamId)?r.awayTeamId:r.homeTeamId,
+                kickoff:r.kickoffUTC,score:r.homeGoals+'-'+r.awayGoals,
+                teamScore:id===Number(r.homeTeamId)?r.homeGoals:r.awayGoals,
+                opponentScore:id===Number(r.homeTeamId)?r.awayGoals:r.homeGoals,
+                source:'HCR_TRACKED',round:round.roundNo});
+              index.set(id,list);
+            }
+          }
+          // Historical team IDs are not included in public BTTS preview. Resolve via stored original
+          // completed match rows and team names; only use matching normalized team names when safely unique.
+          let rawRows=[];
+          for(let round=1;round<=5;round++){
+            try{
+              const r=await get('/btts-bulk-v2-raw?day=2026-11-22&round='+round);
+              rawRows.push(...(r.body?.data??[]).map(x=>({...x,rawRound:round})));
+            }catch(e){if(!String(e).includes('404'))throw e;}
+          }
+          const byName=new Map();
+          for(const x of rawRows){
+            if(x.status!=='finished')continue;
+            for(const side of ['home','away']){
+              const name=String(x.teams?.[side]?.name??'').trim().toLowerCase();
+              if(!name)continue;
+              const arr=byName.get(name)||[];
+              arr.push({kickoff:x.kickoff_ts,home:x.teams.home.name,away:x.teams.away.name,
+                score:x.goals.home+'-'+x.goals.away,homeTeamId:x.teams.home.id,awayTeamId:x.teams.away.id,
+                source:'BTTS_BULK_EXISTING_RAW',fixtureId:x.id});
+              byName.set(name,arr);
+            }
+          }
+          // Fetch list by team-name only from already stored FT raw, no guessing names from numeric IDs.
+          const matches=upcoming.map(f=>{
+            const hist=[...new Map([...(byName.get(f.home.trim().toLowerCase())??[]),
+              ...(byName.get(f.away.trim().toLowerCase())??[])].map(x=>[x.fixtureId,x])).values()]
+              .filter(h=>Number(h.kickoff)<f.kickoff && Number(h.kickoff)<now).sort((a,b)=>b.kickoff-a.kickoff);
+            return {fixtureId:f.fixtureId,home:f.home,away:f.away,kickoffUTC:new Date(f.kickoff*1000).toISOString(),
+              kickoffTH:new Date((f.kickoff+7*3600)*1000).toISOString().slice(11,16),
+              homeHistoryCount:f.homeHistory,awayHistoryCount:f.awayHistory,rawHistoric:hist.slice(0,6)};
+          });
+          console.log('B46_UNPLAYED_TODAY_LIST '+JSON.stringify({
+            queriedAt:new Date(now*1000).toISOString(),upcomingCount:upcoming.length,
+            rawFTRecords:rawRows.length,HCRTracked:reg.scope?.trackedRounds,HCRFinished:reg.inventory?.finishedFixtures,
+            candidates:matches.filter(x=>x.rawHistoric.length).slice(0,25),
+            fallbackUpcoming:matches.slice(0,15),providerCalls:0}));
+          JS
