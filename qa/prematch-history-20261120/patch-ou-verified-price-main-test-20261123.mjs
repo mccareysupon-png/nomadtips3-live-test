@@ -59,14 +59,14 @@ export function patchOuVerifiedPriceMain(input){
    method+"\n\n async rememberLeagueCatalog(snapshot){",
    'OWNER_OU_QUOTE_PICKUP_METHOD');
  s=one(s,
- "   if(path==='/ou-cycle-test'&&req.method==='POST'){",
+ "if(path==='/ou-cycle-test'&&req.method==='POST'){",
  [
  "   // Owner-only O/U price transport. Request is permanently claimed before fetch.",
  "   if(path==='/ou-price-pickup-state'&&req.method==='GET')",
  "    return json(readOuPricePickupState(this.db,now));",
  "   if(path==='/ou-price-pickup-tick'&&req.method==='POST')",
  "    return json(await this.runOuPricePickupTick(now));",
- "   if(path==='/ou-cycle-test'&&req.method==='POST'){"
+ "if(path==='/ou-cycle-test'&&req.method==='POST'){"
  ].join('\n'),
  'PRICING_OWNER_ROUTES');
  const original="console.log('BTTS_CYCLE_DISABLED_PROJECT_CLOSED')";
