@@ -1,0 +1,28 @@
+name: BALL46 PreMatch Full Cargo five trips offline QA (NO DEPLOY)
+on:
+  push:
+    branches:
+      - fix/ball46-prematch-cargo-league-capture-20261122
+    paths:
+      - qa/prematch-history-20261120/history-cargo-full-payload.mjs
+      - qa/prematch-history-20261120/history-cargo-full-payload.test.mjs
+      - qa/prematch-history-20261120/history-five-rounds.mjs
+      - qa/prematch-history-20261120/prematch-only-worker.mjs
+      - .github/workflows/b46-prematch-history-full-cargo-qa-20261122.yml
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Compile check and full payload regression
+        run: |
+          node --check qa/prematch-history-20261120/history-cargo-full-payload.mjs
+          node --check qa/prematch-history-20261120/history-five-rounds.mjs
+          node --check qa/prematch-history-20261120/prematch-only-worker.mjs
+          node --test qa/prematch-history-20261120/history-cargo-full-payload.test.mjs qa/prematch-history-20261120/history-five-rounds.test.mjs qa/prematch-history-20261120/history-cargo-registry.test.mjs qa/prematch-history-20261120/normal-hub-monitor.test.mjs qa/prematch-history-20261120/league-name-cache.test.mjs qa/prematch-history-20261120/hub-upcoming-feed.test.mjs qa/prematch-history-20261120/stored-prematch-feed.test.mjs
