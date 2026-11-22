@@ -1,0 +1,107 @@
+name: BALL46 TEST Total 1X2 only exclude BTTS
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-total-one-x-two-only-test-20261122.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-premium-match-colors-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify fail-closed BTTS exclusion and syntax
+        run: |
+          node --check qa/prematch-history-20261120/patch-total-one-x-two-only-test-20261122.mjs
+          node --check qa/prematch-history-20261120/deploy-total-one-x-two-only-test-20261122.mjs
+          node --test qa/prematch-history-20261120/patch-total-one-x-two-only.test.mjs
+      - name: Deploy protected TEST frontend only — Total reads 1X2
+        run: node qa/prematch-history-20261120/deploy-total-one-x-two-only-test-20261122.mjs
+      - name: Install Chromium QA
+        run: |
+          npm install --no-save playwright@1.55.0
+          if ! command -v google-chrome >/dev/null 2>&1; then npx playwright install chromium; fi
+      - name: Browser QA — Total equals 1X2 and ignores synthetic BTTS contaminated aggregate
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const root='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          const response=await fetch(root+'/__b46_prematch_data',{cache:'no-store'});
+          assert(response.ok,'NO_TEST_DATA');
+          const actual=await response.json();
+          assert(actual.testLedger?.mode==='TEST_ONLY'&&Array.isArray(actual.testLedger?.rows));
+          const enriched=structuredClone(actual);
+          const pre=enriched.testLedger.stats;
+          // Deliberately poison the COMBINED aggregate while leaving 1X2 intact.
+          // This never writes to a Worker or persistent ledger.
+          const sample=structuredClone(actual.testLedger.rows[0]??{});
+          const fake={...sample,market:'BTTS',signal_id:'QA_SYNTH_BTTSONLY',
+            fixture_id:'QA_SYNTH_BTTSONLY',status:'WIN',price:3.15};
+          enriched.allLedger={
+            mode:'TEST_ONLY',market:'ALL',published:actual.allLedger?.published,
+            rows:[...enriched.testLedger.rows,fake],
+            stats:{...pre,total:Number(pre.total||0)+500,win:Number(pre.win||0)+500,
+              pending:Number(pre.pending||0)+50,winRate:99.99,units:Number(pre.units||0)+888}
+          };
+          if(enriched.marketDailyBooks?.all){
+            const combo=enriched.marketDailyBooks.all;
+            combo.selected={...combo.selected,total:999};
+            combo.settled={...combo.settled,total:999,win:999,loss:0,winRate:99.99,units:888};
+          }
+          if(enriched.allDailySeries?.length){
+            enriched.allDailySeries=enriched.allDailySeries.map(x=>({...x,cumulativeUnits:999,netUnits:999,win:999,loss:0}));
+          }
+          const chrome=(await import('node:child_process')).execSync('command -v google-chrome || true',{encoding:'utf8'}).trim();
+          const browser=await chromium.launch(chrome?{executablePath:chrome,headless:true,args:['--no-sandbox']}:{headless:true,args:['--no-sandbox']});
+          const capture=async (page,route,period)=>{
+            await page.goto(root+'/?b46pm='+route+'&b46pmPeriod='+period,{waitUntil:'domcontentloaded',timeout:45000});
+            await page.locator('#b46-prematch-panel .b46pm-performance-subtitle').waitFor({state:'attached',timeout:30000});
+            await page.waitForFunction(()=>{
+              const x=document.querySelector('#b46-prematch-panel .b46pm-performance-subtitle');
+              return x&&x.textContent.trim().startsWith('Pre-Match · ');
+            },null,{timeout:20000});
+            await page.waitForTimeout(900);
+            return await page.evaluate(()=>{
+              const p=document.getElementById('b46-prematch-panel');
+              const txt=sel=>p.querySelector(sel)?.textContent.trim()??'';
+              const strokes=[...p.querySelectorAll('.b46pm-performance-chart svg path')].map(x=>x.getAttribute('d')??'');
+              return {title:txt('.b46pm-performance-subtitle'),hero:txt('.b46pm-performance-hero'),
+                summary:txt('.b46pm-performance-grid'),outcomes:txt('.b46pm-outcome-legend'),
+                board:txt('.b46pm-stats-grid'),chart:strokes,route:new URLSearchParams(location.search).get('b46pm'),
+                overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};
+            });
+          };
+          const report=[];
+          for(const [device,w,h] of [['pc',1440,900],['mobile',390,844]]){
+            const page=await browser.newPage({viewport:{width:w,height:h},timezoneId:'Asia/Bangkok'});
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await page.route('**/__b46_prematch_data',route=>route.fulfill({
+              status:200,contentType:'application/json',body:JSON.stringify(enriched)
+            }));
+            for(const period of ['all','today']){
+              const oneX2=await capture(page,'1x2',period);
+              const total=await capture(page,'all',period);
+              assert.equal(total.title,'Pre-Match · Total (1X2)');
+              for(const key of ['hero','summary','outcomes','board'])
+                assert.equal(total[key],oneX2[key],device+'_'+period+'_'+key);
+              assert.deepEqual(total.chart,oneX2.chart,device+'_'+period+'_graph');
+              assert(total.overflow<=3,device+'_'+period+'_overflow');
+              report.push({device,period,oneX2TotalExactMatch:true,syntheticBTTSExcluded:true,chartEqual:true});
+            }
+            assert.equal(errors.length,0,'BROWSER_JS_ERRORS_'+device+':'+errors.join('|'));
+            await page.close();
+          }
+          await browser.close();
+          console.log('B46_TOTAL_1X2_ONLY_BROWSER_PASS '+JSON.stringify({report,
+            injectedBTTSAllLedgerTotal:enriched.allLedger.stats.total,original1x2Total:pre.total,
+            clientOnly:true,productionUntouched:true}));
+          JS
