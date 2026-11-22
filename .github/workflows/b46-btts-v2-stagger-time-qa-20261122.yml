@@ -1,0 +1,18 @@
+name: BALL46 BTTS staggered 5 slots QA - no 5USD calls
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-v2-stagger-time-qa-20261122.yml]
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Check V2 only and all prior BTTS/1X2/HCR invariants
+        run: |
+          node --check qa/prematch-history-20261120/btts-bulk-truck-v2-test.mjs
+          node --test qa/prematch-history-20261120/btts-bulk-truck-v2.test.mjs qa/prematch-history-20261120/btts-history-private.test.mjs qa/prematch-history-20261120/history-five-rounds.test.mjs
