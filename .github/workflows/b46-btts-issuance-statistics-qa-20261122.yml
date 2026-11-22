@@ -20,3 +20,5 @@ jobs:
           node --check qa/prematch-history-20261120/prematch-only-worker.mjs
           node --check qa/prematch-history-20261120/btts-ultra-shadow.mjs
           node --test qa/prematch-history-20261120/btts-pick-ledger-test.test.mjs qa/prematch-history-20261120/btts-history-private.test.mjs qa/prematch-history-20261120/btts-ultra-shadow.test.mjs qa/prematch-history-20261120/test-pick-ledger.test.mjs qa/prematch-history-20261120/market-1x2.test.mjs qa/prematch-history-20261120/history-cargo-registry.test.mjs
+
+# Revalidate after scheduled BTTS-only handler syntax correction.
