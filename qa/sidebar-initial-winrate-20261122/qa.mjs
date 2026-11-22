@@ -21,6 +21,7 @@ try {
   page.on('request',r=>{if(r.url().includes('/b46-receiver-v1/graph'))graphCalls.push(r.url())});
   await page.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),type.endsWith('dark')?'dark':'light');
   for(let i=0;i<(mobile?2:5);i++){
+   if(type==='desktop-dark'&&i===0){await page.route('**/__b46_sidebar_initial_snapshot',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({ok:false})}),{times:1})}
    await page.goto(host+'/?view=live&sidebarInitialQa='+type+'-'+i,{waitUntil:'domcontentloaded',timeout:70000});
    if(mobile){
     assert.equal(await page.locator('[data-b46-rate-snapshot]').count(),0,'MOBILE_SHOULD_STAY_NATIVE');
@@ -34,7 +35,7 @@ try {
    });
    assert.equal(report.count,8,'EIGHT_MARKETS');
    assert.equal(report.source,'monitor-cache');
-   assert.equal(report.requested,1,'NO_DUPLICATE_FIRST_PAINT_REQUEST');
+   assert.equal(report.requested,type==='desktop-dark'&&i===0?2:1,'BOUNDED_FIRST_PAINT_REQUESTS');
    for(let n=0;n<8;n++){
     const k=['all','1x2','ah','ou','btts','corners','cards','other'][n];
     const rate=snapshot.rates[k];
