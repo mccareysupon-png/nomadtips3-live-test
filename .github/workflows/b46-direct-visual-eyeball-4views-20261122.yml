@@ -1,0 +1,94 @@
+name: BALL46 LOOK AT REAL TEST UI 4 views desktop mobile - VISUAL only
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-direct-visual-eyeball-4views-20261122.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install Chromium for visual QA
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          npx playwright install chromium
+      - name: Look directly at actual pixels and live layout, no fake ledger or 5USD
+        run: |
+          mkdir -p qa-artifacts
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/';
+          const views=['predictions','all','1x2','btts'];
+          for(const device of [
+            {id:'desktop',width:1440,height:900,mobile:false},
+            {id:'mobile',width:390,height:844,mobile:true}
+          ]){
+           const ctx=await browser.newContext({
+             viewport:{width:device.width,height:device.height},
+             isMobile:device.mobile,hasTouch:device.mobile,
+             deviceScaleFactor:1
+           });
+           const page=await ctx.newPage();
+           const errors=[];
+           page.on('pageerror',e=>errors.push(String(e.message)));
+           for(const mode of views){
+            try{
+             const r=await page.goto(base+'?b46pm='+mode,{waitUntil:'domcontentloaded',timeout:45000});
+             await page.waitForSelector('#b46-prematch-panel',{state:'visible',timeout:40000});
+             if(mode==='predictions')await page.waitForSelector('[data-b46-pm-unified-fixture]',{state:'visible',timeout:25000});
+             else await page.waitForSelector('.b46pm-performance-subtitle',{state:'visible',timeout:25000});
+             if(mode==='btts')await page.waitForFunction(()=>
+                 document.querySelectorAll('[data-b46-btts-candidate-fixture]').length>0,
+               {timeout:30000}).catch(()=>{});
+             await page.waitForTimeout(700);
+             const state=await page.evaluate(mode=>{
+               const panel=document.querySelector('#b46-prematch-panel');
+               const p=panel?.getBoundingClientRect(),styles=getComputedStyle(panel);
+               const nav=[...document.querySelectorAll('a,button')].filter(x=>{
+                 const r=x.getBoundingClientRect();return r.width>0&&r.height>0&&r.top>=0&&r.top<innerHeight;
+               }).slice(0,45).map(x=>({text:x.textContent.trim().slice(0,35),active:x.className?.toString().slice(0,60),href:x.getAttribute('href')}));
+               const title=panel?.querySelector('.b46pm-performance-subtitle')?.textContent||null;
+               const fixture=panel?.querySelector('[data-b46-pm-unified-fixture]');
+               const candidates=panel?.querySelector('[data-b46-btts-candidate-fixture]');
+               const fRect=fixture?.getBoundingClientRect(),cRect=candidates?.getBoundingClientRect();
+               return {mode,url:location.href,title,windowWidth:innerWidth,docWidth:document.documentElement.scrollWidth,
+                 panel:{top:p?.top,left:p?.left,width:p?.width,height:p?.height,display:styles.display,visibility:styles.visibility},
+                 fixtureCount:panel?.querySelectorAll('[data-b46-pm-unified-fixture]').length,
+                 candidateCount:panel?.querySelectorAll('[data-b46-btts-candidate-fixture]').length,
+                 fixture:{top:fRect?.top,width:fRect?.width,height:fRect?.height,text:fixture?.textContent?.slice(0,260)},
+                 candidate:{top:cRect?.top,width:cRect?.width,height:cRect?.height,text:candidates?.textContent?.slice(0,260)},
+                 firstPanelText:panel?.textContent?.replace(/\\s+/g,' ').slice(0,700),
+                 nav:nav.slice(0,30),
+                 errors:errors.slice(-6)};
+             },mode);
+             console.log('B46_EYEBALL_DOM_'+device.id+'_'+mode+' '+JSON.stringify(state));
+             const panelRect=await page.locator('#b46-prematch-panel').boundingBox();
+             if(panelRect){
+               const y=Math.max(0,Math.round((await page.evaluate(()=>scrollY))+panelRect.y-85));
+               await page.evaluate(y=>scrollTo(0,y),y);
+               await page.waitForTimeout(220);
+             }
+             const j=await page.screenshot({type:'jpeg',quality:48,fullPage:false,
+              path:'qa-artifacts/real-'+device.id+'-'+mode+'.jpg'});
+             console.log('B46_EYEBALL_JPEG_'+device.id+'_'+mode+' '+j.toString('base64'));
+            }catch(err){
+             console.log('B46_EYEBALL_ERROR_'+device.id+'_'+mode+' '+String(err.stack||err));
+            }
+           }
+           await ctx.close();
+          }
+          await browser.close();
+          JS
+      - name: Keep real screenshots for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b46-eyeball-actual-test-ui-four-views-20261122
+          path: qa-artifacts/
+          if-no-files-found: warn
+          retention-days: 14
