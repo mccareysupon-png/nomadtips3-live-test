@@ -1,0 +1,35 @@
+name: BALL46 BTTS History 3-10 TEST Rescreen and Audit
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-history3to10-rescreen-test-20261122.yml]
+permissions:
+  contents: read
+concurrency:
+  group: ball46-prematch-only-test-20261120
+  cancel-in-progress: false
+jobs:
+  rescreen:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Regression and static source safety checks
+        run: |
+          node --check qa/prematch-history-20261120/deploy-and-rescreen-btts-history3to10-test-20261122.mjs
+          node --check qa/prematch-history-20261120/prematch-only-worker.mjs
+          node --check qa/prematch-history-20261120/btts-ultra-shadow.mjs
+          node --check qa/prematch-history-20261120/btts-pick-ledger-test.mjs
+          node --check qa/prematch-history-20261120/evaluate-btts-signal.mjs
+          node --check qa/prematch-history-20261120/btts-human-web.mjs
+          node --test qa/prematch-history-20261120/evaluate-btts-signal.test.mjs qa/prematch-history-20261120/btts-ultra-shadow.test.mjs qa/prematch-history-20261120/btts-pick-ledger-test.test.mjs qa/prematch-history-20261120/btts-human-web.test.mjs qa/prematch-history-20261120/prematch-stats-registry-test.test.mjs qa/prematch-history-20261120/test-pick-ledger.test.mjs qa/prematch-history-20261120/history-cargo-registry.test.mjs
+      - name: Deploy only PreMatch TEST Worker and re-screen stored BTTS fixtures once
+        run: node qa/prematch-history-20261120/deploy-and-rescreen-btts-history3to10-test-20261122.mjs
