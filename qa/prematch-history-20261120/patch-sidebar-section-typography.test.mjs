@@ -23,5 +23,5 @@ test('native desktop titles share Pre-Match title typography only',()=>{
 });
 test('fail closed on source changes',()=>{
  assert.throws(()=>patchSidebarSectionTypographyClient('other'),/NOT_ACTIVE_TEST/);
- assert.throws(()=>patchSidebarSectionTypographyClient(source+'\\n    mobileNav();\\n    b46RenameNativeLiveStatsHeading();'),/SOURCE_DRIFT/);
+ assert.throws(()=>patchSidebarSectionTypographyClient(source+'\n    mobileNav();\n    b46RenameNativeLiveStatsHeading();'),/SOURCE_DRIFT/);
 });
