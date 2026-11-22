@@ -58,13 +58,27 @@ function seed(conn,h=10,a=10){
   status:'finished',status_code:'full',goals:{home:2,away:1}});
  ingest(conn,fixtures,200);
 }
-test('exact ten completed games per team required, 1X2 history not fabricated',()=>{
- const conn=db();seed(conn,10,9);
+test('fewer than three completed games on either team remain insufficient',()=>{
+ const conn=db();seed(conn,10,2);
  const r=evaluateBttsUltra(conn,[fixture],now,{});
  assert.equal(r.totals.upcoming,1);assert.equal(r.totals.historyIncomplete,1);
  assert.equal(r.totals.qualified,0);assert.equal(r.totals.quoteRequired,0);
  assert.equal(r.sample[0].state,'INSUFFICIENT_HISTORY');
  assert.equal(r.published,0);
+});
+test('3/3 history and verified Bet365 prices permit BTTS test decisions',()=>{
+ const conn=db();seed(conn,3,3);
+ const verified={...parsed,prices:{BTTS_YES:1.85,BTTS_NO:2.1}};
+ const r=evaluateBttsUltra(conn,[fixture],now,{'999':{...verified,state:'PRICED'}});
+ assert.equal(r.totals.historyReady,1);assert.equal(r.totals.qualified,1);
+ assert.equal(r.decisions[0].homeHistory,3);assert.equal(r.decisions[0].awayHistory,3);
+ assert.equal(r.providerCalls,0);assert.equal(r.published,0);
+});
+test('10/3 mixed history accepted, max 10 still retained',()=>{
+ const conn=db();seed(conn,10,3);
+ const r=evaluateBttsUltra(conn,[fixture],now,{});
+ assert.equal(r.totals.historyReady,1);assert.equal(r.totals.quoteRequired,1);
+ assert.equal(r.sample[0].homeHistory,10);assert.equal(r.sample[0].awayHistory,3);
 });
 test('10/10 valid history, no odds => only rate-limited candidate list, zero calls/published',()=>{
  const conn=db();seed(conn);
