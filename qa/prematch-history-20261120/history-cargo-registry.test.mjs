@@ -74,6 +74,10 @@ test('ten-game supply planner uses existing rows only, no provider network and n
  assert.equal(doc.supplyPlanning.incompleteFixtures,2);
  assert.equal(doc.supplyPlanning.highestPriority[0].fixtureId,800022);
  assert.equal(doc.supplyPlanning.highestPriority[0].totalTeamMatchGaps,20);
+ assert.equal(doc.supplyPlanning.uniqueTeams,4);
+ assert.equal(doc.supplyPlanning.uniqueTeamsNeedingHistory,4);
+ assert(doc.supplyPlanning.deduplicatedTeamMatchGaps<doc.supplyPlanning.aggregateTeamMatchGaps+1);
+ assert.equal(doc.supplyPlanning.upcomingLeagueIdsMissing,2);
  assert.equal(doc.registry.providerCalls,0);
  assert.equal(doc.rounds[0].items,undefined);
  assert.match(doc.supplyPlanning.warning,/NOT distinct missing matches/);
