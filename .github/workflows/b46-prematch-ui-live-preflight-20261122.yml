@@ -1,4 +1,4 @@
-name: BALL46 Pre-Match TEST UI live bundle preflight READ ONLY
+name: BALL46 Pre-Match TEST live bundle exact-source gate READ ONLY
 on:
   push:
     branches: [fix/ball46-prematch-league-result-badges-20261122]
@@ -14,45 +14,55 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: {fetch-depth: 0}
-      - name: Compare live bundled test-only Worker with prior known scripts READ ONLY
+      - name: Verify exact deployed UI scripts vs original source (NO WRITES)
         run: |
           node --input-type=module <<'JS'
           import assert from 'node:assert/strict';
+          import vm from 'node:vm';
           import {execFileSync} from 'node:child_process';
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
           const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
-          assert(token&&account,'MISSING_TEST_WORKER_CREDENTIALS');
-          const worker='ball46-premium-match-colors-test-20261120';
+          assert(token&&account,'MISSING_TEST_CREDENTIALS');
           const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const worker='ball46-premium-match-colors-test-20261120';
           async function cf(url){
             const r=await fetch(url,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(30000)});
-            const j=await r.json();
-            assert(r.ok&&j.success,'CF_READ_FAILED_'+r.status+'_'+JSON.stringify(j.errors||[]));
-            return j.result;
+            const j=await r.json();assert(r.ok&&j.success,'CF_READ_FAILED_'+r.status+' '+JSON.stringify(j.errors||[]));return j.result;
           }
           const active=await cf(root+'/scripts/'+worker+'/deployments?per_page=1');
           const version=active.deployments?.[0]?.versions?.[0]?.version_id;
-          assert(version,'NO_CURRENT_TEST_VERSION');
+          assert(version,'NO_ACTIVE_WORKER_VERSION');
           const script=await cf(root+'/workers/'+worker+'/versions/'+version+'?include=modules');
-          const settings=await cf(root+'/scripts/'+worker+'/settings');
-          const mod=script.modules?.find(m=>m.name==='worker.js');
-          assert(mod?.content_base64&&script.modules.length===1,'BUNDLED_SCRIPT_SHAPE_DRIFT');
-          const source=Buffer.from(mod.content_base64,'base64').toString('utf8');
-          const fromGit=path=>execFileSync('git',['show','a748f226e0b371c4616778864af0309ea201cfec:'+path],{encoding:'utf8'});
-          const originalClient=fromGit('qa/prematch-native-ui-20261121/prematch-client.mjs');
-          const originalMirror=fromGit('qa/prematch-native-ui-20261121/prematch-live-score-mirror.mjs');
-          const originalClientScript=(await import('data:text/javascript;base64,'+Buffer.from(originalClient).toString('base64'))).prematchClientScript;
-          const originalMirrorScript=(await import('data:text/javascript;base64,'+Buffer.from(originalMirror).toString('base64'))).prematchMirrorClientScript;
-          const candidates=[
-            ['originalClientModule',originalClient],['originalMirrorModule',originalMirror],
-            ['oldClientJSON',JSON.stringify(originalClientScript)],['oldMirrorJSON',JSON.stringify(originalMirrorScript)],
-            ['oldClientRaw',originalClientScript],['oldMirrorRaw',originalMirrorScript],
-            ['oldClientInner',originalClientScript.slice(0,70)],['oldMirrorInner',originalMirrorScript.slice(0,70)]
-          ];
-          const matches=Object.fromEntries(candidates.map(([key,value])=>[key,{at:source.indexOf(value),count:source.split(value).length-1,length:value.length}]));
-          const markers=['B46_PM_PREMIUM_HORIZONTAL_V1','B46_PM_EXACT_LIVE_SCORE_DOM_MIRROR_V3_LIVE_ODDS','prematchClientScript','prematchMirrorClientScript','b46pm-stats-period-title'];
-          const positions=markers.map(key=>{const at=source.indexOf(key);return {key,at,count:source.split(key).length-1,near:at<0?'':source.slice(Math.max(0,at-150),at+180)}});
-          const summary={worker,version,main:script.main_module,moduleSize:source.length,
-            modules:script.modules.map(m=>({name:m.name,type:m.content_type})),
-            bindings:(settings.bindings||[]).map(b=>({name:b.name,type:b.type})),matches,positions};
-          console.log('B46_PREMATCH_LIVE_BUNDLE_PROBE '+JSON.stringify(summary));
+          assert(script.modules?.length===1&&script.modules[0].name==='worker.js','MODULE_SHAPE_CHANGED');
+          const source=Buffer.from(script.modules[0].content_base64,'base64').toString('utf8');
+          function extract(name){
+            const prefix='var '+name+' = ',start=source.indexOf(prefix);
+            assert(start>=0&&source.indexOf(prefix,start+1)<0,'MISSING_OR_AMBIGUOUS_'+name);
+            const at=start+prefix.length;
+            assert(source[at]==='\u0060','EXPECTED_TEMPLATE_LITERAL_'+name);
+            let end=-1;
+            for(let i=at+1;i<source.length;i++){
+              if(source[i]==='\\'){i++;continue}
+              if(source[i]==='\u0060'){end=i;break}
+            }
+            assert(end>at&&source[end+1]===';','UNCLOSED_SCRIPT_LITERAL_'+name);
+            return vm.runInNewContext('('+source.slice(at,end+1)+')',Object.create(null),{timeout:1500});
+          }
+          const baseline='a748f226e0b371c4616778864af0309ea201cfec';
+          const modules=[['prematchClientScript','prematch-client.mjs'],['prematchMirrorClientScript','prematch-live-score-mirror.mjs']];
+          const state=[];
+          for(const [symbol,filename] of modules){
+            const path='qa/prematch-native-ui-20261121/'+filename;
+            const moduleText=execFileSync('git',['show',baseline+':'+path],{encoding:'utf8'});
+            const old=(await import('data:text/javascript;base64,'+Buffer.from(moduleText).toString('base64')))[symbol];
+            const actual=extract(symbol);
+            const at=[...old].findIndex((v,i)=>v!==actual[i]);
+            const same=actual===old;
+            state.push({symbol,same,sourceLength:old.length,liveLength:actual.length,firstDiff:at,
+              oldHash:crypto.createHash('sha256').update(old).digest('hex').slice(0,16),
+              liveHash:crypto.createHash('sha256').update(actual).digest('hex').slice(0,16)});
+          }
+          console.log('B46_PREMATCH_EXACT_SOURCE_GATE '+JSON.stringify({worker,version,state}));
+          assert(state.every(x=>x.same),'TEST_LIVE_UI_DRIFT_NO_DEPLOY_ALLOWED');
           JS
