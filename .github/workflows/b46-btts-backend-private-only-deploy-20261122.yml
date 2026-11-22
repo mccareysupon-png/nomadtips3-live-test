@@ -1,0 +1,31 @@
+name: BALL46 BTTS Backend Private Only TEST Deploy
+on:
+  push:
+    branches: [fix/ball46-btts-backend-only-test-20261122]
+    paths: [.github/workflows/b46-btts-backend-private-only-deploy-20261122.yml]
+permissions:
+  contents: read
+concurrency:
+  group: ball46-prematch-only-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run isolated BTTS private historical and existing 1X2/HCR guard tests
+        run: |
+          node --check qa/prematch-history-20261120/deploy-btts-private-only-20261122.mjs
+          node --check qa/prematch-history-20261120/prematch-only-worker.mjs
+          node --test qa/prematch-history-20261120/btts-history-private.test.mjs qa/prematch-history-20261120/btts-ultra-shadow.test.mjs qa/prematch-history-20261120/evaluate-btts-signal.test.mjs qa/prematch-history-20261120/market-1x2.test.mjs qa/prematch-history-20261120/test-pick-ledger.test.mjs qa/prematch-history-20261120/history-cargo-registry.test.mjs
+      - name: Deploy ONLY BTTS private score backend in existing PreMatch TEST
+        run: node qa/prematch-history-20261120/deploy-btts-private-only-20261122.mjs
