@@ -1,0 +1,22 @@
+name: BALL46 BTTS TEST Backend Private Historical QA
+on:
+  push:
+    branches: [fix/ball46-btts-backend-only-test-20261122]
+    paths: [.github/workflows/b46-btts-backend-private-history-qa-20261122.yml]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run BTTS-only private history, odds, selection tests and unchanged-market regressions
+        run: |
+          node --check qa/prematch-history-20261120/btts-history-private.mjs
+          node --check qa/prematch-history-20261120/btts-ultra-shadow.mjs
+          node --check qa/prematch-history-20261120/prematch-only-worker.mjs
+          node --test qa/prematch-history-20261120/btts-history-private.test.mjs qa/prematch-history-20261120/btts-ultra-shadow.test.mjs qa/prematch-history-20261120/evaluate-btts-signal.test.mjs qa/prematch-history-20261120/btts-human-web.test.mjs qa/prematch-history-20261120/market-1x2.test.mjs qa/prematch-history-20261120/test-pick-ledger.test.mjs qa/prematch-history-20261120/history-cargo-registry.test.mjs
