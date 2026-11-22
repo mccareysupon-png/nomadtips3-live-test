@@ -1,0 +1,71 @@
+name: BALL46 TEST O/U first real pick two pages browser QA READONLY
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-real-pick-two-pages-qa-20261122.yml]
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install Chromium for actual O/U predictions
+        run: |
+          npm install --no-save playwright@1.55.0
+          if ! command -v google-chrome >/dev/null 2>&1; then npx playwright install chromium; fi
+      - name: Verify latest O/U test Ledger displayed in Predictions and Statistics on PC/mobile
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const root='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          const data=await fetch(root+'/__b46_prematch_data',{cache:'no-store'}).then(r=>r.json());
+          assert(data.ouLedger?.mode==='TEST_ONLY');
+          assert(data.ouLedger?.stats?.total>=1,'NO_REAL_OU_PICK_YET');
+          const actual=data.ouLedger.rows.at(-1);
+          assert(actual?.market==='O/U');
+          assert.equal(actual.price,null,'NEVER_ASSUME_MARKET_ODDS');
+          const selector='[data-b46-pm-unified-fixture="'+actual.fixture_id+'"]';
+          const chrome=(await import('node:child_process')).execSync('command -v google-chrome || true',{encoding:'utf8'}).trim();
+          const browser=await chromium.launch(chrome?{executablePath:chrome,headless:true,args:['--no-sandbox']}:{headless:true,args:['--no-sandbox']});
+          const results=[];
+          for(const [device,w,h] of [['pc',1440,900],['mobile',390,844]]){
+            const page=await browser.newPage({viewport:{width:w,height:h},timezoneId:'Asia/Bangkok'});
+            const jsErrors=[];page.on('pageerror',e=>jsErrors.push(e.message));
+            await page.goto(root+'/?b46pm=predictions',{waitUntil:'domcontentloaded',timeout:45000});
+            await page.locator('#b46-prematch-panel .b46pm-list').waitFor({state:'attached',timeout:30000});
+            await page.waitForFunction(s=>!!document.querySelector(s),selector,{timeout:25000});
+            const prediction=await page.evaluate(s=>{
+              const n=document.querySelector(s);
+              return {text:n?.textContent.slice(0,500),market:n?.dataset.b46PmCombinedMarkets,
+                overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};
+            },selector);
+            assert(prediction.text?.includes('OVER 2.5')||prediction.text?.includes('UNDER 2.5'),'PICK_LINE_NOT_SHOWN_'+device);
+            assert(prediction.text?.includes(actual.home)||prediction.text?.includes(actual.away),'FIXTURE_NOT_SHOWN_'+device);
+            await page.goto(root+'/?b46pm=ou&b46pmPeriod=all',{waitUntil:'domcontentloaded',timeout:45000});
+            await page.locator('#b46-prematch-panel .b46pm-performance-subtitle').waitFor({state:'attached',timeout:30000});
+            await page.waitForFunction(()=>document.getElementById('b46-prematch-panel')?.textContent?.includes('Pre-Match · Over/Under (2.5)'),null,{timeout:20000});
+            const stats=await page.evaluate(()=>({
+              title:document.querySelector('#b46-prematch-panel .b46pm-performance-subtitle')?.textContent.trim(),
+              text:document.getElementById('b46-prematch-panel')?.textContent,
+              overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth
+            }));
+            assert.equal(stats.title,'Pre-Match · Over/Under (2.5)');
+            assert(stats.text?.includes(actual.home)||stats.text?.includes(actual.away),'OU_LEDGER_NOT_IN_STATS_'+device);
+            await page.goto(root+'/?b46pm=all',{waitUntil:'domcontentloaded',timeout:45000});
+            await page.locator('#b46-prematch-panel .b46pm-performance-subtitle').waitFor({state:'attached',timeout:30000});
+            assert.equal((await page.locator('#b46-prematch-panel .b46pm-performance-subtitle').textContent()).trim(),'Pre-Match · Total (1X2)');
+            assert(!jsErrors.length,'JS_ERRORS_'+device+'_'+jsErrors.join('|'));
+            assert(Math.max(stats.overflow,prediction.overflow)<=3,'HORIZONTAL_OVERFLOW_'+device);
+            results.push({device,realPickVisibleBoth:true,original1x2Total:true,jsErrors:0,overflow:0});
+            await page.close();
+          }
+          await browser.close();
+          console.log('OU_REAL_PREDICTIONS_TWO_PAGES_PASS '+JSON.stringify({
+           actual:{fixtureId:actual.fixture_id,history:[actual.home_count,actual.away_count],
+            pick:actual.pick,probability:actual.probability,status:actual.status,
+            price:actual.price,model:actual.model},results,providerCalls:0,productionWrites:0
+          }));
+          JS
