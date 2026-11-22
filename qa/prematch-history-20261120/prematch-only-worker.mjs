@@ -4,6 +4,7 @@ import {mergeStoredPrematch} from './stored-prematch-feed.mjs';
 import {dryRunStored,BASELINE_SHADOW,ACCUMULATION_SHADOW,TRIAL_SHADOW,MARKET_SHADOW} from './stored-signal-adapter.mjs';
 import {initPickLedger,recordPicks,settlePicks,ledger,picksFromBot} from './test-pick-ledger.mjs';
 import {matchNormalHub} from './normal-hub-monitor.mjs';
+import {leagueNameRegistryFromFixtures,enrichLeagueNamesOnMonitor} from './league-name-cache.mjs';
 import {preMatchDailyBook} from './london-cutoff.mjs';
 import {initHistoryRounds,historyRoundState,importHistoryRoundFromCache} from './history-five-rounds.mjs';
 import {historyCargoReport} from './history-cargo-registry.mjs';
@@ -84,10 +85,14 @@ export class PrematchStore extends DurableObject{
  const path=new URL(req.url).pathname,now=Math.floor(Date.now()/1000);
  if(path==='/preview-data'&&req.method==='GET'){
  const testMonitor=await this.syncNormalHub(now);
+ const ledgerNow=ledger(this.db);
+ const knownLeagueNames=await this.ctx.storage.get('prematchLeagueNamesV1')??{};
+ const knownFixtures=await this.ctx.storage.get('botFixtures')??[];
+ const displayMonitor=enrichLeagueNamesOnMonitor(testMonitor,ledgerNow.rows,knownFixtures,knownLeagueNames);
  const rows=Array.from(this.db.exec("SELECT r.* FROM result_version r WHERE r.status='finished' AND r.observed=(SELECT MAX(v.observed) FROM result_version v WHERE v.fixture_id=r.fixture_id) ORDER BY r.kickoff DESC LIMIT 50"));
  const allTeams=Array.from(this.db.exec("WITH latest AS (SELECT r.* FROM result_version r WHERE r.status='finished' AND r.observed=(SELECT MAX(v.observed) FROM result_version v WHERE v.fixture_id=r.fixture_id)), team_rows AS (SELECT home_id AS team FROM latest UNION ALL SELECT away_id AS team FROM latest) SELECT team,COUNT(*) AS matches FROM team_rows GROUP BY team"));
  const saved=await this.ctx.storage.get('previewSelections');
- return json({system:'BALL46_PREMATCH_ONLY',stored:totals(this.db),teams:allTeams.length,teamsWith10:allTeams.filter(n=>n.matches>=10).length,results:rows,selection:saved??null,testLedger:ledger(this.db),dailyBook:preMatchDailyBook(this.db,now),historyRounds:historyRoundState(this.db,now),testMonitor});
+ return json({system:'BALL46_PREMATCH_ONLY',stored:totals(this.db),teams:allTeams.length,teamsWith10:allTeams.filter(n=>n.matches>=10).length,results:rows,selection:saved??null,testLedger:ledgerNow,dailyBook:preMatchDailyBook(this.db,now),historyRounds:historyRoundState(this.db,now),testMonitor:displayMonitor});
  }
  if(path==='/merge-archive'&&req.method==='POST'){
  const j=await req.json();if(!Array.isArray(j.rows)||j.rows.length>2000)return new Response('Invalid archive',{status:400});
@@ -113,11 +118,25 @@ export class PrematchStore extends DurableObject{
  const shadow=dryRunStored(this.db,merged.fixtures,now,1000,MARKET_SHADOW);return json({system:'BALL46_PREMATCH_ONLY',stored:merged.stats.stored,feed:merged.stats,rows:shadow.rows.map(x=>({...x,picks:[]})),counts:shadow.counts,probability:shadow.probability,diagnostics:shadow.diagnostics,published:0,ruleState:'READ_ONLY_SHADOW',networkCalls:0});
  }
  if(path==='/bot-switch'&&req.method==='POST')return new Response('Publication disabled in test shadow',{status:409});
- if(path==='/test-ledger'&&req.method==='GET'){const testMonitor=await this.syncNormalHub(now);return json({...ledger(this.db),dailyBook:preMatchDailyBook(this.db,now),historyRounds:historyRoundState(this.db,now),testMonitor})}
+ if(path==='/test-ledger'&&req.method==='GET'){
+  const testMonitor=await this.syncNormalHub(now),savedLedger=ledger(this.db);
+  const knownLeagueNames=await this.ctx.storage.get('prematchLeagueNamesV1')??{};
+  const knownFixtures=await this.ctx.storage.get('botFixtures')??[];
+  return json({...savedLedger,dailyBook:preMatchDailyBook(this.db,now),historyRounds:historyRoundState(this.db,now),
+    testMonitor:enrichLeagueNamesOnMonitor(testMonitor,savedLedger.rows,knownFixtures,knownLeagueNames)})
+ }
  if(path==='/test-ledger-start'&&req.method==='POST'){
  const j=await req.json();const matches=await this.ctx.storage.get('botFixtures')??[];const map=new Map(matches.map(f=>[String(f.id),f]));
  if(!Array.isArray(j.picks)||j.picks.some(p=>{const f=map.get(String(p.id));return !f||f.kickoff_ts!==p.kickoff||Number(f.teams.home.id)!==Number(p.homeId)||Number(f.teams.away.id)!==Number(p.awayId)}))return new Response('Frozen evidence does not match stored fixtures',{status:400});
  const recorded=recordPicks(this.db,j.picks,now);if(recorded.rejected)return json({error:'INVALID_PICK',recorded});
+ // Persist only a small metadata map for ALREADY RECORDED TEST picks;
+ // this never changes the Ledger, odds, HCR archive, or settlement result.
+ try{
+  const existingNames=await this.ctx.storage.get('prematchLeagueNamesV1')??{};
+  const selectedNames=leagueNameRegistryFromFixtures(existingNames,ledger(this.db).rows,matches);
+  if(JSON.stringify(selectedNames)!==JSON.stringify(existingNames))
+   await this.ctx.storage.put('prematchLeagueNamesV1',selectedNames);
+ }catch(error){console.log('PREMATCH_LEAGUE_DISPLAY_CACHE_WARNING',String(error?.message||error).slice(0,120))}
  await this.ctx.storage.put('testLedgerEnabled',true);const settled=settlePicks(this.db,now);return json({recorded,settled,...ledger(this.db)});
  }
  // Owner-only inventory: no HUB fetch, no provider call, no Ledger mutation.
@@ -142,7 +161,16 @@ export class PrematchStore extends DurableObject{
  const archiveTeams=Array.from(this.db.exec("WITH latest AS (SELECT r.* FROM result_version r WHERE r.status='finished' AND r.observed=(SELECT MAX(v.observed) FROM result_version v WHERE v.fixture_id=r.fixture_id)), team_rows AS (SELECT home_id AS team FROM latest UNION ALL SELECT away_id AS team FROM latest) SELECT team,COUNT(*) AS matches FROM team_rows GROUP BY team ORDER BY matches DESC,team"));
  const archiveCoverage={finished:Number(totals(this.db).finished??0),teams:archiveTeams.length,ready:archiveTeams.filter(x=>x.matches>=3).length,insufficient:archiveTeams.filter(x=>x.matches<3).length,maximum:archiveTeams[0]?.matches??0};
  const rows=report.rows.map(r=>({...r,picks:[]}));
- if(await this.ctx.storage.get('testLedgerEnabled')){recordPicks(this.db,picksFromBot(report,fixtures,now),now);settlePicks(this.db,now)}
+ if(await this.ctx.storage.get('testLedgerEnabled')){
+  recordPicks(this.db,picksFromBot(report,fixtures,now),now);
+  settlePicks(this.db,now);
+  try{
+   const existingNames=await this.ctx.storage.get('prematchLeagueNamesV1')??{};
+   const selectedNames=leagueNameRegistryFromFixtures(existingNames,ledger(this.db).rows,fixtures);
+   if(JSON.stringify(selectedNames)!==JSON.stringify(existingNames))
+    await this.ctx.storage.put('prematchLeagueNamesV1',selectedNames);
+  }catch(error){console.log('PREMATCH_LEAGUE_DISPLAY_CACHE_WARNING',String(error?.message||error).slice(0,120))}
+ }
  const monitorRun=await this.syncNormalHub(now);
  const dailyBook=preMatchDailyBook(this.db,now);
  const out={...report,rows,system:'BALL46_PREMATCH_ONLY',ruleState:'READ_ONLY_SHADOW',autoVersion:AUTO_PROFILE_VERSION,checkedAt:now,networkCalls:0,archiveCoverage,qualified:rows.filter(x=>x.btts.signal!=='NO_SIGNAL'||x.oneX2.signal!=='NO_SIGNAL').length,dailyBook};
