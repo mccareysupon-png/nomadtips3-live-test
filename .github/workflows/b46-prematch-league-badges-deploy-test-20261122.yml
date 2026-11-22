@@ -1,0 +1,29 @@
+name: BALL46 Pre-Match VERIFIED league and result badges Deploy TEST ONLY
+on:
+  push:
+    branches: [fix/ball46-prematch-league-result-badges-20261122]
+    paths: ['.github/workflows/b46-prematch-league-badges-deploy-test-20261122.yml']
+permissions: {contents: read}
+concurrency:
+  group: ball46-premium-match-colors-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy-isolated-test-ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Validate both UI modules and source-only regressions before deploying
+        run: |
+          node --check qa/prematch-native-ui-20261121/prematch-client.mjs
+          node --check qa/prematch-native-ui-20261121/prematch-live-score-mirror.mjs
+          node --check qa/prematch-native-ui-20261121/deploy-league-result-badges-test-20261122.mjs
+          node --test qa/prematch-native-ui-20261121/league-result-badges.test.mjs
+      - name: Patch only exact verified compiled UI literals in isolated TEST Worker
+        run: node qa/prematch-native-ui-20261121/deploy-league-result-badges-test-20261122.mjs
