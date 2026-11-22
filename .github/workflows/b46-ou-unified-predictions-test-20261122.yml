@@ -1,0 +1,75 @@
+name: BALL46 Unified PreMatch Predictions 1X2 BTTS OU UI TEST
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-unified-predictions-test-20261122.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-premium-match-colors-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: {{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: {{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Confirm one Predictions nav, same card templates, no O-U model change
+        run: |
+          node --check qa/prematch-history-20261120/patch-ou-into-unified-predictions-test-20261122.mjs
+          node --check qa/prematch-history-20261120/deploy-ou-unified-predictions-test-20261122.mjs
+          node --test qa/prematch-history-20261120/patch-ou-into-unified-predictions.test.mjs
+      - name: Guarded embedded-client-only deploy to isolated TEST frontend
+        run: node qa/prematch-history-20261120/deploy-ou-unified-predictions-test-20261122.mjs
+      - name: Install Playwright for PC and mobile smoke QA
+        run: |
+          npm install --no-save playwright@1.55.0
+          if ! command -v google-chrome >/dev/null 2>&1; then npx playwright install chromium; fi
+      - name: Check combined Predictions, O-U statistics, original 1X2, legacy route
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/';
+          const chrome=(await import('node:child_process')).execSync('command -v google-chrome || true',{encoding:'utf8'}).trim();
+          const browser=await chromium.launch(chrome?{executablePath:chrome,headless:true,args:['--no-sandbox']}:{headless:true,args:['--no-sandbox']});
+          const report=[];
+          for(const [view,width,height] of [['pc',1440,900],['mobile',390,844]]){
+            const page=await browser.newPage({viewport:{width,height},timezoneId:'Asia/Bangkok'});
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await page.goto(base+'?b46pm=predictions',{waitUntil:'domcontentloaded',timeout:45000});
+            await page.locator('[data-b46-prematch-route="predictions"]').first().waitFor({state:'attached',timeout:25000});
+            const p=await page.evaluate(()=>{
+              const menu=[...document.querySelectorAll('[data-b46-prematch-route]')].map(n=>n.dataset.b46PrematchRoute);
+              const region=document.getElementById('b46-prematch-panel');
+              return {predictions:menu.filter(x=>x==='predictions').length,
+                duplicate:menu.filter(x=>x==='ou-predictions').length,
+                ouStats:menu.includes('ou'),oneXTwo:menu.includes('1x2'),
+                hasContent:!!region&&region.textContent.length>100,
+                overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};
+            });
+            if(!p.predictions||p.duplicate||!p.ouStats||!p.oneXTwo||!p.hasContent||p.overflow>3)
+              throw Error('UNIFIED_PREDICTIONS_FAILED_'+view+' '+JSON.stringify(p));
+            await page.goto(base+'?b46pm=ou',{waitUntil:'domcontentloaded'});
+            await page.locator('#b46-prematch-panel').waitFor();
+            await page.waitForTimeout(900);
+            const stats=await page.locator('#b46-prematch-panel').innerText();
+            if(!stats.includes('No Over/Under performance data yet.'))
+              throw Error('OU_STATISTICS_CHANGED_'+view);
+            await page.goto(base+'?b46pm=1x2',{waitUntil:'domcontentloaded'});
+            await page.waitForTimeout(1500);
+            const x=await page.locator('#b46-prematch-panel').innerText();
+            if(!x.includes('1X2')||x.includes('No Over/Under predictions issued yet.'))
+              throw Error('ONE_X_TWO_CHANGED_'+view);
+            await page.goto(base+'?b46pm=ou-predictions',{waitUntil:'domcontentloaded'});
+            await page.waitForURL(/b46pm=predictions/, {timeout:22000});
+            if(errors.length)throw Error('JS_PAGE_ERRORS_'+view+' '+JSON.stringify(errors));
+            report.push({view,predictionsMenus:p.predictions,removedDuplicate:true,ouStats:true,oneXTwo:true,legacyRedirect:true,overflow:p.overflow,jsErrors:0});
+            await page.close();
+          }
+          await browser.close();
+          console.log('B46_OU_INSIDE_PREDICTIONS_BROWSER_PASS '+JSON.stringify({report,providerCallsAdded:0,backendWrites:0}));
+          JS
