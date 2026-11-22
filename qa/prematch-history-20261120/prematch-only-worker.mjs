@@ -13,6 +13,7 @@ import {scheduledFromNormalHub} from './hub-upcoming-feed.mjs';
 import {londonAccountingWindow} from './london-cutoff.mjs';
 import {evaluateBttsUltra,mergeBet365BttsQuotes,parseBet365BttsOdds} from './btts-ultra-shadow.mjs';
 import {bttsTestHtml} from './btts-human-web.mjs';
+import {initBttsHistory,importBttsFinished,bttsHistoryCoverage,candidateBttsLeagues} from './btts-history-private.mjs';
 const AUTO_PROFILE_VERSION='auto-shadow-market-1x2-v1';
 const json=x=>Response.json(x,{headers:{'cache-control':'no-store'}});
 // Only attribute a finished result's league ID to the exact locked fixture and teams.
@@ -21,7 +22,7 @@ const archivedLeagueIdsForPicks=db=>{
  return Object.fromEntries(rows.filter(r=>Number.isSafeInteger(r.league_id)&&r.league_id>0).map(r=>[String(r.fixture_id),r.league_id]));
 };
 export class PrematchStore extends DurableObject{
- constructor(ctx,env){super(ctx,env);this.db={exec:(q,...a)=>ctx.storage.sql.exec(q,...a),transaction:f=>ctx.storage.transactionSync(f)};this.missionInFlight=null;init(this.db);initPickLedger(this.db);initHistoryRounds(this.db)}
+ constructor(ctx,env){super(ctx,env);this.db={exec:(q,...a)=>ctx.storage.sql.exec(q,...a),transaction:f=>ctx.storage.transactionSync(f)};this.missionInFlight=null;init(this.db);initPickLedger(this.db);initHistoryRounds(this.db);initBttsHistory(this.db)}
  async rememberLeagueCatalog(snapshot){
   const previous=await this.ctx.storage.get('prematchLeagueCatalogV1')??{};
   const storedFixtures=await this.ctx.storage.get('botFixtures')??[];
@@ -202,6 +203,28 @@ export class PrematchStore extends DurableObject{
  }
  // Isolated BTTS shadow diagnostics. Owner only, no fetch, no publication.
  // 1X2 trial, immutable pick ledger, HCR, and shared HUB stay untouched.
+ // Owner-only BTTS data source inspection. No provider calls, no other writes.
+ if(path==='/btts-history-private-test'&&req.method==='GET'){
+  const fixtures=await this.ctx.storage.get('botFixtures')??[];
+  return json({mode:'BTTS_PRIVATE_HISTORY_TEST',archive:bttsHistoryCoverage(this.db),
+   leagues:candidateBttsLeagues(fixtures),providerCalls:0,published:0});
+ }
+ // Accept verified Ultra finished rows strictly for the private BTTS table;
+ // NEVER insert into HCR result_version, 1X2 ledger, stats or HUB.
+ if(path==='/btts-history-import-test'&&req.method==='POST'){
+  const body=await req.json().catch(()=>null);
+  if(body?.source!=='ULTRA_FINISHED_LEAGUE_SEASON'||!Array.isArray(body.rows)||
+     body.rows.length>100||!Number.isSafeInteger(body.observed)||
+     body.observed>now||now-body.observed>1200)
+   return new Response(JSON.stringify({error:'INVALID_BTTS_PRIVATE_IMPORT'}),{status:400,headers:{'content-type':'application/json'}});
+  try{
+   const stats=importBttsFinished(this.db,body.rows,body.observed,{leagueId:body.leagueId,season:body.season});
+   return json({mode:'BTTS_PRIVATE_HISTORY_TEST',stats,archive:bttsHistoryCoverage(this.db),
+    providerCalls:0,oneX2Changed:false,HCRChanged:false,published:0});
+  }catch(error){
+   return new Response(JSON.stringify({error:String(error.message)}),{status:422,headers:{'content-type':'application/json'}});
+  }
+ }
  if(path==='/btts-shadow'&&req.method==='GET'){
   const fixtures=await this.ctx.storage.get('botFixtures')??[];
   const savedQuotes=await this.ctx.storage.get('prematchBttsBet365QuotesV1')??{};
