@@ -26,7 +26,7 @@ test('UI refuses unknown global source, and does not modify the original 1X2 nat
   "pick.append(el('span','b46pm-premium-tiny','PREDICTION'));",
   "pick.append(el('strong','',outcome(item.pick)));",
   "}",
-  'function draw(pageOnly=false){',
+  '  function draw(pageOnly=false){',
   '  const list=el("section","b46pm-live-mirror-list");',
   '    const pageLeagueCounts=new Map();',
   '    for(const item of pageRows){',
