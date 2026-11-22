@@ -1,0 +1,52 @@
+name: BALL46 PREMATCH unified 1X2 graph source provenance check READ ONLY
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-prematch-unified-1x2-chart-source-audit-20261122.yml]
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Confirm actual 1X2 chart provenance against ledger and PreMatch snapshot without any writes
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,acc=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&acc);
+          const ui='ball46-premium-match-colors-test-20261120';
+          const root='https://api.cloudflare.com/client/v4/accounts/'+acc+'/workers';
+          async function cf(path){const r=await fetch(root+path,{headers:{authorization:'Bearer '+token},
+           signal:AbortSignal.timeout(26000)});const d=await r.json();
+           assert(r.ok&&d.success,'CF_'+r.status);return d.result;}
+          const d=await cf('/scripts/'+ui+'/deployments?per_page=1');
+          const v=d.deployments[0].versions[0].version_id;
+          const worker=await cf('/workers/'+ui+'/versions/'+v+'?include=modules');
+          const source=Buffer.from(worker.modules[0].content_base64,'base64').toString('utf8');
+          const match=source.match(/var prematchClientScript = ("(?:\\.|[^"\\])*");/);assert(match);
+          const script=JSON.parse(match[1]);
+          const functions=['performanceQuery','receiverDataForView','loadPerformanceGraph','perfSource','performancePanel'];
+          const snippets={};
+          for(const name of functions){
+            const re=new RegExp('(?:async\\s+)?function\\s+'+name+'\\s*\\(');
+            const pos=script.search(re);if(pos>=0)snippets[name]=script.slice(pos,pos+name.length+4400);
+          }
+          const backend='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          const auth='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const rr=await fetch(backend+'/prematch-stats-registry-test?days=90',{
+           headers:{authorization:auth},signal:AbortSignal.timeout(28000)});
+          assert(rr.ok);const registry=await rr.json();
+          console.log('B46_PREMATCH_1X2_CHART_PROVENANCE_SUMMARY '+JSON.stringify({
+           version:v,registrySnapshot1X2:registry.markets['1X2'],
+           daily1X2Count:registry.dailySeries['1X2']?.length,
+           dailyTotalCount:registry.dailySeries.TOTAL?.length,
+           hasOneX2DailySeriesInPublicPreview:false,
+           perfSourceMayUseReceiver:script.includes("const graph=receiverDataForView();"),
+           candidates:snippets,providerCalls:0,backendWrites:0
+          }));
+          JS
