@@ -1,0 +1,13 @@
+name = "ball46-sidebar-initial-winrate-test-20261122"
+main = "worker.mjs"
+compatibility_date = "2026-11-22"
+workers_dev = true
+preview_urls = false
+
+[[services]]
+binding = "B46_PRODUCTION_READ"
+service = "ball46-production"
+
+[[services]]
+binding = "B46_SIDEBAR_MONITOR"
+service = "ball46-sidebar-monitor-cache-20261119"
