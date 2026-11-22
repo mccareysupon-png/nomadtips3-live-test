@@ -1,0 +1,67 @@
+name: BALL46 O/U price TEST active-state preflight 2026-11-23
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-price-preflight-active-test-20261123.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Inspect current TEST Worker versions, 5USD caps and O/U / BTTS cycle
+        run: |
+          node --input-type=module <<'JS'
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const base='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const cf=async p=>{let r=await fetch(base+p,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(40000)});let j=await r.json();if(!r.ok||!j.success)throw Error('CF_FAIL_'+p+'_'+r.status);return j.result};
+          const names=['ball46-prematch-only-test-20261120','ball46-premium-match-colors-test-20261120','nomadtips3-5usd-hub-343','ball46-production','nomadtips3-engine-343'];
+          for(const name of names){
+            const d=await cf('/scripts/'+name+'/deployments?per_page=1');
+            const id=d.deployments[0].versions[0].version_id;
+            console.log('OU_ACTIVE_VERSION '+JSON.stringify({name,id}));
+            if(name!=='ball46-prematch-only-test-20261120')continue;
+            const v=await cf('/workers/'+name+'/versions/'+id+'?include=modules');
+            const main=Buffer.from(v.modules.find(x=>x.name===v.main_module).content_base64,'base64').toString();
+            console.log('OU_ACTIVE_BACKEND '+JSON.stringify({mainModule:v.main_module,modules:v.modules.map(x=>x.name),
+              mainHash:crypto.createHash('sha256').update(main).digest('hex'),flags:v.compatibility_flags,date:v.compatibility_date,
+              settingsBindings:(await cf('/scripts/'+name+'/settings')).bindings.map(x=>({name:x.name,type:x.type})),
+              hasExistingBttsPrice:main.includes('runBttsPricePickupTick'),
+              hasExistingOuCycle:main.includes("path==='/ou-cycle-test'"),
+              hasExistingOuPrice:main.includes('runOuPricePickupTick')}));
+            const lines=main.split('\n');
+            const anchors=['constructor(state,env)','constructor(ctx,env)','async runBot','async runBttsPricePickupTick','async syncNormalHub',
+              "path==='/ou-cycle-test'","path==='/ou-state-test'","path==='/ou-backtest-test'",
+              "path==='/btts-price-pickup-state'","path==='/monitor'","path==='/preview-data'",
+              "path==='/btts-bulk-v2-state'","path==='/daily-run'",
+              'const ouSettled=settleOu','ouLedgerNow=readOuLedger',
+              'export default','async scheduled','this.runDailyMission','bttsPrice','runOu','runDailyMission','return json({mode:','initOu(this.db)'];
+            const hits=[];
+            for(let i=0;i<lines.length;i++){
+              if(anchors.some(x=>lines[i].includes(x)))hits.push({line:i+1,source:lines.slice(Math.max(0,i-2),Math.min(lines.length,i+5)).map((x,j)=>(i-1+j)+': '+x).join('\n').slice(0,900)});
+              if(hits.length>50)break;
+            }
+            console.log('OU_ACTIVE_HOOKS '+JSON.stringify(hits).slice(0,25000));
+          }
+          const key=crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const host='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          const paths=['/bot-state','/ou-state-test','/btts-bulk-v2-state','/btts-price-pickup-state','/history-cargo-registry?detail=0','/prematch-stats-registry-audit-test','/preview-data'];
+          for(const path of paths){
+            const r=await fetch(host+path,{headers:{authorization:'Bearer '+key},cache:'no-store',signal:AbortSignal.timeout(40000)});
+            const b=await r.json().catch(()=>null);
+            if(path==='/preview-data'){
+              console.log('OU_ACTIVE_DATA '+JSON.stringify({path,status:r.status,ledgerMarkets:{
+                ou:{stats:b?.ouLedger?.stats,rows:b?.ouLedger?.rows?.slice(-5).map(x=>({fixture_id:x.fixture_id,
+                  kickoff:x.kickoff,pick:x.pick,probability:x.probability,status:x.status,price:x.price}))},
+                x1:{count:b?.testLedger?.rows?.length},btts:{count:b?.bttsLedger?.rows?.length}},
+                monitor:b?.testMonitor?.details,source:b?.source}).slice(0,9000));
+            }else console.log('OU_ACTIVE_DATA '+JSON.stringify({path,status:r.status,
+              data:path.includes('bulk')?{config:b?.config,transport:b?.transport?.cap,used:b?.transport?.providerCalls}:path.includes('price-pickup')?{transport:b?.transport}:path==='/ou-state-test'?{policy:b?.policy,stats:b?.stats}:path==='/bot-state'?{mission:b?.mission,config:b?.config,feedState:b?.feedState}:path.includes('audit')?{verified:b?.verified}:path.includes('cargo')?{totals:b?.totals,rounds:b?.rounds?.length}:null}).slice(0,6500));
+          }
+          JS
