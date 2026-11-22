@@ -1,4 +1,4 @@
-name: BALL46 Pre-Match TEST UI live module preflight READ ONLY
+name: BALL46 Pre-Match TEST UI live bundle preflight READ ONLY
 on:
   push:
     branches: [fix/ball46-prematch-league-result-badges-20261122]
@@ -12,10 +12,13 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
-      - name: Read active TEST worker modules and bindings without mutation
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Compare live bundled test-only Worker with prior known scripts READ ONLY
         run: |
           node --input-type=module <<'JS'
           import assert from 'node:assert/strict';
+          import {execFileSync} from 'node:child_process';
           const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
           assert(token&&account,'MISSING_TEST_WORKER_CREDENTIALS');
           const worker='ball46-premium-match-colors-test-20261120';
@@ -31,13 +34,25 @@ jobs:
           assert(version,'NO_CURRENT_TEST_VERSION');
           const script=await cf(root+'/workers/'+worker+'/versions/'+version+'?include=modules');
           const settings=await cf(root+'/scripts/'+worker+'/settings');
-          const modules=(script.modules||[]).map(m=>({
-            name:m.name,content_type:m.content_type||null,
-            base64:typeof m.content_base64==='string',size:typeof m.content_base64==='string'?Math.round(m.content_base64.length*.75):null
-          }));
-          const names=(settings.bindings||[]).map(b=>({name:b.name,type:b.type}));
-          const summary={worker,version,main:script.main_module,compatibility_date:script.compatibility_date,modules,bindings:names};
-          console.log('B46_PREMATCH_TEST_ACTIVE_READONLY '+JSON.stringify(summary));
-          assert(modules.some(m=>m.name==='prematch-client.mjs'&&m.base64),'MISSING_UI_CLIENT_MODULE');
-          assert(modules.some(m=>m.name==='prematch-live-score-mirror.mjs'&&m.base64),'MISSING_UI_MIRROR_MODULE');
+          const mod=script.modules?.find(m=>m.name==='worker.js');
+          assert(mod?.content_base64&&script.modules.length===1,'BUNDLED_SCRIPT_SHAPE_DRIFT');
+          const source=Buffer.from(mod.content_base64,'base64').toString('utf8');
+          const fromGit=path=>execFileSync('git',['show','a748f226e0b371c4616778864af0309ea201cfec:'+path],{encoding:'utf8'});
+          const originalClient=fromGit('qa/prematch-native-ui-20261121/prematch-client.mjs');
+          const originalMirror=fromGit('qa/prematch-native-ui-20261121/prematch-live-score-mirror.mjs');
+          const originalClientScript=(await import('data:text/javascript;base64,'+Buffer.from(originalClient).toString('base64'))).prematchClientScript;
+          const originalMirrorScript=(await import('data:text/javascript;base64,'+Buffer.from(originalMirror).toString('base64'))).prematchMirrorClientScript;
+          const candidates=[
+            ['originalClientModule',originalClient],['originalMirrorModule',originalMirror],
+            ['oldClientJSON',JSON.stringify(originalClientScript)],['oldMirrorJSON',JSON.stringify(originalMirrorScript)],
+            ['oldClientRaw',originalClientScript],['oldMirrorRaw',originalMirrorScript],
+            ['oldClientInner',originalClientScript.slice(0,70)],['oldMirrorInner',originalMirrorScript.slice(0,70)]
+          ];
+          const matches=Object.fromEntries(candidates.map(([key,value])=>[key,{at:source.indexOf(value),count:source.split(value).length-1,length:value.length}]));
+          const markers=['B46_PM_PREMIUM_HORIZONTAL_V1','B46_PM_EXACT_LIVE_SCORE_DOM_MIRROR_V3_LIVE_ODDS','prematchClientScript','prematchMirrorClientScript','b46pm-stats-period-title'];
+          const positions=markers.map(key=>{const at=source.indexOf(key);return {key,at,count:source.split(key).length-1,near:at<0?'':source.slice(Math.max(0,at-150),at+180)}});
+          const summary={worker,version,main:script.main_module,moduleSize:source.length,
+            modules:script.modules.map(m=>({name:m.name,type:m.content_type})),
+            bindings:(settings.bindings||[]).map(b=>({name:b.name,type:b.type})),matches,positions};
+          console.log('B46_PREMATCH_LIVE_BUNDLE_PROBE '+JSON.stringify(summary));
           JS
