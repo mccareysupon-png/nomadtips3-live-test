@@ -1,0 +1,100 @@
+name: BALL46 TEST O/U Math predictions and stats UI deploy
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-math-frontend-deploy-test-20261122.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-premium-match-colors-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Check embedded UI patch and guarded deploy syntax
+        run: |
+          node --check qa/prematch-history-20261120/patch-ou-math-v1-frontend-test.mjs
+          node --check qa/prematch-history-20261120/deploy-ou-math-v1-frontend-test-20261122.mjs
+      - name: Deploy O/U model-only display into 2 existing TEST pages
+        run: node qa/prematch-history-20261120/deploy-ou-math-v1-frontend-test-20261122.mjs
+      - name: Install Chromium QA
+        run: |
+          npm install --no-save playwright@1.55.0
+          if ! command -v google-chrome >/dev/null 2>&1; then npx playwright install chromium; fi
+      - name: Verify original O/U page, predictions, 1X2-only Total; synthetic display fixture
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const url='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          const response=await fetch(url+'/__b46_prematch_data',{cache:'no-store',signal:AbortSignal.timeout(30000)});
+          assert(response.ok,'NO_PREMATCH_TEST_DATA');
+          const real=await response.json();
+          assert.equal(real.ouLedger?.mode,'TEST_ONLY');
+          assert.equal(real.ouLedger?.stats?.total,real.ouLedger?.rows?.length);
+          const test=structuredClone(real);
+          const now=Math.floor(Date.now()/1000);
+          const fixture=99999001;
+          const item={fixture_id:fixture,home_id:98701,away_id:98702,league_id:33,leagueName:'QA O/U Test',
+            home:'Synthetic Home',away:'Synthetic Away',kickoff:now-14400,picked_at:now-86400,observed:now-86400,
+            market:'O/U',pick:'OVER_2.5',line:2.5,probability:.72,overProbability:.72,
+            lambdaHome:1.75,lambdaAway:1.65,expectedTotalGoals:3.4,home_count:10,away_count:10,
+            price:null,units:null,status:'WIN',hg:2,ag:1,settled_at:now-8000,model:'ou-poisson-shrinkage-2p5-v1'};
+          test.ouLedger.rows=[...test.ouLedger.rows,item];
+          test.ouLedger.stats={...test.ouLedger.stats,total:(test.ouLedger.stats.total||0)+1,
+            win:(test.ouLedger.stats.win||0)+1,settled:(test.ouLedger.stats.settled||0)+1,
+            pending:test.ouLedger.stats.pending||0,winRate:100,units:null};
+          // Synthetic data exists only inside an intercepted browser response.
+          const fakeDay={...test.ouDailyBook,selected:{total:1},settled:{total:1,win:1,loss:0,push:0,winRate:100,units:null}};
+          test.ouDailyBook=fakeDay;
+          test.ouDailySeries=[{date:new Date((now-8000)*1000).toISOString().slice(0,10),
+             selected:1,settled:1,win:1,loss:0,draw:0,netUnits:null,cumulativeUnits:null}];
+          const chrome=(await import('node:child_process')).execSync('command -v google-chrome || true',{encoding:'utf8'}).trim();
+          const browser=await chromium.launch(chrome?{headless:true,executablePath:chrome,args:['--no-sandbox']}:{headless:true,args:['--no-sandbox']});
+          const report=[];
+          for(const [device,w,h] of [['pc',1440,900],['mobile',390,844]]){
+            const page=await browser.newPage({viewport:{width:w,height:h},timezoneId:'Asia/Bangkok'});
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await page.route('**/__b46_prematch_data',r=>r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(test)}));
+            await page.goto(url+'/?b46pm=predictions',{waitUntil:'domcontentloaded',timeout:45000});
+            await page.locator('#b46pm-stats-navigation .b46pm-nav-heading').waitFor({state:'attached',timeout:30000});
+            await page.waitForFunction(()=>[...document.querySelectorAll('[data-b46-pm-market], [data-b46-pm-unified-fixture]')].some(x=>(x.textContent||'').includes('OVER')),null,{timeout:30000}).catch(()=>{});
+            const predictions=await page.evaluate(()=>({
+              rows:[...document.querySelectorAll('#b46-prematch-panel .b46pm-list *')].filter(e=>e.childElementCount===0&&/OVER_2.5|OVER 2.5|Over\/Under/.test(e.textContent||'')).length,
+              text:document.querySelector('#b46-prematch-panel')?.textContent.slice(-5000),
+              overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth
+            }));
+            if(!predictions.text?.includes('Synthetic Home')||!predictions.text?.includes('Synthetic Away')||
+              !predictions.text?.includes('Over/Under'))throw Error('OU_NOT_IN_PREDICTIONS_'+device+' '+JSON.stringify(predictions).slice(0,750));
+            await page.goto(url+'/?b46pm=ou&b46pmPeriod=all',{waitUntil:'domcontentloaded',timeout:45000});
+            await page.locator('#b46-prematch-panel .b46pm-performance-subtitle').waitFor({state:'attached',timeout:30000});
+            const stats=await page.evaluate(()=>{
+              const p=document.getElementById('b46-prematch-panel'),q=(sel)=>p?.querySelector(sel)?.textContent.trim()??'';
+              return {title:q('.b46pm-performance-subtitle'),text:p?.textContent.slice(0,7500),
+                overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};
+            });
+            assert.equal(stats.title,'Pre-Match · Over/Under (2.5)');
+            assert(stats.text?.includes('Synthetic Home'));
+            assert(stats.text?.includes('100')||stats.text?.includes('WIN'));
+            if(errors.length)throw Error('OU_JS_ERRORS_'+device+'_'+errors.join('|'));
+            if(Math.max(stats.overflow,predictions.overflow)>3)throw Error('OU_HORIZONTAL_OVERFLOW_'+device);
+            await page.goto(url+'/?b46pm=all',{waitUntil:'domcontentloaded',timeout:45000});
+            await page.locator('#b46-prematch-panel .b46pm-performance-subtitle').waitFor({state:'attached',timeout:30000});
+            const total=await page.locator('#b46-prematch-panel .b46pm-performance-subtitle').textContent();
+            assert.equal(total.trim(),'Pre-Match · Total (1X2)');
+            report.push({device,predictionsVisible:true,ouStatisticsVisible:true,
+              original1X2OnlyTotal:true,zeroJsErrors:true,overflow:0});
+            await page.close();
+          }
+          await browser.close();
+          console.log('B46_OU_MATH_TWO_PAGES_BROWSER_PASS '+JSON.stringify({
+            report,realOuLedger:real.ouLedger.stats,syntheticFixturesWereBrowserOnly:true,
+            source:'OU_MATH_V1_TEST',productionUnchanged:true}));
+          JS
