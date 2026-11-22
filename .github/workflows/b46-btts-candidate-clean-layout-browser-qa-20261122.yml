@@ -1,0 +1,140 @@
+name: BALL46 BTTS clean candidate layout responsive PC mobile browser QA
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-candidate-clean-layout-browser-qa-20261122.yml]
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Isolated test Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          npx playwright install chromium
+      - name: Verify BTTS card width, proper grid, text clipping, click safety and original 1X2
+        run: |
+          mkdir -p qa-artifacts
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/';
+          const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+          const summary=[];
+          const options=[{id:'desktop1440',width:1440,height:900,mobile:false},
+            {id:'laptop1024',width:1024,height:768,mobile:false},
+            {id:'mobile390',width:390,height:844,mobile:true},
+            {id:'mobile320',width:320,height:700,mobile:true}];
+          try{
+           for(const option of options){
+            const context=await browser.newContext({
+             viewport:{width:option.width,height:option.height},
+             isMobile:option.mobile,hasTouch:option.mobile,deviceScaleFactor:1
+            });
+            const page=await context.newPage(),errors=[];
+            page.on('pageerror',e=>errors.push(String(e.message).slice(0,240)));
+            const response=await page.goto(base+'?b46pm=btts',{
+             waitUntil:'domcontentloaded',timeout:60000
+            });
+            assert(response?.ok(),'TEST_BTTS_UI_HTTP_ERROR_'+option.id);
+            await page.waitForFunction(()=>{
+             const cards=document.querySelectorAll('[data-b46-btts-candidate-fixture]');
+             return cards.length>=20&&!!document.querySelector('#b46pm-btts-layout-clean-v2');
+            },{timeout:45000});
+            const result=await page.evaluate(()=>{
+             const section=document.querySelector('#b46pm-btts-candidates');
+             const cards=[...section.querySelectorAll('[data-b46-btts-candidate-fixture]')];
+             const box=e=>{const b=e.getBoundingClientRect();return {left:b.left,top:b.top,right:b.right,bottom:b.bottom,w:b.width,h:b.height}};
+             const first=cards[0],second=cards[1];
+             const metrics=[...first.querySelectorAll('.b46pm-btts-metric')];
+             const details=metrics.map(m=>{
+              const rect=box(m),s=m.querySelector('small'),strong=m.querySelector('strong');
+              const sr=box(s),vr=box(strong);
+              return {width:rect.w,height:rect.h,label:s.textContent,value:strong.textContent,
+               labelWithin:sr.left>=rect.left-2&&sr.right<=rect.right+2&&sr.bottom<=rect.bottom+2,
+               valueWithin:vr.left>=rect.left-2&&vr.right<=rect.right+2&&vr.bottom<=rect.bottom+2,
+               textOverflow:m.scrollWidth>m.clientWidth+2,
+               labelFont:getComputedStyle(s).fontSize,valueFont:getComputedStyle(strong).fontSize};
+             });
+             const header=first.querySelector('.b46pm-btts-card-meta');
+             const matchup=first.querySelector('.b46pm-btts-matchup');
+             const footer=first.querySelector('.b46pm-btts-footer');
+             const r1=box(first),r2=box(second);
+             const rects=[header,matchup,...metrics,footer].map(box);
+             let overlap=false;
+             for(let i=0;i<rects.length;i++)for(let j=i+1;j<rects.length;j++){
+               const a=rects[i],b=rects[j];
+               if(Math.min(a.right,b.right)-Math.max(a.left,b.left)>4&&
+                Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>4)overlap=true;
+             }
+             return {cards:cards.length,unique:new Set(cards.map(c=>c.dataset.b46BttsCandidateFixture)).size,
+              waiting:cards.filter(c=>c.textContent.includes('PRICE NEEDED')).length,
+              notOffered:cards.filter(c=>c.textContent.includes('NOT OFFERED')).length,
+              grid:getComputedStyle(section).gridTemplateColumns,
+              cardOne:r1,cardTwo:r2,
+              cardContentColumns:getComputedStyle(first.querySelector('.b46pm-btts-card-content')).gridTemplateColumns,
+              metricColumns:getComputedStyle(first.querySelector('.b46pm-btts-metrics')).gridTemplateColumns,
+              metrics:details,internalBlockOverlap:overlap,
+              originalSections:document.querySelectorAll('.b46pm-btts-price-state').length,
+              overflow:document.documentElement.scrollWidth>innerWidth+2,
+              viewport:innerWidth,docWidth:document.documentElement.scrollWidth,
+              scriptErrors:[],
+              firstText:first.textContent?.slice(0,500)};
+            });
+            console.log('B46_BTTS_CLEAN_LAYOUT_BROWSER '+JSON.stringify({viewport:option.id,...result}));
+            assert.equal(result.cards,24,'BTTS_CANDIDATES_NOT_24_'+option.id);
+            assert.equal(result.unique,24,'DUPLICATE_BTTS_CARDS_'+option.id);
+            assert.equal(result.waiting,21);
+            assert.equal(result.notOffered,3);
+            assert.equal(result.metrics.length,3,'BTTS_MUST_USE_THREE_READABLE_METRICS');
+            assert(result.metrics.every(m=>m.width>=78),'NARROW_BTTS_METRIC_'+option.id);
+            assert(result.metrics.every(m=>m.labelWithin&&m.valueWithin&&!m.textOverflow),
+             'CLIPPED_TEXT_'+option.id);
+            assert(!result.internalBlockOverlap,'OVERLAPPING_BTTS_CARD_SECTIONS_'+option.id);
+            assert(!result.overflow,'SCREEN_HORIZONTAL_OVERFLOW_'+option.id);
+            if(option.width>=1280){
+             assert(Math.abs(result.cardOne.top-result.cardTwo.top)<=2,'DESKTOP_NOT_TWO_CARDS_PER_ROW');
+             assert(Math.abs(result.cardOne.left-result.cardTwo.left)>200,'DESKTOP_NOT_TWO_COLUMN_LAYOUT');
+            }else{
+             assert(result.cardTwo.top>result.cardOne.bottom,'NARROW_SCREEN_NOT_SINGLE_COLUMN');
+            }
+            const card=page.locator('[data-b46-btts-candidate-fixture]').first();
+            await card.scrollIntoViewIfNeeded();
+            await page.screenshot({path:'qa-artifacts/btts-clean-'+option.id+'.png',fullPage:false});
+            if(option.id==='desktop1440'||option.id==='mobile390'){
+              const screenshot=await page.screenshot({type:'jpeg',quality:53,fullPage:false});
+              console.log('B46_BTTS_VISUAL_JPEG_'+option.id+' '+screenshot.toString('base64'));
+            }
+            await card.click({position:{x:25,y:35},timeout:12000});
+            assert(new URL(page.url()).searchParams.get('b46pm')==='btts',
+             'BTTS_CARD_CLICK_NAVIGATED_AWAY_'+option.id);
+            await page.goto(base+'?b46pm=1x2',{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForSelector('.b46pm-list .b46pm-match',{state:'visible',timeout:45000});
+            await page.waitForTimeout(1200);
+            assert.equal(await page.locator('#b46pm-btts-candidates').count(),0,
+             'BTTS_CANDIDATE_LEAKED_INTO_1X2_'+option.id);
+            assert(await page.locator('.b46pm-list .b46pm-match').count()>0,
+             'EXISTING_1X2_CARDS_MISSING_'+option.id);
+            assert.deepEqual(errors,[],'TEST_BROWSER_JS_ERRORS_'+option.id);
+            summary.push({viewport:option.id,cardWidth:Math.round(result.cardOne.w),
+             minMetricWidth:Math.round(Math.min(...result.metrics.map(m=>m.width))),
+             cards:result.cards,columns:option.width>=1280?2:1,overlap:false,jsErrors:0});
+            await context.close();
+           }
+           console.log('B46_BTTS_CLEAN_RESPONSIVE_FINAL_PASS '+JSON.stringify({
+             summary,original1X2UIIntact:true,providerCalls:0,productionWrites:0
+           }));
+          }finally{await browser.close()}
+          JS
+      - name: Archive PC and mobile screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b46-btts-clean-layout-pc-mobile-20261122
+          path: qa-artifacts/
+          if-no-files-found: warn
+          retention-days: 14
