@@ -4,6 +4,7 @@
 // Central provider history gateway remains hard off until Live quota integration.
 import {londonAccountingWindow} from './london-cutoff.mjs';
 import {ingest} from './history.mjs';
+import {initHistoryCargoRegistry,writeHistoryCargoManifest} from './history-cargo-registry.mjs';
 
 export const HISTORY_MAX_ROUNDS=5;
 export const HISTORY_MAX_ROWS_PER_ROUND=100;
@@ -28,6 +29,7 @@ export function historySlot(now){
 const rows=(db,q,...args)=>Array.from(db.exec(q,...args));
 export function initHistoryRounds(db){
  db.exec("CREATE TABLE IF NOT EXISTS prematch_history_rounds (business_day TEXT NOT NULL, round_no INTEGER NOT NULL, attempted_at INTEGER NOT NULL, source TEXT NOT NULL, state TEXT NOT NULL, imported INTEGER NOT NULL DEFAULT 0, received INTEGER NOT NULL DEFAULT 0, provider_calls INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(business_day,round_no))");
+ initHistoryCargoRegistry(db);
 }
 export function historyRoundState(db,now){
  const slot=historySlot(now),records=rows(db,'SELECT round_no,attempted_at,source,state,imported,received,provider_calls FROM prematch_history_rounds WHERE business_day=? ORDER BY round_no',slot.businessDay);
@@ -68,9 +70,14 @@ export function importHistoryRoundFromCache(db,snapshot,now,{roundNo=null}={}){
  try{
   const stats=selected.length?ingest(db,selected,observed):{added:0,corrected:0,duplicate:0,rejected:0};
   imported=stats.added;
-  if(imported>HISTORY_MAX_ROWS_PER_ROUND)throw Error('ROUND_LIMIT_BROKEN');
-  db.exec("UPDATE prematch_history_rounds SET state='COMPLETED',received=?,imported=? WHERE business_day=? AND round_no=?",selected.length,imported,s.businessDay,s.slot);
-  return {state:'COMPLETED',current:{slot:s.slot,attemptedAt:now,received:selected.length,imported},...historyRoundState(db,now)};
+  if(imported>HISTORY_MAX_ROWS_PER_ROUND||imported!==selected.length)throw Error('HCR_ARCHIVE_IMPORT_COUNT_MISMATCH');
+  // Atomic manifest + COMPLETED marker: no round is marked accounted for
+  // unless its exact imported Fixture IDs have also been recorded.
+  db.transaction(()=>{
+   writeHistoryCargoManifest(db,{businessDay:s.businessDay,roundNo:s.slot,now,selected,imported});
+   db.exec("UPDATE prematch_history_rounds SET state='COMPLETED',received=?,imported=? WHERE business_day=? AND round_no=?",selected.length,imported,s.businessDay,s.slot);
+  });
+  return {state:'COMPLETED',current:{slot:s.slot,attemptedAt:now,received:selected.length,imported,cargoRegistry:'HCR-V1'},...historyRoundState(db,now)};
  }catch(e){
   db.exec("UPDATE prematch_history_rounds SET state='REVIEW_REQUIRED' WHERE business_day=? AND round_no=?",s.businessDay,s.slot);
   return {state:'REVIEW_REQUIRED',error:String(e.message).slice(0,100),...historyRoundState(db,now)};
