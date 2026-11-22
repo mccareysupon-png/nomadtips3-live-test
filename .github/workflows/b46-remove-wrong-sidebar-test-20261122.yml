@@ -2,7 +2,9 @@ name: BALL46 remove mistakenly created Sidebar firstpaint TEST Worker
 on:
   push:
     branches: [ops/ball46-sidebar-firstpaint-rollback-20261122]
-    paths: ['.github/workflows/b46-remove-wrong-sidebar-test-20261122.yml']
+    paths:
+      - '.github/workflows/b46-remove-wrong-sidebar-test-20261122.yml'
+      - 'qa/sidebar-firstpaint-rollback-20261122/remove-test.mjs'
 permissions: {contents: read}
 jobs:
   clean:
