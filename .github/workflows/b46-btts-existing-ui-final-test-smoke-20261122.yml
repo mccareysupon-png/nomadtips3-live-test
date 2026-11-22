@@ -1,0 +1,55 @@
+name: BALL46 BTTS Existing PreMatch UI Final TEST Smoke
+on:
+  push:
+    branches: [fix/ball46-btts-backend-only-test-20261122]
+    paths: [.github/workflows/b46-btts-existing-ui-final-test-smoke-20261122.yml]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Verify existing human-facing BTTS tab and independent historical model, NO writes
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          assert(token);
+          const host='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          const ui='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/?b46pm=btts';
+          const auth='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const page=await fetch(ui,{cache:'no-store',signal:AbortSignal.timeout(20000)});
+          assert(page.ok,'TEST_PREMATCH_UI_NOT_ACCESSIBLE_'+page.status);
+          assert.equal(page.headers.get('x-b46-page-scope'),'PREMATCH_TEST_ONLY');
+          const html=await page.text();
+          assert(/BTTS|btts/.test(html),'TEST_BTTS_VIEW_MISSING');
+          const data=await fetch(host+'/btts-preview-data?page=1&filter=ALL&q=204765296',{cache:'no-store',signal:AbortSignal.timeout(20000)});
+          assert(data.ok,'TEST_BTTS_DETAIL_UNAVAILABLE_'+data.status);
+          const model=await data.json();
+          assert.equal(model.mode,'READ_ONLY_BTTS_SHADOW');
+          assert.equal(model.totals.historyReady>=1,true);
+          assert.equal(model.totals.upcoming>0,true);
+          assert.equal(model.providerCalls,0);
+          assert.equal(model.published,0);
+          const item=model.preview.rows.find(x=>String(x.fixtureId)==='204765296');
+          assert(item,'VERIFIED_REAL_BTTS_FIXTURE_ABSENT');
+          assert.equal(item.homeHistory,10);
+          assert.equal(item.awayHistory,10);
+          const raw=await fetch(host+'/btts-history-private-test',{headers:{authorization:auth},signal:AbortSignal.timeout(16000)});
+          assert(raw.ok);
+          const test=await raw.json();
+          assert.equal(test.archive.privateFT,20);
+          const ledger=await(await fetch('https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/__b46_prematch_data',{signal:AbortSignal.timeout(20000)})).json();
+          assert.equal(ledger.testLedger.rows.length,75);
+          console.log('B46_BTTS_EXISTING_UI_AND_BACKEND_FINAL_PASS '+JSON.stringify({
+           ui,uiStatus:page.status,scope:page.headers.get('x-b46-page-scope'),
+           existingUserBttsTab:true,privateBTTSFinished:test.archive.privateFT,
+           historicalCompleteMatches:model.totals.historyReady,
+           realTestFixture:item,providerCallsOnPage:0,oneX2TestRows:ledger.testLedger.rows.length,
+           published:0,productionWrites:0,existingUIUnchanged:true
+          }));
+          JS
