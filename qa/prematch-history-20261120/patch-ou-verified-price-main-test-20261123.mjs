@@ -9,7 +9,7 @@ export function patchOuVerifiedPriceMain(input){
  if(typeof input!=='string'||!input.includes('class PrematchStore extends DurableObject')||
   !input.includes("return {state:'BTTS_PROJECT_CLOSED',providerCalls:0,productionWrites:0}")||
   !input.includes("path==='/ou-cycle-test'&&req.method==='POST'")||
-  !input.includes("const b=await stub.fetch('https://prematch.internal/btts-cycle-test'"))
+  !input.includes("console.log('BTTS_CYCLE_DISABLED_PROJECT_CLOSED')"))
   throw Error('ACTIVE_TEST_WORKER_NOT_AS_EXPECTED');
  let s=input;
  s=one(s,
@@ -59,17 +59,17 @@ export function patchOuVerifiedPriceMain(input){
    method+"\n\n async rememberLeagueCatalog(snapshot){",
    'OWNER_OU_QUOTE_PICKUP_METHOD');
  s=one(s,
- "   // O/U MODEL-ONLY research: no paid odds; separate durable prediction ledger.",
+ "   if(path==='/ou-cycle-test'&&req.method==='POST'){",
  [
  "   // Owner-only O/U price transport. Request is permanently claimed before fetch.",
  "   if(path==='/ou-price-pickup-state'&&req.method==='GET')",
  "    return json(readOuPricePickupState(this.db,now));",
  "   if(path==='/ou-price-pickup-tick'&&req.method==='POST')",
  "    return json(await this.runOuPricePickupTick(now));",
- "   // O/U MODEL-ONLY research: no paid odds; separate durable prediction ledger."
+ "   if(path==='/ou-cycle-test'&&req.method==='POST'){"
  ].join('\n'),
  'PRICING_OWNER_ROUTES');
- const original="const b=await stub.fetch('https://prematch.internal/btts-cycle-test',{method:'POST'});console.log('BTTS_TEST_ONLY_CYCLE '+b.status)";
+ const original="console.log('BTTS_CYCLE_DISABLED_PROJECT_CLOSED')";
  const updated=original+
   ";const q=await stub.fetch('https://prematch.internal/ou-price-pickup-tick',{method:'POST'});"+
   "if(q.ok){const result=await q.json();console.log('OU_2P5_PRICE_PICKUP_TEST '+result.state+' providerCalls='+(result.providerCalls??0))}"+
