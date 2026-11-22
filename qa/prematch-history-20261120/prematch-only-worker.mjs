@@ -13,7 +13,7 @@ import {scheduledFromNormalHub} from './hub-upcoming-feed.mjs';
 import {londonAccountingWindow} from './london-cutoff.mjs';
 import {evaluateBttsUltra,mergeBet365BttsQuotes,parseBet365BttsOdds} from './btts-ultra-shadow.mjs';
 import {bttsTestHtml} from './btts-human-web.mjs';
-import {initBttsHistory,importBttsFinished,bttsHistoryCoverage,candidateBttsLeagues} from './btts-history-private.mjs';
+import {initBttsHistory,importBttsFinished,importBttsTeamFallback,bttsHistoryCoverage,candidateBttsLeagues} from './btts-history-private.mjs';
 const AUTO_PROFILE_VERSION='auto-shadow-market-1x2-v1';
 const json=x=>Response.json(x,{headers:{'cache-control':'no-store'}});
 // Only attribute a finished result's league ID to the exact locked fixture and teams.
@@ -211,6 +211,27 @@ export class PrematchStore extends DurableObject{
  }
  // Accept verified Ultra finished rows strictly for the private BTTS table;
  // NEVER insert into HCR result_version, 1X2 ledger, stats or HUB.
+ // Owner-only Ultra team-last10 fallback, only for the two teams in one
+ // real scheduled BTTS test fixture, and only into BTTS-private FT cache.
+ if(path==='/btts-team-fallback-test'&&req.method==='POST'){
+  const body=await req.json().catch(()=>null);
+  const fixtures=await this.ctx.storage.get('botFixtures')??[];
+  const fixture=fixtures.find(f=>String(f.id)===String(body?.fixtureId));
+  if(body?.source!=='ULTRA_TEAM_LAST10_FALLBACK'||!fixture||fixture.status!=='scheduled'||
+     fixture.kickoff_ts<=now||!Number.isSafeInteger(body?.observed)||
+     body.observed>now||now-body.observed>1200||
+     ![Number(fixture.teams.home.id),Number(fixture.teams.away.id)].includes(Number(body.teamId))||
+     !Array.isArray(body.rows)||body.rows.length<1||body.rows.length>10)
+   return new Response(JSON.stringify({error:'INVALID_BTTS_FALLBACK_EVIDENCE'}),{status:400,headers:{'content-type':'application/json'}});
+  try{
+   const stats=importBttsTeamFallback(this.db,body.rows,body.observed,{teamId:body.teamId});
+   return json({mode:'BTTS_TEAM_LAST10_PRIVATE_TEST',fixtureId:String(fixture.id),
+     teamId:String(body.teamId),stats,archive:bttsHistoryCoverage(this.db),
+     providerCalls:0,oneX2Changed:false,HCRChanged:false,published:0});
+  }catch(error){
+   return new Response(JSON.stringify({error:String(error.message)}),{status:422,headers:{'content-type':'application/json'}});
+  }
+ }
  if(path==='/btts-history-import-test'&&req.method==='POST'){
   const body=await req.json().catch(()=>null);
   if(body?.source!=='ULTRA_FINISHED_LEAGUE_SEASON'||!Array.isArray(body.rows)||
