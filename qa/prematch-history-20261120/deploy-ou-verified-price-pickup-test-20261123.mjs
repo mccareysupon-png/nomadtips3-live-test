@@ -174,6 +174,6 @@ console.log('OU_PRICE_TEST_RUNNING_VERIFIED '+JSON.stringify({
  persisted:{callsToday:afterState.providerCallsToday,pricedImported:afterState.pricedImported,
   recent:afterState.recent.slice(0,2)},
  oneX2Rows:preSnapshot.x1Count,ouPicks:finalPreview.ouLedger.rows.length,
- 1x2TotalAndBttsUnchanged:true,productionWrites:0,
+ allMarketsUnchanged:true,productionWrites:0,
  sharedQuotaGuarantee:false,maxNewPaidCallsPerLondonDay:1
 }));
