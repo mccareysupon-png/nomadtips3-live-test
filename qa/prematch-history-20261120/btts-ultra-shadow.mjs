@@ -62,7 +62,7 @@ export function mergeBet365BttsQuotes(old,fixture,parsed,now){
  return {quotes:current,state:'PRICED'};
 }
 
-export function evaluateBttsUltra(db,fixtures,now,storedQuotes={},limit=250){
+export function evaluateBttsUltra(db,fixtures,now,storedQuotes={},limit=250,view=null){
  if(!safeTs(now)||!Array.isArray(fixtures)||!Number.isInteger(limit)||limit<1||limit>1000)throw Error('INVALID_INPUT');
  const totals={upcoming:0,historyReady:0,historyIncomplete:0,modelProbabilityReady:0,
    quoteRequired:0,notOffered:0,availableQuote:0,qualified:0,staleQuotes:0};
@@ -80,7 +80,7 @@ export function evaluateBttsUltra(db,fixtures,now,storedQuotes={},limit=250){
   const directValid=valid(direct,now,f.kickoff_ts);
   const selected=cacheValid&&(!directValid||cached.observed>=direct.observed)?cached:directValid?direct:null;
   const notOffered=!selected&&cached?.state==='NOT_OFFERED'&&matchStored(cached,f);
-  let state='INSUFFICIENT_HISTORY',model=null,selection='NO_SIGNAL',metrics=null;
+  let state='INSUFFICIENT_HISTORY',selection='NO_SIGNAL',metrics=null;
   if(complete){
    const args={homeLast10:home,awayLast10:away,asOf:now,kickoff:f.kickoff_ts};
    const inputs=selected?{...args,odds:{bookmaker:'bet365',yes:selected.prices.BTTS_YES,
@@ -103,10 +103,43 @@ export function evaluateBttsUltra(db,fixtures,now,storedQuotes={},limit=250){
   rows.push({fixtureId:String(f.id),leagueId:f.league?.id??null,leagueName:f.league?.name??'',
     home:f.teams.home.name??String(f.teams.home.id),away:f.teams.away.name??String(f.teams.away.id),
     kickoff:f.kickoff_ts,homeHistory:home.length,awayHistory:away.length,
-    state,signal:selection,metrics,quoteSource:selected?.source??(directValid?'STORED_BET365':null)});
+    state,signal:selection,metrics,
+    probabilityYes:complete?(metrics?.sides?.find(x=>x.signal==='BTTS_YES')?.model??null):null,
+    probabilityNo:complete?(metrics?.sides?.find(x=>x.signal==='BTTS_NO')?.model??null):null,
+    oddsYes:selected?.prices?.BTTS_YES??null,oddsNo:selected?.prices?.BTTS_NO??null,
+    quoteSource:selected?.source??(directValid?'STORED_BET365':null)});
+ }
+ const statusOf=row=>{
+  if(row.signal!=='NO_SIGNAL')return 'QUALIFIED_TEST';
+  if(row.state==='INSUFFICIENT_HISTORY')return 'WAITING_HISTORY';
+  if(row.state==='BET365_PRICE_NEEDED')return 'WAITING_PRICE';
+  if(row.state==='NOT_OFFERED')return 'NOT_OFFERED';
+  return 'NOT_QUALIFIED';
+ };
+ let preview;
+ if(view&&typeof view==='object'){
+  const q=String(view.q??'').trim().slice(0,80).toLowerCase();
+  const availableFilters=['ALL','WAITING_HISTORY','WAITING_PRICE','NOT_OFFERED','QUALIFIED_TEST','NOT_QUALIFIED'];
+  const filter=availableFilters.includes(view.filter)?view.filter:'ALL';
+  const requested=Number(view.page);
+  const page=Number.isSafeInteger(requested)&&requested>0?Math.min(requested,999):1;
+  const pageSize=25;
+  const matched=rows.filter(row=>(filter==='ALL'||statusOf(row)===filter)&&
+   (!q||[row.home,row.away,row.leagueName,row.fixtureId].some(x=>String(x).toLowerCase().includes(q))));
+  const pages=Math.max(1,Math.ceil(matched.length/pageSize));
+  const resolvedPage=Math.min(page,pages);
+  preview={page:resolvedPage,pageSize,total:matched.length,pages,filter,query:q,
+   rows:matched.slice((resolvedPage-1)*pageSize,resolvedPage*pageSize).map(row=>({
+    fixtureId:row.fixtureId,leagueName:row.leagueName,home:row.home,away:row.away,
+    kickoff:row.kickoff,homeHistory:row.homeHistory,awayHistory:row.awayHistory,
+    status:statusOf(row),signal:row.signal,state:row.state,
+    probabilityYes:row.probabilityYes,probabilityNo:row.probabilityNo,
+    oddsYes:row.oddsYes,oddsNo:row.oddsNo
+   }))};
  }
  return {mode:'READ_ONLY_BTTS_SHADOW',policy:BTTS_ULTRA_TEST_POLICY,totals,
   candidates:rows.filter(x=>x.state==='BET365_PRICE_NEEDED').slice(0,limit),
   decisions:rows.filter(x=>x.signal!=='NO_SIGNAL').slice(0,limit),
-  sample:rows.slice(0,Math.min(limit,30)),providerCalls:0,published:0};
+  sample:rows.slice(0,Math.min(limit,30)),
+  ...(preview?{preview}:{}),providerCalls:0,published:0};
 }
