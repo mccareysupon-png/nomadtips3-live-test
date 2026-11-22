@@ -1,0 +1,63 @@
+name: BALL46 PreMatch BTTS TEST Public Web Smoke
+on:
+  push:
+    branches: [fix/ball46-prematch-btts-human-web-test-20261122]
+    paths:
+      - .github/workflows/b46-prematch-btts-human-public-smoke-20261122.yml
+permissions:
+  contents: read
+jobs:
+  public-test-web:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Verify real TEST web page, user-facing paged fixtures and unchanged 1X2 preview
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const host='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          async function get(path){
+            const r=await fetch(host+path,{cache:'no-store',signal:AbortSignal.timeout(20000)});
+            assert(r.ok,'HTTP_'+r.status+'_'+path);return r;
+          }
+          const page=await get('/btts');
+          const html=await page.text();
+          assert(page.headers.get('content-type')?.includes('text/html'),'NOT_HTML');
+          assert(html.includes('BTTS · Both Teams to Score'),'BTTS_VISIBLE_HEADING_MISSING');
+          assert(html.includes('TEST ONLY'),'TEST_WARNING_MISSING');
+          assert(html.includes('Search team, league or fixture ID'),'SEARCH_INPUT_MISSING');
+          assert(html.includes('Waiting for 10 matches'),'HISTORY_STATE_MISSING');
+          assert(html.includes('btts-preview-data?'),'FETCH_CLIENT_ENDPOINT_MISSING');
+          const d=await(await get('/btts-preview-data?page=1&filter=ALL')).json();
+          assert.equal(d.system,'BALL46_PREMATCH_TEST');
+          assert.equal(d.mode,'READ_ONLY_BTTS_SHADOW');
+          assert.equal(d.policy.historyPerTeam,10);
+          assert.equal(d.published,0);
+          assert.equal(d.providerCalls,0);
+          assert(Array.isArray(d.preview?.rows));
+          assert(d.preview.rows.length>0,'NO_VISIBLE_UPCOMING_TEST_FIXTURES');
+          assert(d.preview.rows.length<=25);
+          assert.equal(d.preview.page,1);
+          const search=d.preview.rows[0].home;
+          const filtered=await(await get('/btts-preview-data?'+new URLSearchParams({page:'1',filter:'ALL',q:search}))).json();
+          assert(filtered.preview.total>0,'TEST_SEARCH_RETURNED_NOTHING');
+          assert(filtered.preview.rows.some(x=>x.home===search),'SEARCH_WRONG_DATA');
+          const other=await(await get('/preview-data')).json();
+          assert.equal(other.testLedger.mode,'TEST_ONLY');
+          assert(Array.isArray(other.testLedger.rows));
+          const main=await get('/preview');
+          const mainText=await main.text();
+          assert(mainText.includes('View BTTS test'),'1X2_PREVIEW_HAS_NO_BTTS_NAV');
+          const next=d.preview.pages>1?await(await get('/btts-preview-data?page=2&filter=ALL')).json():null;
+          if(next)assert(next.preview.rows.length>0&&next.preview.page===2,'SECOND_PAGE_INVALID');
+          console.log('B46_BTTS_HUMAN_PUBLIC_WEB_SMOKE_PASS '+JSON.stringify({
+           page:host+'/btts',http:page.status,contentType:page.headers.get('content-type'),
+           upcoming:d.totals.upcoming,rowsFirstPage:d.preview.rows.length,
+           pages:d.preview.pages,hasSearch:true,hasNextPage:!!next,
+           historyReady:d.totals.historyReady,
+           bet365Prices:d.totals.availableQuote,
+           qualified:d.totals.qualified,
+           oneX2Rows:other.testLedger.rows.length,
+           providerCallsAdded:0,published:0,productionWrites:0
+          }));
+          JS
