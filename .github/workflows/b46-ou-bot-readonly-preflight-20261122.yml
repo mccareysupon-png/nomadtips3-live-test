@@ -73,6 +73,10 @@ jobs:
             (await cf('/scripts/ball46-prematch-only-test-20261120/deployments?per_page=1')).deployments[0].versions[0].version_id+
             '?include=modules');
           const main=Buffer.from(source.modules.find(m=>m.name===source.main_module).content_base64,'base64').toString();
+          for(const needle of ['initPreMarketStatsRegistry(this.db)','const bttsSettled=settleBttsPicks(this.db,now);','const allLedgerNow=','const bttsIssued=await this.recordQualifiedBtts(now,fixtures);','const b=await stub.fetch','if(path===\'/btts-shadow\'','bttsLedger:bttsLedgerNow,allLedger:allLedgerNow','dailyBook,bttsIssued,statsRegistry']){
+            let i=main.indexOf(needle);
+            console.log('OU_ACTIVE_BACKEND_CONTEXT '+JSON.stringify({needle,count:main.split(needle).length-1,near:i>=0?main.slice(Math.max(0,i-70),i+240):null}));
+          }
           console.log('OU_BACKEND_ANCHORS '+JSON.stringify({
             hasOuRoute:main.includes("path==='/ou-"),hasOuModule:source.modules.some(m=>m.name.includes('over-under')),
             hasHistoryAccess:main.includes('result_version'),hasStoredFixtures:main.includes("this.ctx.storage.get('botFixtures')"),
