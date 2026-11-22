@@ -1,4 +1,4 @@
-name: BALL46 Four View Unified PreMatch UI Final Desktop Mobile TEST QA
+name: BALL46 Four View Unified PreMatch UI Final Desktop Mobile TEST QA R2
 on:
   push:
     branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
@@ -32,6 +32,9 @@ jobs:
             await page.waitForSelector('#b46-prematch-panel',{state:'visible',timeout:40000});
             if(view==='predictions')await page.waitForSelector('[data-b46-pm-unified-fixture]',{state:'visible',timeout:50000});
             else await page.waitForSelector('.b46pm-performance-subtitle',{state:'visible',timeout:50000});
+            if(view==='btts')await page.waitForFunction(()=>
+              document.querySelectorAll('[data-b46-btts-candidate-fixture]').length>0,
+              {timeout:35000});
             await page.waitForTimeout(1100);
           }
           try{
