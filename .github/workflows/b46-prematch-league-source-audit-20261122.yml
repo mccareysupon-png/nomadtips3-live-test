@@ -1,0 +1,63 @@
+name: BALL46 PreMatch League Source Audit READ ONLY
+on:
+  push:
+    branches:
+      - fix/ball46-prematch-league-all-phases-20261122
+    paths:
+      - .github/workflows/b46-prematch-league-source-audit-20261122.yml
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Inspect existing TEST JSON without writing or provider calls
+        run: |
+          node --input-type=module <<'JS'
+          import crypto from 'node:crypto';
+          import assert from 'node:assert/strict';
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          const hcrBase='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          assert(token,'MISSING_SECRET');
+          async function get(url,headers={}){
+            const r=await fetch(url,{headers,signal:AbortSignal.timeout(25000),cache:'no-store'});
+            assert(r.ok,'HTTP_'+r.status);
+            return r.json();
+          }
+          const [j,hcr]=await Promise.all([
+            get(base+'/__b46_prematch_data'),
+            get(hcrBase+'/history-cargo-registry?detail=0',{
+              authorization:'Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex')
+            })
+          ]);
+          const rows=j?.testLedger?.rows||[];
+          const mon=j?.testMonitor?.monitor||{};
+          const breakdown={};
+          for(const row of rows){
+            const h=mon[row.fixture_id]||{};
+            const k=[row.status,h.phase||'NO_HUB'].join('/');
+            const o=breakdown[k]??={count:0,ledgerLeague:0,hubLeagueName:0,missingLeague:0};
+            o.count++;
+            if(row.league||row.leagueName)o.ledgerLeague++;
+            if(h.leagueName)o.hubLeagueName++;
+            if(!row.league&&!row.leagueName&&!h.leagueName)o.missingLeague++;
+          }
+          const priorities=hcr.supplyPlanning?.priorityLeagues||[];
+          const high=hcr.supplyPlanning?.highestPriority||[];
+          const namedPriorities=priorities.filter(x=>typeof x.leagueName==='string'&&x.leagueName.trim()).length;
+          const namedHighest=high.filter(x=>typeof x.leagueName==='string'&&x.leagueName.trim()).length;
+          const monitorKeys=[...new Set(Object.values(mon).flatMap(x=>Object.keys(x)))].sort();
+          const sampleStatuses=Object.values(mon).reduce((o,x)=>(o[x.phase]=(o[x.phase]||0)+1,o),{});
+          const summary={
+            ledgerRows:rows.length,stats:j.testLedger.stats,
+            phases:sampleStatuses,breakdown,monitorKeys,
+            HCR:{upcoming:hcr.supplyPlanning.upcomingFixtures,upcomingWithLeagueID:hcr.supplyPlanning.upcomingLeagueIdsAvailable,
+              upcomingNoLeagueID:hcr.supplyPlanning.upcomingLeagueIdsMissing,namedPriorities,numberOfPriorityLeagues:priorities.length,namedHighest,highestCount:high.length},
+            apiKeys:Object.keys(j).sort(),providerCalls:0,productionWrites:0
+          };
+          console.log('B46_LEAGUE_AUDIT_READ_ONLY '+JSON.stringify(summary));
+          JS
