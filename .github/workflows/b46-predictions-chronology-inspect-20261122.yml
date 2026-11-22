@@ -1,0 +1,78 @@
+name: BALL46 TEST inspect Predictions chronological list READONLY
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-predictions-chronology-inspect-20261122.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Inspect active TEST frontend list source and data shapes
+        run: |
+          node --input-type=module <<'JS'
+          const root='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          const response=await fetch(root+'/scripts/ball46-premium-match-colors-test-20261120/deployments?per_page=1',{headers:{authorization:'Bearer '+token}}).then(r=>r.json());
+          if(!response.success)throw Error('DEPLOYMENTS_UNAVAILABLE');
+          const ver=response.result.deployments[0].versions[0].version_id;
+          const active=await fetch(root+'/workers/ball46-premium-match-colors-test-20261120/versions/'+ver+'?include=modules',{headers:{authorization:'Bearer '+token}}).then(r=>r.json());
+          if(!active.success)throw Error('ACTIVE_SOURCE_UNAVAILABLE');
+          const s=Buffer.from(active.result.modules[0].content_base64,'base64').toString('utf8');
+          const m=s.match(/var prematchClientScript = ("(?:\\.|[^"\\])*");/);if(!m)throw Error('NO_CLIENT');
+          const client=JSON.parse(m[1]);const ls=client.split('\n');
+          const terms=['groupPreMatchIssuedRows','leagueGroups','leagueBucket','leagueName','leagueLabel','leagueTitle',
+          'issuedByFixture','const list=','list.append','function card','function render','mode===\'predictions\'',
+          'const games=','const rows=','kickoff','LIVE','isLive','FINISHED','FT','status','Intl',
+          'b46pm-league','league-head','league-header'];
+          const hits=[];
+          for(let i=0;i<ls.length;i++){
+            if(terms.some(t=>ls[i].includes(t)))hits.push({n:i+1,t:ls[i].slice(0,260)});
+          }
+          console.log('B46_PREDICTIONS_SCAN '+JSON.stringify({version:ver,lines:ls.length,hits:hits.slice(0,240)}));
+          const blocks=[[630,745],[990,1170],[1180,1360],[1360,1510],[1510,1700],[1700,1850]];
+          for(const [a,b] of blocks){
+            console.log('B46_PREDICTIONS_CODE '+JSON.stringify({from:a,to:b,code:ls.slice(a-1,b).map((line,i)=>(a+i)+': '+line).join('\n').slice(0,21500)}));
+          }
+          const url='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/__b46_prematch_data';
+          const raw=await fetch(url,{cache:'no-store'}).then(r=>r.json());
+          console.log('B46_PREDICTIONS_DATA '+JSON.stringify({
+            keys:Object.keys(raw),resultCount:raw.results?.length,sampleResult:raw.results?.[0]??null,
+            issued:raw.allLedger?.rows?.length,issuedSamples:raw.allLedger?.rows?.slice(0,3),
+            ou:raw.ouLedger?.rows?.length,fixtures:raw.selection?.fixtures?.length
+          }).slice(0,14500));
+          JS
+      - name: Setup browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          if ! command -v google-chrome >/dev/null 2>&1; then npx playwright install chromium; fi
+      - name: Inspect rendered prediction card and league wrapper DOM
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const chrome=(await import('node:child_process')).execSync('command -v google-chrome || true',{encoding:'utf8'}).trim();
+          const b=await chromium.launch(chrome?{executablePath:chrome,headless:true,args:['--no-sandbox']}:{headless:true,args:['--no-sandbox']});
+          for(const [device,w,h] of [['PC',1440,900],['MOBILE',390,844]]){
+            const p=await b.newPage({viewport:{width:w,height:h}});
+            await p.goto('https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/?b46pm=predictions',{waitUntil:'domcontentloaded',timeout:45000});
+            await p.locator('#b46-prematch-panel .b46pm-list').waitFor({state:'attached',timeout:35000});
+            await p.waitForTimeout(700);
+            const data=await p.evaluate(()=>{
+              const list=document.querySelector('#b46-prematch-panel .b46pm-list');
+              return {listHTML:list?.outerHTML.slice(0,14000),
+                children:[...list.children].slice(0,18).map(e=>({tag:e.tagName,cls:e.className,id:e.id,text:e.textContent.slice(0,145),data:{...e.dataset},
+                childClasses:[...e.children].map(c=>c.className).slice(0,8)})),
+                count:list?.children.length,scrollW:document.documentElement.scrollWidth,
+                viewportW:document.documentElement.clientWidth};
+            });
+            console.log('B46_PREDICTIONS_DOM_'+device+' '+JSON.stringify(data).slice(0,28000));
+            await p.close();
+          }
+          await b.close();
+          JS
