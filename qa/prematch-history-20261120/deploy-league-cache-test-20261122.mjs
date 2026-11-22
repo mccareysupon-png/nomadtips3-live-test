@@ -51,7 +51,7 @@ const activeModule=name=>{
 };
 const baselineMain=execFileSync('git',['show',baseline+':'+dir+'prematch-only-worker.mjs'],{encoding:'utf8'});
 assert.equal(activeModule('prematch-only-worker.mjs'),baselineMain,'ACTIVE_PREMATCH_MAIN_DRIFT_ABORT');
-const baselineHub=execFileSync('git',['show','fix/ball46-prematch-hub-league-name-20261122:'+dir+'normal-hub-monitor.mjs'],{encoding:'utf8'});
+const baselineHub=execFileSync('git',['show','ee006ebbc7ed1bd2bb082154958a165979873ebc:'+dir+'normal-hub-monitor.mjs'],{encoding:'utf8'});
 assert.equal(activeModule('normal-hub-monitor.mjs'),baselineHub,'HUB_LEAGUE_MODULE_DRIFT_ABORT');
 assert(!active.modules.some(x=>x.name==='league-name-cache.mjs'),'CACHE_MODULE_ALREADY_INSTALLED_ABORT');
 const settings=await cf(root+'/scripts/'+testWorker+'/settings');
