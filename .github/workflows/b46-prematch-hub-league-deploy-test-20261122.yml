@@ -1,0 +1,33 @@
+name: BALL46 Pre-Match League Name TEST Worker Single Module Deploy
+on:
+  push:
+    branches:
+      - fix/ball46-prematch-hub-league-name-20261122
+    paths:
+      - .github/workflows/b46-prematch-hub-league-deploy-test-20261122.yml
+permissions:
+  contents: read
+concurrency:
+  group: ball46-prematch-only-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy-one-module-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Regressions including HCR V1 before deploy
+        run: |
+          node --check qa/prematch-history-20261120/deploy-league-name-only-20261122.mjs
+          node --test qa/prematch-history-20261120/normal-hub-monitor.test.mjs qa/prematch-history-20261120/history-cargo-registry.test.mjs qa/prematch-history-20261120/history-five-rounds.test.mjs qa/prematch-history-20261120/hub-upcoming-feed.test.mjs qa/prematch-history-20261120/stored-prematch-feed.test.mjs
+      - name: Deploy single module and verify HCR + Production isolation
+        run: |
+          node qa/prematch-history-20261120/deploy-league-name-only-20261122.mjs
