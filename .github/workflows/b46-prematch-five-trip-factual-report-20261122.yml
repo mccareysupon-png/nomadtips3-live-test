@@ -1,0 +1,39 @@
+name: BALL46 PreMatch five trips actual manifest report READ ONLY
+on:
+  push:
+    branches:
+      - fix/ball46-prematch-cargo-league-capture-20261122
+    paths:
+      - .github/workflows/b46-prematch-five-trip-factual-report-20261122.yml
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Read authoritative HCR inventory and full cargo manifests without mutation
+        run: |
+          node --input-type=module <<'JS'
+          import crypto from 'node:crypto';
+          import assert from 'node:assert/strict';
+          const token=process.env.CLOUDFLARE_API_TOKEN;assert(token,'TOKEN_MISSING');
+          const host='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          const auth='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          async function get(path){
+            const r=await fetch(host+path,{headers:{authorization:auth},cache:'no-store',signal:AbortSignal.timeout(20000)});
+            assert(r.ok,path+' HTTP '+r.status);return r.json();
+          }
+          const [hcr,cargo]=await Promise.all([get('/history-cargo-registry?detail=1'),get('/history-cargo-full')]);
+          const records=(hcr.rounds||[]).map(x=>({
+           day:x.businessDay,round:x.roundNo,attemptedAt:x.attemptedAt,state:x.state,
+           source:x.source,received:x.received,imported:x.imported,providerCalls:x.providerCalls,
+           manifest:x.manifestStatus,fixtureIdsAvailable:Array.isArray(x.fixtureIds),
+           fixtureIds:x.fixtureIds||null,items:x.items?.length||0,note:x.note||null
+          })).sort((a,b)=>a.day.localeCompare(b.day)||a.round-b.round);
+          console.log('BALL46_HCR_FIVE_TRIPS_ACTUAL '+JSON.stringify({historicFT:hcr.inventory.finishedFixtures,rounds:records,
+            fullCargo:{roundsTracked:cargo.roundsTracked,fixtureRecords:cargo.fixtureRecords,
+              perRound:cargo.rounds.map(x=>({day:x.businessDay,round:x.roundNo,stored:x.stored,fixtureFields:x.fixtureFields,nestedFields:x.nestedFields}))}}));
+          JS
