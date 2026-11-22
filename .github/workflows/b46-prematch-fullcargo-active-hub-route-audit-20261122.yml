@@ -1,0 +1,65 @@
+name: BALL46 Full cargo active TEST route and HUB raw carrier audit READ ONLY
+on:
+  push:
+    branches:
+      - fix/ball46-prematch-cargo-league-capture-20261122
+    paths:
+      - .github/workflows/b46-prematch-fullcargo-active-hub-route-audit-20261122.yml
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Inspect active deployments and HUB routing without upstream API requests
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,acct=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&acct);
+          const api='https://api.cloudflare.com/client/v4/accounts/'+acct+'/workers';
+          async function cf(endpoint){
+            const r=await fetch(endpoint,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(30000)});
+            const j=await r.json();assert(r.ok&&j.success,'CF_READ_FAILED');return j.result;
+          }
+          const names=['ball46-prematch-only-test-20261120','nomadtips3-5usd-hub-343'];
+          const result={};
+          for(const worker of names){
+            const d=await cf(api+'/scripts/'+worker+'/deployments?per_page=1');
+            const ver=d.deployments?.[0]?.versions?.[0]?.version_id;
+            const active=await cf(api+'/workers/'+worker+'/versions/'+ver+'?include=modules');
+            result[worker]={version:ver,main:active.main_module,modules:active.modules.map(m=>m.name)};
+            const target=worker.startsWith('ball46-')?['prematch-only-worker.mjs','history-cargo-full-payload.mjs']:
+              ['index-viewer-safe.js','history-gateway.mjs'];
+            for(const n of target){
+              const m=active.modules.find(x=>x.name===n);
+              if(!m)continue;
+              const source=Buffer.from(m.content_base64,'base64').toString('utf8');
+              const snippets=[];
+              const needles=worker.startsWith('ball46-')?["path==='/history-cargo-full'","historyFullCargoReport","storeHistoryRoundFullCargo"]:
+                ['function normalize','return { fixtureId','/snapshot','cacheOnly','raw','history'];
+              for(const needle of needles){
+                const at=source.indexOf(needle);
+                snippets.push({key:needle,exists:at>=0,
+                  excerpt:at<0?'':source.slice(Math.max(0,at-110),at+230).replace(/(Bearer\s+|key=|api_key=|token=)[^\s"']+/ig,'$1[REDACTED]')});
+              }
+              result[worker][n]={size:source.length,snippets};
+            }
+          }
+          const host='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          const auth='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const paths=['/health','/history-cargo-registry?detail=0','/history-cargo-full'];
+          const routes={};
+          for(const p of paths){
+            const r=await fetch(host+p,{headers:{authorization:auth},cache:'no-store',signal:AbortSignal.timeout(25000)});
+            const body=await r.text();
+            let json;try{json=JSON.parse(body)}catch{}
+            routes[p]={status:r.status,length:body.length,objectKeys:json?Object.keys(json):[],code:json?.registry?.code||json?.registry||null,shortBody:r.ok?null:body.slice(0,90)};
+          }
+          console.log('B46_FULL_CARGO_ACTIVE_ROUTE_AUDIT '+JSON.stringify({result,routes}));
+          JS
