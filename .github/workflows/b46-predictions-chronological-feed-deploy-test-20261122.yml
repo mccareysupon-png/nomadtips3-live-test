@@ -1,0 +1,106 @@
+name: BALL46 TEST Predictions chronological live-first timeline
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-predictions-chronological-feed-deploy-test-20261122.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-premium-match-colors-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy-and-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Validate exact chronology source patch and guarded deploy
+        run: |
+          node --check qa/prematch-history-20261120/patch-predictions-chronological-feed-test-20261122.mjs
+          node --check qa/prematch-history-20261120/deploy-predictions-chronological-feed-test-20261122.mjs
+      - name: Deploy TEST frontend only and test synthetic timeline before write
+        run: node qa/prematch-history-20261120/deploy-predictions-chronological-feed-test-20261122.mjs
+      - name: Install Chromium for desktop and mobile checks
+        run: |
+          npm install --no-save playwright@1.55.0
+          if ! command -v google-chrome >/dev/null 2>&1; then npx playwright install chromium; fi
+      - name: Validate chronological page, league labels, original market cards
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const url='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          const data=await fetch(url+'/__b46_prematch_data',{cache:'no-store',signal:AbortSignal.timeout(30000)}).then(r=>r.json());
+          assert.equal(data.testLedger?.mode,'TEST_ONLY');
+          const published=[...(data.allLedger?.rows??[]),...(data.ouLedger?.rows??[])];
+          const expectedFixtureIds=new Set(published.map(x=>String(x.fixture_id)));
+          const chrome=(await import('node:child_process')).execSync('command -v google-chrome || true',{encoding:'utf8'}).trim();
+          const browser=await chromium.launch(chrome?{executablePath:chrome,headless:true,args:['--no-sandbox']}:{headless:true,args:['--no-sandbox']});
+          const report=[];
+          for(const [device,w,h] of [['pc',1440,900],['mobile',390,844]]){
+            const page=await browser.newPage({viewport:{width:w,height:h},timezoneId:'Asia/Bangkok'});
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await page.goto(url+'/?b46pm=predictions&utm_source=chatgpt.com',{waitUntil:'domcontentloaded',timeout:45000});
+            await page.locator('#b46-prematch-panel .b46pm-list [data-b46-pm-unified-fixture]').first().waitFor({state:'attached',timeout:40000});
+            await page.waitForTimeout(650);
+            const actual=await page.evaluate(()=>{
+              const list=document.querySelector('#b46-prematch-panel .b46pm-list');
+              const nodes=[...list.children];
+              const sections=[],fixtures=[],inlineLeagues=[];
+              let current=null;
+              for(const x of nodes){
+                if(x.classList.contains('b46pm-chrono-section-header')||x.classList.contains('b46pm-chrono-section-compact')){
+                  const label=(x.querySelector('.b46pm-league-name')?.textContent??x.querySelector('strong')?.textContent??'').trim();
+                  sections.push(label);
+                  current=label;
+                }
+                if(x.matches('[data-b46-pm-unified-fixture]'))
+                  fixtures.push({fixture:String(x.dataset.b46PmUnifiedFixture),section:current,
+                    cls:x.className,markets:x.dataset.b46PmCombinedMarkets??'',text:x.textContent.slice(0,250)});
+                if(x.classList.contains('b46pm-chrono-inline-league'))
+                  inlineLeagues.push({text:x.textContent,display:getComputedStyle(x).display});
+              }
+              return {sections,fixtures,inlineLeagues,childCount:nodes.length,
+                oldLeagueHeaderCount:nodes.filter(x=>x.classList.contains('b46pm-native-league-head')&&!x.classList.contains('b46pm-chrono-section-header')).length,
+                overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,
+                routes:[...document.querySelectorAll('aside.left-rail [data-b46-prematch-route]')].map(x=>x.dataset.b46PrematchRoute)};
+            });
+            const order={ 'LIVE NOW':0,UPCOMING:1,'AWAITING UPDATE':2,FINISHED:3};
+            assert(actual.sections.length>0,'NO_SECTION_HEADERS_'+device);
+            assert(actual.sections.every(x=>Object.hasOwn(order,x)),'UNEXPECTED_SECTION_LABEL_'+device);
+            assert(actual.sections.every((x,i)=>!i||order[actual.sections[i-1]]<order[x]),
+              'SECTION_ORDER_NOT_CHRONOLOGICAL_'+device);
+            assert.equal(actual.oldLeagueHeaderCount,0,'LEAGUE_BANNERS_STILL_GROUPED_'+device);
+            const ids=actual.fixtures.map(x=>x.fixture);
+            assert.equal(new Set(ids).size,ids.length,'DUPLICATE_FIXTURE_CARDS_'+device);
+            for(const id of expectedFixtureIds)assert(ids.includes(id),'MISSING_ISSUED_FIXTURE_'+device+'_'+id);
+            assert.equal(ids.length,expectedFixtureIds.size,'EXTRA_PREDICTION_CARD_'+device);
+            assert(actual.fixtures.every(x=>Object.hasOwn(order,x.section)),'CARD_WITHOUT_SECTION_'+device);
+            assert(actual.overflow<=3,'HORIZONTAL_OVERFLOW_'+device+'_'+actual.overflow);
+            assert.deepEqual(actual.routes,['predictions','all','1x2','ou','btts'],'MARKETS_CHANGED_'+device);
+            if(device==='pc')assert(actual.inlineLeagues.length>0&&actual.inlineLeagues.every(x=>x.display!=='none'),
+              'PC_LEAGUE_IDENTITY_MISSING');
+            else assert(actual.inlineLeagues.every(x=>x.display==='none'),'MOBILE_REDUNDANT_LEAGUE_BADGE');
+            await page.goto(url+'/?b46pm=ou',{waitUntil:'domcontentloaded',timeout:45000});
+            await page.locator('#b46-prematch-panel .b46pm-performance-subtitle').waitFor({state:'attached',timeout:30000});
+            assert.equal((await page.locator('#b46-prematch-panel .b46pm-performance-subtitle').textContent()).trim(),
+             'Pre-Match · Over/Under (2.5)');
+            await page.goto(url+'/?b46pm=all',{waitUntil:'domcontentloaded',timeout:45000});
+            await page.locator('#b46-prematch-panel .b46pm-performance-subtitle').waitFor({state:'attached',timeout:30000});
+            assert.equal((await page.locator('#b46-prematch-panel .b46pm-performance-subtitle').textContent()).trim(),
+             'Pre-Match · Total (1X2)');
+            assert(!errors.length,'BROWSER_JS_ERROR_'+device+' '+errors.join(' | '));
+            report.push({device,uniqueFixtures:ids.length,sections:actual.sections,headerCount:actual.sections.length,
+              leagueCaptions:actual.inlineLeagues.length,oldLeagueHeaders:actual.oldLeagueHeaderCount,
+              overflow:actual.overflow,jsErrors:0});
+            await page.close();
+          }
+          await browser.close();
+          console.log('B46_PREDICTIONS_CHRONO_BROWSER_PASS '+JSON.stringify({
+            report,originalIssuedRows:published.length,uniqueIssuedFixtures:expectedFixtureIds.size,
+            originalMarketsPreserved:true,productionUntouched:true,providerCallsAdded:0}));
+          JS
