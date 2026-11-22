@@ -1,0 +1,96 @@
+name: BALL46 BTTS live TEST Worker operational price to bot test
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-operational-test-worker-live-run-20261122.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-btts-quote-pickup-test
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Prove deployed odds module, then run exactly one capped BTTS quote pickup and audit existing ledgers
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,acc=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&acc,'MISSING_TEST_SECRETS');
+          const worker='ball46-prematch-only-test-20261120';
+          const base='https://'+worker+'.mccarey-supon.workers.dev';
+          const bearer='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const api='https://api.cloudflare.com/client/v4/accounts/'+acc+'/workers';
+          async function cf(p){
+            const r=await fetch(api+p,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(25000)});
+            const d=await r.json();
+            assert(r.ok&&d.success,'CLOUDFLARE_READ_'+r.status+'_'+JSON.stringify(d.errors??[]));
+            return d.result;
+          }
+          async function version(name){
+            const d=await cf('/scripts/'+name+'/deployments?per_page=1');
+            return d.deployments?.[0]?.versions?.[0]?.version_id;
+          }
+          async function owner(path,method='GET'){
+            const r=await fetch(base+path,{method,headers:{authorization:bearer},cache:'no-store',signal:AbortSignal.timeout(95000)});
+            const text=await r.text();
+            assert(r.ok,'OWNER_'+r.status+'_'+path+'_'+text.slice(0,180));
+            return JSON.parse(text);
+          }
+          const expected='7628a253-951d-42be-ad6e-5bb4da4c0cb0';
+          const actual=await version(worker);
+          assert.equal(actual,expected,'TEST_BACKEND_DRIFT_NO_RUN');
+          const active=await cf('/workers/'+worker+'/versions/'+actual+'?include=modules');
+          const main=active.modules.find(m=>m.name==='prematch-only-worker.mjs');
+          const odds=active.modules.find(m=>m.name==='btts-priced-fixture-pickup-test.mjs');
+          assert(main?.content_base64&&odds?.content_base64,'PRICE_BRIDGE_MODULE_MISSING');
+          const mainBody=Buffer.from(main.content_base64,'base64').toString('utf8');
+          assert(mainBody.includes('btts-price-pickup-tick')&&mainBody.includes('BTTS_BET365_PRICE_PICKUP')&&mainBody.includes("event.cron!=='*/15 * * * *"),'CRON_PRICE_BRIDGE_NOT_ACTIVE');
+          const otherWorkers=['ball46-production','nomadtips3-engine-343','nomadtips3-5usd-hub-343','ball46-premium-match-colors-test-20261120'];
+          const versionsBefore=Object.fromEntries(await Promise.all(otherWorkers.map(async w=>[w,await version(w)])));
+          const [before,beforeShadow,pre1x2,preHcr,preBulk,preAudit,preStats]=await Promise.all([
+            owner('/btts-price-pickup-state'),owner('/btts-shadow'),owner('/test-ledger'),
+            owner('/history-cargo-registry?detail=0'),owner('/btts-bulk-v2-state'),
+            owner('/prematch-stats-registry-audit-test'),owner('/prematch-stats-registry-test?days=7')
+          ]);
+          assert.equal(preAudit.verified,true,'STATS_BAD_BEFORE');
+          assert.equal(preBulk.config.mode,'ACTIVE','HISTORY_TRUCK_NOT_ACTIVE');
+          assert.equal(preBulk.transport.cap.maxDailyProviderCalls,5,'HISTORY_CAP_CHANGED');
+          assert.equal(before.transport.cap.maxPerLondonBusinessDay,12);
+          assert.equal(before.transport.cap.maxPerTick,2);
+          const oldOneX2=crypto.createHash('sha256').update(JSON.stringify({rows:pre1x2.rows,stats:pre1x2.stats})).digest('hex');
+          console.log('B46_BTTS_OPERATIONAL_TEST_BEFORE '+JSON.stringify({worker,version:actual,cron:'*/15 * * * *',
+            testOnly:true,pricePickup:before.transport,
+            screen:beforeShadow.totals,oneX2:pre1x2.rows.length,
+            historyRoundsUsed:preBulk.transport.roundsUsed,historyCap:5,
+            statsAudit:true,productionWrites:0}));
+          const ran=await owner('/btts-price-pickup-tick','POST');
+          assert(Number.isSafeInteger(ran.providerCalls)&&ran.providerCalls>=0&&ran.providerCalls<=2,'PRICE_CALL_CAP_EXCEEDED');
+          const [after,shadow,after1x2,afterHcr,afterBulk,afterAudit,afterStats]=await Promise.all([
+            owner('/btts-price-pickup-state'),owner('/btts-shadow'),owner('/test-ledger'),
+            owner('/history-cargo-registry?detail=0'),owner('/btts-bulk-v2-state'),
+            owner('/prematch-stats-registry-audit-test'),owner('/prematch-stats-registry-test?days=7')
+          ]);
+          assert.equal(afterAudit.verified,true,'STATS_BAD_AFTER');
+          assert.equal(after.transport.calls<=12,true,'DAILY_BTTS_PRICE_CAP');
+          assert.equal(crypto.createHash('sha256').update(JSON.stringify({rows:after1x2.rows,stats:after1x2.stats})).digest('hex'),oldOneX2,'1X2_LEDGER_CHANGED');
+          assert.equal(afterHcr.inventory.finishedFixtures,preHcr.inventory.finishedFixtures,'HCR_CHANGED');
+          assert.equal(afterBulk.transport.cap.maxDailyProviderCalls,5,'BULK_CAP_CHANGED');
+          assert.equal(afterBulk.config.mode,'ACTIVE','BULK_NOT_ACTIVE_AFTER');
+          assert.equal(await version(worker),actual,'TEST_BACKEND_CHANGED_DURING_RUN');
+          const versionsAfter=Object.fromEntries(await Promise.all(otherWorkers.map(async w=>[w,await version(w)])));
+          assert.deepEqual(versionsAfter,versionsBefore,'PROTECTED_WORKER_VERSION_CHANGED');
+          console.log('B46_BTTS_OPERATIONAL_TEST_PASS '+JSON.stringify({testWorker:worker,activeVersion:actual,
+            state:ran.state,paidBet365Calls:ran.providerCalls,
+            selected:ran.selected??[],priceTransport:after.transport,
+            beforeBtts:beforeShadow.totals,afterBtts:shadow.totals,
+            statsMarkets:afterStats.markets,
+            scheduledCronWired:true,historyTruckRunning:true,historyFiveRoundCap:5,
+            oneX2Unchanged:true,HCRUnchanged:true,productionUnchanged:true,
+            noRedundantDeploy:true}));
+          JS
