@@ -1,0 +1,83 @@
+name: BALL46 BTTS qualified-only cards PC mobile read-only QA after deployed
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-qualified-only-real-browser-verify-only-20261122.yml]
+permissions: {contents: read}
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Prepare headless Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          npx playwright install chromium
+      - name: Verify real deployed BTTS only actual issued picks and 1X2 still displays original picks
+        run: |
+          mkdir -p qa-artifacts
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/';
+          const data=await fetch(base+'__b46_prematch_data',{cache:'no-store'}).then(r=>r.json());
+          assert.equal(data.bttsLedger.mode,'TEST_ONLY');
+          const bttsIssued=data.bttsLedger.rows.length;
+          const oneX2Issued=data.testLedger.rows.length;
+          const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+          for(const device of [{id:'pc',w:1440,h:900,mobile:false},
+            {id:'mobile',w:390,h:844,mobile:true}]){
+            const ctx=await browser.newContext({viewport:{width:device.w,height:device.h},
+              isMobile:device.mobile,hasTouch:device.mobile,deviceScaleFactor:1});
+            const page=await ctx.newPage();
+            const jsErrors=[];
+            page.on('pageerror',e=>jsErrors.push(String(e.message)));
+            for(const market of ['btts','1x2']){
+              const r=await page.goto(base+'?b46pm='+market,{waitUntil:'domcontentloaded',timeout:45000});
+              assert.equal(r.status(),200);
+              await page.waitForSelector('#b46-prematch-panel',{state:'visible',timeout:40000});
+              await page.waitForSelector('.b46pm-performance-subtitle',{state:'visible',timeout:30000});
+              await page.waitForTimeout(1500);
+              const state=await page.evaluate(()=>{
+                const panel=document.querySelector('#b46-prematch-panel');
+                return {visible:panel.innerText,
+                  unqualified:panel.querySelectorAll('#b46pm-btts-candidates, .b46pm-btts-screen-card, #b46pm-btts-readiness').length,
+                  docWidth:document.documentElement.scrollWidth,windowWidth:innerWidth};
+              });
+              const summary={device:device.id,market,issueCount:market==='btts'?bttsIssued:oneX2Issued,
+                unqualifiedDOMElements:state.unqualified,
+                visibleText:state.visible.slice(-450),
+                jsErrors,overflow:state.docWidth-state.windowWidth};
+              console.log('B46_BTTS_QUALIFIED_ONLY_REAL_BROWSER '+JSON.stringify(summary));
+              assert.equal(state.unqualified,0,'SCREENING_CARDS_SHOULD_NOT_SHOW');
+              assert(!/BET365\s*·\s*(?:NOT OFFERED|PRICE NEEDED)/i.test(state.visible),
+                'SCREENING_STATUS_CARDS_STILL_VISIBLE');
+              assert(state.visible.includes('Prediction History'),'PREDICTION_HISTORY_MISSING');
+              if(market==='btts'){
+                assert(state.visible.includes(String(bttsIssued)+' matches'),'INCORRECT_BTTS_ISSUED_COUNT');
+                if(bttsIssued===0)
+                  assert(state.visible.includes('No qualified BTTS predictions yet.'),'QUALIFIED_ONLY_EMPTY_TEXT_MISSING');
+              }else{
+                assert(oneX2Issued>0,'EXPECTED_EXISTING_1X2_TEST_PICKS');
+                assert(state.visible.includes(String(oneX2Issued)+' matches'),'1X2_PICKS_NOT_PRESENT');
+              }
+              assert.equal(jsErrors.length,0,'UNHANDLED_JS_ERRORS');
+              assert(state.docWidth<=state.windowWidth+2,'HORIZONTAL_OVERFLOW');
+              await page.screenshot({path:'qa-artifacts/qualified-only-'+device.id+'-'+market+'.png',fullPage:false});
+            }
+            await ctx.close();
+          }
+          await browser.close();
+          console.log('B46_BTTS_QUALIFIED_ONLY_PC_MOBILE_FINAL_PASS '+JSON.stringify({
+            bttsIssued,oneX2Issued,allUnqualifiedHidden:true,readonly:true,productionWrites:0}));
+          JS
+      - name: Preserve visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b46-btts-qualified-only-pc-mobile-qa
+          path: qa-artifacts/
+          retention-days: 14
