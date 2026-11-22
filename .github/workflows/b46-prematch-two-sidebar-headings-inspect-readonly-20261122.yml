@@ -1,0 +1,49 @@
+name: BALL46 TEST sidebar headings readonly inspect
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-prematch-two-sidebar-headings-inspect-readonly-20261122.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Read active TEST worker source and inspect exact heading contexts
+        run: |
+          node --input-type=module <<'JS'
+          const token=process.env.CLOUDFLARE_API_TOKEN, account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          if(!token||!account)throw Error('MISSING_READ_ACCESS');
+          const front='ball46-premium-match-colors-test-20261120';
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          async function cf(path){
+            const r=await fetch(root+path,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(45000)});
+            const d=await r.json();if(!r.ok||!d.success)throw Error('FAILED_TO_READ_WORKER '+r.status);
+            return d.result;
+          }
+          const deploy=await cf('/scripts/'+front+'/deployments?per_page=1');
+          const version=deploy.deployments?.[0]?.versions?.[0]?.version_id;
+          const active=await cf('/workers/'+front+'/versions/'+version+'?include=modules');
+          const source=Buffer.from(active.modules[0].content_base64,'base64').toString('utf8');
+          const m=source.match(/var prematchClientScript = ("(?:\\.|[^"\\])*");/);
+          if(!m)throw Error('MISSING_EMBEDDED_CLIENT');
+          const client=JSON.parse(m[1]);
+          const markers=['PRE-MATCH · TEST','PRE-MATCH','STATISTICS','Statistics','Live Statistics','LIVE STATISTICS','b46pm-stats-navigation','stat-1x2','left-rail'];
+          const scan=(data,needle)=>{
+            const out=[];let p=0;
+            while((p=data.indexOf(needle,p))>=0){
+              out.push({at:p,near:data.slice(Math.max(0,p-230),Math.min(data.length,p+230)).replace(/\n/g,' ')});
+              p+=needle.length;if(out.length>=12)break;
+            }
+            return out;
+          };
+          for(const [name,data] of [['WORKER',source],['CLIENT',client]]){
+            console.log('HEADINGS_SCAN_'+name+' '+JSON.stringify(Object.fromEntries(markers.map(x=>[x,scan(data,x)]))));
+          }
+          console.log('INSPECT_ONLY '+JSON.stringify({version,workerBytes:source.length,clientBytes:client.length,moduleCount:active.modules.length}));
+          JS
