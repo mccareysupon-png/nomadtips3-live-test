@@ -22,7 +22,13 @@ export function mergeStoredPrematch(existing,incoming,now){
   // The provider can revise kickoff for the SAME fixture/team IDs. That is
   // not a new selection and does not alter the immutable pick ledger.
   if(prev&&prev.kickoff_ts!==n.kickoff_ts)stats.rescheduled++;
+ // Do not erase a previously verified league name when the new cached
+ // update carries the SAME league ID but an empty / omitted name.
  if(prev?.league&&!n.league)n.league=prev.league;
+ else if(prev?.league&&n.league&&prev.league.id===n.league.id&&
+         typeof prev.league.name==='string'&&prev.league.name.trim()&&
+         !String(n.league.name??'').trim())
+  n.league={...n.league,name:prev.league.name};
  if(prev?.storedBet365&&(!n.storedBet365||prev.storedBet365.observed>n.storedBet365.observed))n.storedBet365=prev.storedBet365;
  if(prev?.storedHub1x2&&(!n.storedHub1x2||prev.storedHub1x2.observed>n.storedHub1x2.observed))n.storedHub1x2=prev.storedHub1x2;
  map.set(n.id,n);stats.accepted++}
