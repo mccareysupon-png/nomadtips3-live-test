@@ -12,7 +12,7 @@ function normalize(f,now){
  if(rawHub?.bookmaker==='5usd-hub'&&Number.isSafeInteger(rawHub.observed)&&rawHub.observed>0&&rawHub.observed<=now&&rawHub.observed<f.kickoff_ts&&['1X2_HOME','1X2_DRAW','1X2_AWAY'].every(k=>typeof rawHub.prices?.[k]==='number'&&Number.isFinite(rawHub.prices[k])&&rawHub.prices[k]>1)){
   hub={bookmaker:'5usd-hub',observed:rawHub.observed,source:'NORMAL_HUB_CACHED_ODDS',prices:{'1X2_HOME':rawHub.prices['1X2_HOME'],'1X2_DRAW':rawHub.prices['1X2_DRAW'],'1X2_AWAY':rawHub.prices['1X2_AWAY']}};
  }
- return {id:String(f.id),status:'scheduled',kickoff_ts:f.kickoff_ts,teams:{home:{id:Number(f.teams.home.id),name:f.teams.home.name},away:{id:Number(f.teams.away.id),name:f.teams.away.name}},...(odds?{storedBet365:odds}:{}),...(hub?{storedHub1x2:hub}:{})};
+ return {id:String(f.id),status:'scheduled',kickoff_ts:f.kickoff_ts,...(id(f.league?.id)?{league:{id:Number(f.league.id),name:String(f.league.name||'')}}:{}),teams:{home:{id:Number(f.teams.home.id),name:f.teams.home.name},away:{id:Number(f.teams.away.id),name:f.teams.away.name}},...(odds?{storedBet365:odds}:{}),...(hub?{storedHub1x2:hub}:{})};
 }
 export function mergeStoredPrematch(existing,incoming,now){
  const map=new Map(),stats={received:incoming.length,accepted:0,rejected:0,conflicts:0,rescheduled:0};
