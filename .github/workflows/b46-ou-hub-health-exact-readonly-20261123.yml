@@ -1,4 +1,4 @@
-name: BALL46 O/U live HUB health gates READONLY 2026-11-23
+name: BALL46 O/U HUB quota public state READONLY 2026-11-23
 on:
   push:
     branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
@@ -21,6 +21,6 @@ jobs:
             ok:b?.ok,stale:b?.stale,ageMs:b?.ageMs,lastError:b?.lastError,retryAfterSec:b?.retryAfterSec,
             accountLimitPerMinute:b?.accountLimitPerMinute,
             estimatedBulkRequestsPerMinute:b?.estimatedBulkRequestsPerMinute,
-            refreshMs:b?.refreshMs,control:b?.control,
+            refreshMs:b?.refreshMs,control:b?.control,bulkSpeedV3:b?.bulkSpeedV3,bulkSpeedV3Ready:b?.bulkSpeedV3Ready,
             keys:b&&typeof b==='object'?Object.keys(b):[]}));
           JS
