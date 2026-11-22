@@ -1,0 +1,54 @@
+name: BALL46 O/U TEST backend post-deploy verification READONLY
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-backend-postdeploy-verify-20261122.yml]
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify active version and owner routes, then idempotent first issue
+        run: |
+          node --input-type=module <<'JS'
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,a=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const w='ball46-prematch-only-test-20261120',api='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers';
+          const cf=async p=>{const r=await fetch(api+p,{headers:{authorization:'Bearer '+token}}),j=await r.json();if(!j.success)throw Error('CF_'+p);return j.result};
+          const v=(await cf('/scripts/'+w+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+          const active=await cf('/workers/'+w+'/versions/'+v+'?include=modules');
+          const main=Buffer.from(active.modules.find(x=>x.name===active.main_module).content_base64,'base64').toString();
+          console.log('OU_POSTDEPLOY_SOURCE '+JSON.stringify({version:v,modules:active.modules.length,ouModule:active.modules.some(x=>x.name==='ou-math-v1-test.mjs'),ouCycle:main.includes("path==='/ou-cycle-test'"),ouPreview:main.includes('ouLedger:ouLedgerNow'),ouMonitor:main.includes('ou:{checked:trial.counts.checked')}));
+          if(!active.modules.some(x=>x.name==='ou-math-v1-test.mjs')||!main.includes("path==='/ou-cycle-test'"))throw Error('MODULE_NOT_DEPLOYED');
+          const host='https://'+w+'.mccarey-supon.workers.dev';
+          const key=crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const read=async (p,method='GET')=>{
+            const r=await fetch(host+p,{method,headers:{authorization:'Bearer '+key},cache:'no-store',signal:AbortSignal.timeout(30000)});
+            let payload;try{payload=await r.json()}catch{payload=null}
+            return {status:r.status,body:payload};
+          };
+          for(let i=0;i<20;i++){
+            const state=await read('/ou-state-test');
+            if(state.status===200){console.log('OU_POSTDEPLOY_STATE '+JSON.stringify(state.body));break}
+            console.log('OU_POSTDEPLOY_WAIT '+JSON.stringify({try:i+1,status:state.status}));
+            if(i===19)throw Error('OU_OWNER_STATE_UNAVAILABLE');
+            await new Promise(r=>setTimeout(r,1500));
+          }
+          const back=await read('/ou-backtest-test?limit=350');
+          console.log('OU_POSTDEPLOY_BACKTEST '+JSON.stringify(back));
+          if(back.status!==200)throw Error('OU_BACKTEST_FAILED_'+back.status);
+          const cycle=await read('/ou-cycle-test','POST');
+          console.log('OU_POSTDEPLOY_CYCLE '+JSON.stringify(cycle));
+          if(cycle.status!==200||cycle.body?.providerCalls!==0)throw Error('OU_TEST_CYCLE_FAILED_'+cycle.status);
+          const repeat=await read('/ou-cycle-test','POST');
+          if(repeat.status!==200||repeat.body.recorded.added!==0||repeat.body.sync.processed!==0)throw Error('NON_IDEMPOTENT_OU');
+          const preview=await read('/preview-data');
+          if(preview.status!==200||preview.body?.ouLedger?.mode!=='TEST_ONLY')throw Error('OU_NOT_IN_PREVIEW');
+          console.log('OU_BACKEND_DEPLOY_QA_PASS '+JSON.stringify({version:v,backtest:back.body.stats,cycle:cycle.body,repeat:{added:repeat.body.recorded.added,events:repeat.body.sync.processed},previewRows:preview.body.ouLedger.rows.length,providerCalls:0}));
+          JS
