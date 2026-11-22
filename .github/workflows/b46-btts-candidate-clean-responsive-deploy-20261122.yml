@@ -1,0 +1,27 @@
+name: BALL46 BTTS clean responsive candidate layout TEST ONLY deploy
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-candidate-clean-responsive-deploy-20261122.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-premium-match-colors-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Validate only BTTS layout patch and existing ledger/model contracts
+        run: |
+          node --check qa/prematch-history-20261120/patch-btts-candidate-layout-clean-v2-20261122.mjs
+          node --check qa/prematch-history-20261120/deploy-btts-candidate-layout-clean-v2-test-20261122.mjs
+          node --test qa/prematch-history-20261120/btts-ultra-shadow.test.mjs qa/prematch-history-20261120/btts-history-private.test.mjs qa/prematch-history-20261120/btts-bulk-truck-v2.test.mjs
+      - name: Deploy BTTS-only card geometry to existing TEST UI; no provider or 1X2 changes
+        run: node qa/prematch-history-20261120/deploy-btts-candidate-layout-clean-v2-test-20261122.mjs
