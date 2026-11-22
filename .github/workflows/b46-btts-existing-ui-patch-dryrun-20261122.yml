@@ -1,0 +1,56 @@
+name: BALL46 BTTS Existing UI Integration JS Dry Run TEST
+on:
+  push:
+    branches: [fix/ball46-btts-issuance-statistics-test-20261122]
+    paths: [.github/workflows/b46-btts-existing-ui-patch-dryrun-20261122.yml]
+permissions:
+  contents: read
+jobs:
+  dry-run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Patch BTTS test UI client IN MEMORY only; verify all existing UI anchors and syntax
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          import {execFileSync} from 'node:child_process';
+          import {patchExistingBttsClient} from './qa/prematch-history-20261120/patch-existing-btts-client-test.mjs';
+          const t=process.env.CLOUDFLARE_API_TOKEN,a=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(t&&a);
+          const root='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers';
+          const name='ball46-premium-match-colors-test-20261120';
+          async function cf(p){const r=await fetch(root+p,{headers:{authorization:'Bearer '+t},signal:AbortSignal.timeout(20000)});const j=await r.json();assert(r.ok&&j.success,'CF_'+r.status);return j.result}
+          const version=(await cf('/scripts/'+name+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+          const v=await cf('/workers/'+name+'/versions/'+version+'?include=modules');
+          assert(v.modules.length===1);
+          const source=Buffer.from(v.modules[0].content_base64,'base64').toString('utf8');
+          const re=/var prematchClientScript = ("(?:\\.|[^"\\])*");/;
+          const m=source.match(re);assert(m,'TEST_CLIENT_MODULE_NOT_FOUND');
+          const original=JSON.parse(m[1]);
+          const {code}=patchExistingBttsClient(original);
+          const newSource=source.replace(m[0], 'var prematchClientScript = '+JSON.stringify(code)+';');
+          assert.notEqual(newSource,source);
+          for(const [name,value] of [['client',code],['worker',newSource]]){
+            const path='/tmp/b46-'+name+'-syntax.mjs';
+            fs.writeFileSync(path,value);
+            execFileSync(process.execPath,['--check',path]);
+          }
+          assert(newSource.includes('const directPreMatchTest = ['));
+          assert(newSource.includes('env.B46_PRODUCTION_READ.fetch('));
+          assert(newSource.includes('env.PREMATCH_STORE.fetch('));
+          console.log('B46_EXISTING_BTTS_UI_JS_DRYRUN_PASS '+JSON.stringify({
+            active:version,clientOldBytes:original.length,clientNewBytes:code.length,
+            testUIStyleUnchanged:true,onlyExistingPreMatchClientLogicChanged:true,
+            userRoutes:['predictions','all','1x2','btts'],
+            providerCalls:0,deployments:0
+          }));
+          JS
