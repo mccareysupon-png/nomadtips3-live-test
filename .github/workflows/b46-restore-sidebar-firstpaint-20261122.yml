@@ -1,0 +1,21 @@
+name: BALL46 owner-approved restore Sidebar Win Rate firstpaint Production
+on:
+  push:
+    branches: [ops/ball46-restore-sidebar-firstpaint-20261122]
+    paths: ['.github/workflows/b46-restore-sidebar-firstpaint-20261122.yml']
+permissions: {contents: read}
+concurrency:
+  group: ball46-production-ui-release
+  cancel-in-progress: false
+jobs:
+  restore:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node qa/sidebar-firstpaint-rollback-20261122/restore.mjs
