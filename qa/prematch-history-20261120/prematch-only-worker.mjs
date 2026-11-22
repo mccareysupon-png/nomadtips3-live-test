@@ -8,6 +8,7 @@ import {leagueNameRegistryFromFixtures,enrichLeagueNamesOnMonitor} from './leagu
 import {preMatchDailyBook} from './london-cutoff.mjs';
 import {initHistoryRounds,historyRoundState,importHistoryRoundFromCache} from './history-five-rounds.mjs';
 import {historyCargoReport} from './history-cargo-registry.mjs';
+import {historyFullCargoReport} from './history-cargo-full-payload.mjs';
 import {scheduledFromNormalHub} from './hub-upcoming-feed.mjs';
 import {londonAccountingWindow} from './london-cutoff.mjs';
 const AUTO_PROFILE_VERSION='auto-shadow-market-1x2-v1';
@@ -146,6 +147,14 @@ export class PrematchStore extends DurableObject{
   try{
    return json(historyCargoReport(this.db,now,{day,includeItems:detail,upcoming:await this.ctx.storage.get('botFixtures')??[]}));
   }catch(e){return new Response(JSON.stringify({error:'HCR_INVALID_REPORT_REQUEST'}),{status:400,headers:{'content-type':'application/json','cache-control':'no-store'}})}
+ }
+ // Owner-only full original cached cargo inspection. NEVER exposed via /preview-data.
+ if(path==='/history-cargo-full'&&req.method==='GET'){
+  const url=new URL(req.url),day=url.searchParams.get('day'),roundRaw=url.searchParams.get('round'),fixtureRaw=url.searchParams.get('fixture');
+  const roundNo=roundRaw===null?null:Number(roundRaw),fixtureId=fixtureRaw===null?null:Number(fixtureRaw);
+  const includeRaw=url.searchParams.get('detail')==='1';
+  try{return json(historyFullCargoReport(this.db,{day,roundNo,fixtureId,includeRaw}))}
+  catch(error){return new Response(JSON.stringify({error:'FULL_CARGO_BAD_QUERY'}),{status:400,headers:{'content-type':'application/json','cache-control':'no-store'}})}
  }
  if(path==='/history-round-state'&&req.method==='GET')return json(historyRoundState(this.db,now));
  if(path==='/monitor'&&req.method==='POST')return json({monitor:await this.syncNormalHub(now),ledger:ledger(this.db).stats,extraProviderCalls:0});
