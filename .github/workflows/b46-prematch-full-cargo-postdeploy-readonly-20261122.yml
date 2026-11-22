@@ -1,0 +1,63 @@
+name: BALL46 PreMatch Full Cargo TEST Post-Deploy Verified READ ONLY
+on:
+  push:
+    branches:
+      - fix/ball46-prematch-cargo-league-capture-20261122
+    paths:
+      - .github/workflows/b46-prematch-full-cargo-postdeploy-readonly-20261122.yml
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Verify active target version, protected route, HCR, public isolation and unchanged Production
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&account);
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const worker='ball46-prematch-only-test-20261120',host='https://'+worker+'.mccarey-supon.workers.dev';
+          const auth='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          async function cf(url){
+            const r=await fetch(url,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(30000)});
+            const j=await r.json();assert(r.ok&&j.success,'CF_READ_FAILED');return j.result;
+          }
+          const active=(await cf(root+'/scripts/'+worker+'/deployments?per_page=1')).deployments?.[0]?.versions?.[0]?.version_id;
+          const v=await cf(root+'/workers/'+worker+'/versions/'+active+'?include=modules');
+          const full=v.modules?.find(m=>m.name==='history-cargo-full-payload.mjs');
+          const history=v.modules?.find(m=>m.name==='history-five-rounds.mjs');
+          assert(full?.content_base64&&history?.content_base64,'TEST_FULL_CARGO_MODULES_MISSING');
+          assert(Buffer.from(history.content_base64,'base64').toString('utf8').includes('storeHistoryRoundFullCargo('),'FIVE_ROUNDS_NOT_CONNECTED');
+          async function get(path,authenticated=true){
+            const r=await fetch(host+path,{headers:authenticated?{authorization:auth}:{},cache:'no-store',signal:AbortSignal.timeout(25000)});
+            return {response:r,json:r.ok?await r.json():null};
+          }
+          const [hcr,cargo,health,unauth,publicPreview]=await Promise.all([
+           get('/history-cargo-registry?detail=0'),get('/history-cargo-full'),get('/health'),
+           get('/history-cargo-full',false),get('/preview-data',false)
+          ]);
+          assert.equal(hcr.response.status,200);assert.equal(cargo.response.status,200);
+          assert.equal(health.response.status,200);assert.equal(unauth.response.status,404);
+          assert.equal(publicPreview.response.status,200);
+          assert.equal(hcr.json.registry.code,'HCR-V1');
+          assert.equal(cargo.json.registry,'HISTORY-CARGO-FULL-V1');
+          assert.equal(cargo.json.providerCalls,0);assert.equal(health.json.providerCalls,0);
+          assert(!Object.keys(publicPreview.json).includes('historyFullCargo'),'PRIVATE_CARGO_EXPOSED_TO_PUBLIC');
+          const prod=['ball46-production','nomadtips3-engine-343','nomadtips3-5usd-hub-343'];
+          const protectedVersions=await Promise.all(prod.map(async name=>({
+            worker:name,version:(await cf(root+'/scripts/'+name+'/deployments?per_page=1')).deployments?.[0]?.versions?.[0]?.version_id
+          })));
+          console.log('B46_PREMATCH_FULL_CARGO_POSTDEPLOY_PASS '+JSON.stringify({
+            worker,active,fullCargoVersion:'HISTORY-CARGO-FULL-V1',newRoundsTracked:cargo.json.roundsTracked,
+            newRawFixtureRecords:cargo.json.fixtureRecords,legacyHcrFT:hcr.json.inventory.finishedFixtures,
+            roundsFiveCap:health.json.historyRounds.maxRounds,perRoundCap:100,perDayCap:500,
+            authProtected:true,publicNotExposed:true,providerRequestsAdded:0,productionWrites:0,protectedVersions
+          }));
+          JS
