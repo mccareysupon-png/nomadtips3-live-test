@@ -1,0 +1,43 @@
+name: BALL46 TEST inspect sidebar heading typography readonly
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-sidebar-section-typography-inspect-20261122.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          if ! command -v google-chrome >/dev/null 2>&1; then npx playwright install chromium; fi
+      - name: Collect desktop and mobile section heading labels, classes and computed CSS
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const chrome=(await import('node:child_process')).execSync('command -v google-chrome || true',{encoding:'utf8'}).trim();
+          const b=await chromium.launch(chrome?{executablePath:chrome,headless:true,args:['--no-sandbox']}:{headless:true,args:['--no-sandbox']});
+          for(const [device,w,h] of [['PC',1440,900],['MOBILE',390,844]]){
+            const p=await b.newPage({viewport:{width:w,height:h}});
+            await p.goto('https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/?b46pm=1x2',{waitUntil:'domcontentloaded',timeout:45000});
+            await p.locator('#b46pm-stats-navigation .b46pm-nav-heading').waitFor({state:'attached',timeout:30000});
+            await p.waitForTimeout(750);
+            const data=await p.evaluate(()=>{
+              const css=e=>{
+                const s=getComputedStyle(e),r=e.getBoundingClientRect();
+                return {fontSize:s.fontSize,fontWeight:s.fontWeight,letterSpacing:s.letterSpacing,lineHeight:s.lineHeight,padding:s.padding,margin:s.margin,color:s.color,display:s.display,width:Math.round(r.width),height:Math.round(r.height)}
+              };
+              const rail=document.querySelector('aside.left-rail');
+              const headings=[...rail.querySelectorAll('.rail-title,.b46pm-nav-heading,h1,h2,h3,[class*="group"],[class*="heading"],[class*="section-title"],[class*="rail-title"]')].filter(e=>e.textContent.trim().length<100).map(e=>({tag:e.tagName,cls:e.className,label:e.textContent.trim(),html:e.outerHTML.slice(0,350),css:css(e)})).slice(0,50);
+              const direct=[...rail.children].map(e=>({cls:e.className,id:e.id,txt:e.textContent.trim().slice(0,100),html:e.outerHTML.slice(0,210)})).slice(0,35);
+              const mobile=[...document.querySelectorAll('#b46m-drawer .b46m-grouplabel, #b46m-drawer [class*="group"], #b46m-drawer [class*="heading"], #b46m-drawer [data-b46m-page="statistics"]')].map(e=>({cls:e.className,label:e.textContent.trim().slice(0,100),html:e.outerHTML.slice(0,260),css:css(e)})).slice(0,25);
+              return {headings,direct,mobile};
+            });
+            console.log('B46_SECTION_TYPE_'+device+' '+JSON.stringify(data));
+            await p.close();
+          }
+          await b.close();
+          JS
