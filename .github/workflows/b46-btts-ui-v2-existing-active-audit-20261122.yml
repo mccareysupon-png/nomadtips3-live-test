@@ -1,0 +1,78 @@
+name: BALL46 BTTS V2 Existing TEST UI and Backend Contract Audit READ ONLY
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-ui-v2-existing-active-audit-20261122.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Read TEST UI code and V2 data contracts only (NO paid 5USD calls)
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,acc=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&acc);
+          const cloud='https://api.cloudflare.com/client/v4/accounts/'+acc+'/workers';
+          async function cf(path){
+           const r=await fetch(cloud+path,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(28000)});
+           const j=await r.json();assert(r.ok&&j.success,'CF_READ_'+r.status);return j.result;
+          }
+          const workers=['ball46-premium-match-colors-test-20261120','ball46-prematch-only-test-20261120'];
+          const versions=Object.fromEntries(await Promise.all(workers.map(async n=>{
+           const d=await cf('/scripts/'+n+'/deployments?per_page=1');
+           return [n,d.deployments[0].versions[0].version_id];
+          })));
+          const uiVersion=versions[workers[0]];
+          const mod=await cf('/workers/'+workers[0]+'/versions/'+uiVersion+'?include=modules');
+          const source=Buffer.from(mod.modules[0].content_base64,'base64').toString('utf8');
+          const clientMatch=source.match(/var prematchClientScript = ("(?:\\.|[^"\\])*");/);
+          assert(clientMatch,'EXISTING_PREMATCH_SCRIPT_NOT_FOUND');
+          const client=JSON.parse(clientMatch[1]);
+          const terms=['b46pm=btts','btts','/btts-preview-data','__b46_prematch_data','function perfSource','function render','function row','function updateNav','function show','function load','n-history'];
+          const excerpts={};
+          for(const term of terms){
+           const i=client.indexOf(term);
+           if(i>=0)excerpts[term]=client.slice(Math.max(0,i-140),i+450).replace(/\s+/g,' ').slice(0,600);
+          }
+          const base='https://'+workers[0]+'.mccarey-supon.workers.dev';
+          const back='https://'+workers[1]+'.mccarey-supon.workers.dev';
+          const auth='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const dataR=await fetch(base+'/__b46_prematch_data',{cache:'no-store',signal:AbortSignal.timeout(25000)});
+          const data=await dataR.json();
+          const bulkR=await fetch(back+'/btts-bulk-v2-state',{headers:{authorization:auth},cache:'no-store',signal:AbortSignal.timeout(25000)});
+          const bulk=await bulkR.json();
+          const bttsR=await fetch(back+'/btts-preview-data?page=1&filter=WAITING_PRICE',{cache:'no-store',signal:AbortSignal.timeout(25000)});
+          const btts=await bttsR.json();
+          const pageR=await fetch(base+'/?b46pm=btts',{cache:'no-store',signal:AbortSignal.timeout(25000)});
+          const page=await pageR.text();
+          const adminBack=await cf('/workers/'+workers[1]+'/versions/'+versions[workers[1]]+'?include=modules');
+          const testMain=adminBack.modules.find(x=>x.name==='prematch-only-worker.mjs');
+          const testCode=Buffer.from(testMain.content_base64,'base64').toString('utf8');
+          const result={
+           versions,uiPageStatus:pageR.status,uiPageScope:pageR.headers.get('x-b46-page-scope'),
+           frontendLen:source.length,clientLen:client.length,
+           scriptContainsBTTSPreview:client.includes('/btts-preview-data'),
+           scriptContainsMarketRouting:client.includes('bttsLedger'),
+           mainFullDataRoute:source.includes('__b46_prematch_data'),
+           mainHasPrematchBackendBinding:source.includes('PREMATCH_STORE'),
+           mainHasBTTSHistoryV2:source.includes('btts-bulk-v2-state'),
+           containsOldHCRGate:testCode.includes('if(!bulkActive&&history.completed<5)'),
+           screenReady:btts.totals.historyReady,screenProbability:btts.totals.modelProbabilityReady,
+           screenWaitingPrice:btts.totals.quoteRequired,
+           screenQualified:btts.totals.qualified,
+           truckMode:bulk.config.mode,truckRounds:bulk.transport.roundsUsed,
+           truckReceived:bulk.transport.received,truckProviderCalls:bulk.transport.providerCalls,
+           publicDataKeys:Object.keys(data).sort(),
+           uiBTTSRows:data.bttsLedger?.rows?.length,uiBTTSStats:data.bttsLedger?.stats,
+           uiOneX2Rows:data.testLedger?.rows?.length,
+           uiMarketStats:Object.keys(data.marketDailyBooks||{}),
+           notes:excerpts,apiCallsAdded:0,productionWrites:0};
+          console.log('B46_BTTS_UI_V2_BASELINE '+JSON.stringify(result));
+          JS
