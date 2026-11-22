@@ -1,14 +1,17 @@
 // BALL46 isolated TEST: automatically collect Bet365 BTTS prematch odds
 // ONLY for probability-screened fixtures from the already scheduled feed.
 // This is a DIFFERENT provider endpoint from the 5-round 500 FT bulk truck.
-// Quota is independent; neither changes nor replays the historical cargo.
+// Each of the five history trucks carries at most TWO total 5USD API calls:
+// one bulk FT fetch and at most one Bet365 BTTS quote. No 15-minute quota.
 // Never infer BTTS from 1X2 odds. Never publish without verified Bet365 prices.
 import {londonAccountingWindow} from './london-cutoff.mjs';
+import {bttsBulkV2Slot} from './btts-bulk-truck-v2-test.mjs';
 import {evaluateBttsUltra,parseBet365BttsOdds} from './btts-ultra-shadow.mjs';
 
 const all=(db,q,...p)=>Array.from(db.exec(q,...p));
 export const B46_BTTS_PRICE_PICKUP_CAP=Object.freeze({
- maxPerLondonBusinessDay:12,maxPerTick:2,minimumSecondsToKickoff:900,
+ maxPerLondonBusinessDay:5,maxPerTick:1,maxTotalPerTruck:2,
+ maxAllTruckCallsDaily:10,minimumSecondsToKickoff:900,
  maxSecondsToKickoff:3*86400,minimumSharedQuotaRemaining:12
 });
 export function initBttsPricePickup(db){
@@ -20,11 +23,29 @@ export function bttsPricePickupState(db,now){
  const day=londonAccountingWindow(now).businessDay;
  const rec=all(db,'SELECT fixture_id,requested_at,completed_at,state,price_yes,price_no,source_quote,error FROM b46_btts_price_pickup_test WHERE business_day=? ORDER BY requested_at DESC LIMIT 40',day);
  const tally=all(db,"SELECT COUNT(*) AS total,COALESCE(SUM(provider_calls),0) AS calls,COALESCE(SUM(state='PRICED_IMPORTED'),0) AS priced,COALESCE(SUM(state='NOT_OFFERED'),0) AS not_offered,COALESCE(SUM(state LIKE 'FAIL_%'),0) AS failures FROM b46_btts_price_pickup_test WHERE business_day=?",day)[0];
+ // The actual five-round SQL ledger is authoritative. One priced-fixture API
+ // may ride with a truck only AFTER its one historical API has completed.
+ const slot=bttsBulkV2Slot(now);
+ const trips=all(db,'SELECT round_no,state,provider_calls FROM b46_btts_bulk_v2_rounds WHERE business_day=?',day);
+ const activeTrip=trips.find(t=>t.round_no===slot.slot);
+ const priceCallsForTrip=rec.filter(r=>{
+   const at=bttsBulkV2Slot(r.requested_at);
+   return at.businessDay===day&&at.slot===slot.slot;
+ }).length;
+ const historyCallsToday=trips.reduce((n,t)=>n+Number(t.provider_calls||0),0);
+ const priceCallsToday=Number(tally?.calls??0);
+ const remainingDaily=Math.max(0,Math.min(B46_BTTS_PRICE_PICKUP_CAP.maxPerLondonBusinessDay-priceCallsToday,
+   B46_BTTS_PRICE_PICKUP_CAP.maxAllTruckCallsDaily-historyCallsToday-priceCallsToday));
+ const remainingThisTruck=Math.max(0,
+   B46_BTTS_PRICE_PICKUP_CAP.maxTotalPerTruck-Number(activeTrip?.provider_calls??0)-priceCallsForTrip);
  return {code:'B46_BTTS_BET365_PRICE_PICKUP_TEST',day,
    calls: Number(tally?.calls??0),attempts:Number(tally?.total??0),
    priced:Number(tally?.priced??0),notOffered:Number(tally?.not_offered??0),
    failures:Number(tally?.failures??0),cap:B46_BTTS_PRICE_PICKUP_CAP,
-   records:rec,remaining:Math.max(0,B46_BTTS_PRICE_PICKUP_CAP.maxPerLondonBusinessDay-Number(tally?.calls??0)),
+   truck:{slot:slot.slot,roundsUsed:trips.length,historyCallsToday,
+     state:activeTrip?.state??'NO_TRUCK_TRIP',historyCalls:Number(activeTrip?.provider_calls??0),
+     priceCalls:priceCallsForTrip,remainingForPrice:remainingThisTruck},
+   records:rec,remaining:remainingDaily,
    providerCallsThisRead:0};
 }
 const asText=x=>String(x??'UNKNOWN').replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,70);
@@ -40,6 +61,13 @@ export async function runBttsPricePickup(db,{fixtures,quotes={},now,provider,hub
     typeof provider!=='function'||typeof onQuote!=='function')
    throw Error('INVALID_BTTS_PRICE_PICKUP_INPUT');
  const before=bttsPricePickupState(db,now),day=before.day;
+ // Mandatory per-truck, per-slot guard: 1 bulk + at most 1 BTTS quote.
+ // Historical calls already used and any prior 15-min quote attempts count.
+ // Never call 5USD just because a 15-minute cron fired.
+ if(before.truck.slot===0||before.truck.state!=='COMPLETED'||before.truck.historyCalls!==1)
+   return {state:'AWAIT_COMPLETED_BTTS_HISTORY_TRUCK',providerCalls:0,transport:before};
+ if(before.truck.priceCalls>=1||before.truck.remainingForPrice<1)
+   return {state:'TWO_APIS_PER_TRUCK_CAP',providerCalls:0,transport:before};
  if(!Number.isSafeInteger(feedAt)||feedAt<=0||feedAt>now+60||now-feedAt>3600)
    return {state:'FRESH_SCHEDULED_FEED_REQUIRED',providerCalls:0,transport:before};
  if(before.remaining===0)return {state:'DAILY_PRICE_REQUEST_CAP',providerCalls:0,transport:before};
@@ -62,7 +90,8 @@ export async function runBttsPricePickup(db,{fixtures,quotes={},now,provider,hub
    candidates:candidates.length,modelReady:report.totals.modelProbabilityReady,transport:before};
  const fixtureById=new Map(fixtures.map(x=>[String(x.id),x]));
  const run=[];
- const maximum=Math.min(B46_BTTS_PRICE_PICKUP_CAP.maxPerTick,before.remaining,pending.length);
+ const maximum=Math.min(B46_BTTS_PRICE_PICKUP_CAP.maxPerTick,before.remaining,pending.length,
+  before.truck.remainingForPrice);
  for(const c of pending.slice(0,maximum)){
    const f=fixtureById.get(String(c.fixtureId));
    if(!f||f.status!=='scheduled'||f.kickoff_ts<=now+900)continue;
