@@ -4,7 +4,7 @@ import {mergeStoredPrematch} from './stored-prematch-feed.mjs';
 import {dryRunStored,BASELINE_SHADOW,ACCUMULATION_SHADOW,TRIAL_SHADOW,MARKET_SHADOW} from './stored-signal-adapter.mjs';
 import {initPickLedger,recordPicks,settlePicks,ledger,picksFromBot} from './test-pick-ledger.mjs';
 import {matchNormalHub} from './normal-hub-monitor.mjs';
-import {leagueNameRegistryFromFixtures,enrichLeagueNamesOnMonitor,leagueCatalogFromCachedHub} from './league-name-cache.mjs';
+import {leagueNameRegistryFromFixtures,enrichLeagueNamesOnMonitor,leagueCatalogFromCachedHub,restoreLeagueNamesFromOriginalRows} from './league-name-cache.mjs';
 import {preMatchDailyBook} from './london-cutoff.mjs';
 import {initHistoryRounds,historyRoundState,importHistoryRoundFromCache} from './history-five-rounds.mjs';
 import {historyCargoReport} from './history-cargo-registry.mjs';
@@ -163,6 +163,27 @@ export class PrematchStore extends DurableObject{
    if(hasName&&archived[id])viaArchiveLeagueId++;
   }
   return json({code:'PREMATCH_LEAGUE_ID_CATALOG_V1',mode:'TEST_ONLY',ledgerRows:picks.length,named,missing,catalogLeagues:Object.keys(catalog).length,archivedLeagueIdMatches:viaArchiveLeagueId,phases:breakdown,providerCalls:0,productionWrites:0});
+ }
+ if(path==='/league-restore'&&req.method==='POST'){
+  // Owner-only repair from already captured or explicitly authorized 5USD
+  // original fixture rows. This route itself performs ZERO network requests.
+  // It never edits the prediction ledger, FT results, HCR or bot formulas.
+  const j=await req.json().catch(()=>null);
+  if(!j||!Array.isArray(j.fixtures)||j.fixtures.length===0||j.fixtures.length>100||
+     j.source!=='5USD_ORIGINAL_FIXTURES_VERIFIED')
+   return new Response(JSON.stringify({error:'INVALID_LEAGUE_RESTORE_INPUT'}),{status:400,headers:{'content-type':'application/json'}});
+  const entries=j.fixtures.map(f=>({
+   fixtureId:f?.fixtureId,homeId:f?.homeId,awayId:f?.awayId,
+   leagueId:f?.leagueId,leagueName:f?.leagueName
+  }));
+  const previous=await this.ctx.storage.get('prematchLeagueNamesV1')??{};
+  const repaired=restoreLeagueNamesFromOriginalRows(previous,ledger(this.db).rows,entries,archivedLeagueIdsForPicks(this.db));
+  if(repaired.stats.invalid||repaired.stats.mismatch||repaired.stats.conflicts)
+   return new Response(JSON.stringify({error:'RESTORE_IDENTITY_OR_NAME_CONFLICT',stats:repaired.stats}),
+    {status:409,headers:{'content-type':'application/json','cache-control':'no-store'}});
+  if(repaired.stats.restored)
+   await this.ctx.storage.put('prematchLeagueNamesV1',repaired.registry);
+  return json({code:'PREMATCH_LEAGUE_RESTORE_TEST_ONLY',...repaired.stats,providerCalls:0,ledgerChanged:false});
  }
  if(path==='/test-ledger-start'&&req.method==='POST'){
  const j=await req.json();const matches=await this.ctx.storage.get('botFixtures')??[];const map=new Map(matches.map(f=>[String(f.id),f]));
