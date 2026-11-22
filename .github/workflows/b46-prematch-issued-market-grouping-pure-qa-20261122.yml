@@ -1,0 +1,18 @@
+name: BALL46 Predictions issued 1X2 and BTTS one-match grouping PURE QA
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-prematch-issued-market-grouping-pure-qa-20261122.yml]
+permissions: {contents: read}
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify duplicate prevention, two markets one fixture, unchanged source rules
+        run: |
+          node --check qa/prematch-history-20261120/patch-prematch-unified-predictions-test-20261122.mjs
+          node --test qa/prematch-history-20261120/patch-prematch-unified-predictions.test.mjs qa/prematch-history-20261120/btts-pick-ledger-test.test.mjs qa/prematch-history-20261120/prematch-stats-registry-test.test.mjs
