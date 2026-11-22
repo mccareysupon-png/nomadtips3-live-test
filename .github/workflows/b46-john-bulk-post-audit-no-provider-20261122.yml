@@ -1,0 +1,66 @@
+name: BALL46 John Bulk 500 TEST Post Audit Read Only ZERO 5USD
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-john-bulk-post-audit-no-provider-20261122.yml]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Verify permanently stored 500 history rows, real 3+3 screening, unchanged 1X2/HCR
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN;assert(token,'TOKEN_MISSING');
+          const host='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          const auth='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          async function owner(p){
+            const r=await fetch(host+p,{headers:{authorization:auth},cache:'no-store',signal:AbortSignal.timeout(30000)});
+            assert(r.ok,'READ_ONLY_'+p+'_HTTP_'+r.status);return r.json();
+          }
+          const [history,btts,hcr,ledger,stats,audit,book,preview]=await Promise.all([
+            owner('/btts-history-private-test'),owner('/btts-shadow'),owner('/history-cargo-registry?detail=0'),
+            owner('/test-ledger'),owner('/prematch-stats-registry-test?days=90'),
+            owner('/prematch-stats-registry-audit-test'),
+            owner('/bot-state'),owner('/btts-preview-data?filter=WAITING_PRICE&page=1')
+          ]);
+          assert.equal(hcr.registry.code,'HCR-V1');
+          assert(history.archive.privateFT>=595,'BULK_HISTORY_NOT_PERSISTED');
+          assert.equal(hcr.inventory.finishedFixtures,1433,'HCR_ARCHIVE_CHANGED');
+          assert.equal(ledger.rows.length,76,'1X2_LEDGER_ROWS_CHANGED');
+          assert.equal(audit.verified,true,'PREMATCH_STATS_AUDIT_FAILED');
+          assert.equal(stats.markets.TOTAL.total,stats.markets['1X2'].total+stats.markets.BTTS.total,'REGISTRY_TOTAL_MISMATCH');
+          const total=btts.totals;
+          assert(total.historyReady>=5,'HISTORY_READY_REGRESSED');
+          const result={
+            mode:'B46_JOHN_BULK_5_ROUNDS_POST_AUDIT',
+            privateFTBefore:97,privateFTAfter:history.archive.privateFT,
+            privateFTAdded:history.archive.privateFT-97,
+            hcrFT:hcr.inventory.finishedFixtures,
+            oneX2Rows:ledger.rows.length,
+            oneX2RegistryTotal:stats.markets['1X2'].total,
+            statsAuditVerified:audit.verified,
+            totalMarketRegistry:stats.markets.TOTAL.total,
+            bttsMarketRegistry:stats.markets.BTTS.total,
+            quoteRecords:btts.storedBet365QuoteRecords,
+            selectionPolicy:btts.policy,
+            screening:total,
+            sampleWaitingPrice:(btts.candidates||[]).slice(0,8).map(x=>({
+              fixtureId:x.fixtureId,league:x.leagueName,
+              home:x.home,away:x.away,
+              homeHistory:x.homeHistory,awayHistory:x.awayHistory,
+              probabilityYes:x.probabilityYes,probabilityNo:x.probabilityNo
+            })),
+            uiSample:preview.preview?.rows?.slice(0,5),
+            automaticRuns:book.lastRun?.at??null,
+            newProviderCalls:0,productionWrites:0,liveHubWrites:0,
+            testOnly:true
+          };
+          console.log('B46_JOHN_BULK_POST_AUDIT '+JSON.stringify(result));
+          JS
