@@ -54,8 +54,8 @@ export function patchOuMain(old){
   "const bttsIssued=await this.recordQualifiedBtts(now,fixtures);\n  let ouRun={state:'NOT_EXECUTED'};\n  try{const trial=screenOu(this.db,fixtures,now,350);const issued=recordOu(this.db,trial,now);const ouSettled=settleOu(this.db,now);const sync=syncOuSnapshot(this.db,now);ouRun={state:'MODEL_ONLY_TEST',counts:trial.counts,issued,settled:ouSettled,snapshotUpdated:sync.processed}}catch(error){ouRun={state:'REVIEW_REQUIRED',error:String(error.message).slice(0,130)}}\n  const statsRegistry=syncPreMarketStatsRegistry(this.db,now);",
   'AUTO_BOT_FLOW');
  s=once(s,
-  "qualified:out.qualified,dailyBook,bttsIssued,statsRegistry};",
-  "qualified:out.qualified,dailyBook,bttsIssued,ouRun,statsRegistry};",
+  "dailyBook,bttsIssued,statsRegistry};",
+  "dailyBook,bttsIssued,ouRun,statsRegistry};",
   'BOT_OWNER_REPORT');
  s=once(s,
   "const b=await stub.fetch('https://prematch.internal/btts-cycle-test',{method:'POST'});console.log('BTTS_TEST_ONLY_CYCLE '+b.status)",
