@@ -1,0 +1,82 @@
+name: BALL46 PreMatch BTTS Ultra ACTIVE TEST Audit READ ONLY
+on:
+  push:
+    branches: [fix/ball46-prematch-btts-ultra-shadow-test-20261122]
+    paths:
+      - .github/workflows/b46-prematch-btts-ultra-active-readonly-audit-20261122.yml
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check active Cloudflare module version, BTTS source and TEST-only endpoints
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&account);
+          const worker='ball46-prematch-only-test-20261120';
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const host='https://'+worker+'.mccarey-supon.workers.dev';
+          const auth='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          async function cf(url){
+            const r=await fetch(url,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(25000)});
+            const j=await r.json();assert(r.ok&&j.success,'CF_'+r.status);return j.result;
+          }
+          async function version(n){
+            const r=await cf(root+'/scripts/'+n+'/deployments?per_page=1');
+            return r.deployments?.[0]?.versions?.[0]?.version_id;
+          }
+          async function owner(path){
+            const r=await fetch(host+path,{headers:{authorization:auth},cache:'no-store',signal:AbortSignal.timeout(15000)});
+            assert(r.ok,'OWNER_'+path+'_'+r.status);return r.json();
+          }
+          const active=await version(worker);
+          const state=await cf(root+'/workers/'+worker+'/versions/'+active+'?include=modules');
+          const changed=['prematch-only-worker.mjs','btts-ultra-shadow.mjs'];
+          for(const name of changed){
+            const m=state.modules.find(x=>x.name===name);
+            assert(m?.content_base64,'MISSING_ACTIVE_'+name);
+            assert.equal(Buffer.from(m.content_base64,'base64').toString('utf8'),
+              fs.readFileSync('qa/prematch-history-20261120/'+name,'utf8'),'ACTIVE_CONTENT_DRIFT_'+name);
+          }
+          let btts=null,lastError=null,attempts=0;
+          for(let i=0;i<35;i++){
+            attempts++;
+            try{btts=await owner('/btts-shadow');assert.equal(btts.mode,'READ_ONLY_BTTS_SHADOW');break}
+            catch(e){lastError=e;if(i<34)await new Promise(r=>setTimeout(r,1200))}
+          }
+          assert(btts,'ACTIVE_BTTS_ROUTE_NOT_READY_'+String(lastError));
+          assert.equal(btts.policy.historyPerTeam,10);
+          assert.equal(btts.policy.publish,false);
+          assert.equal(btts.policy.source,'BET365_ONLY');
+          assert.equal(btts.providerCalls,0);
+          assert.equal(btts.published,0);
+          const [hcr,history,league,health,locked]=await Promise.all([
+            owner('/history-cargo-registry?detail=0'),
+            owner('/history-cargo-full'),
+            owner('/league-name-audit'),
+            owner('/health'),
+            owner('/test-ledger')]);
+          assert.equal(hcr.registry.code,'HCR-V1');
+          assert.equal(history.registry,'HISTORY-CARGO-FULL-V1');
+          assert.equal(league.code,'PREMATCH_LEAGUE_ID_CATALOG_V1');
+          assert.equal(health.providerCalls,0);
+          const production={production:await version('ball46-production'),
+           engine:await version('nomadtips3-engine-343'),hub:await version('nomadtips3-5usd-hub-343')};
+          console.log('B46_BTTS_ULTRA_ACTIVE_TEST_VERIFIED '+JSON.stringify({
+            active,attempts,ready:true,historyFT:hcr.inventory.finishedFixtures,
+            locked1x2Rows:locked.rows.length,leagueRegistry:league.catalogLeagues,
+            btts:btts.totals,quoteRecords:btts.storedBet365QuoteRecords,
+            neededBttsQuotes:btts.candidates.length,qualifiedShadow:btts.decisions.length,
+            providerCallsAdded:0,published:0,productionWrites:0,production
+          }));
+          JS
