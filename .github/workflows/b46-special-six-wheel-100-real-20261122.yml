@@ -27,7 +27,7 @@ jobs:
         run: |
           node --check qa/prematch-history-20261120/b46-special-six-wheel-truck-100-real-20261122.mjs
           node --test qa/prematch-history-20261120/btts-history-private.test.mjs qa/prematch-history-20261120/btts-pick-ledger-test.test.mjs qa/prematch-history-20261120/history-cargo-registry.test.mjs
-      - name: Special truck ONE REAL Ultra trip (max 100 historical rows; 12 provider calls total)
+      - name: Special truck ONE REAL Ultra trip (max 100 historical rows; 16 calls including fixture identity + BTTS odds check)
         run: node qa/prematch-history-20261120/b46-special-six-wheel-truck-100-real-20261122.mjs
       - name: Preserve original provider replies and full structured report
         if: always()
