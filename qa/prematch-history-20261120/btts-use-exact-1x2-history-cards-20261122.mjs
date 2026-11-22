@@ -66,6 +66,8 @@ function clonedBttsContainerCss(){
   ].join('\n');
 }
 export function patchBttsCloneExactOneX2Cards(client){
+  if(typeof client==='string'&&client.includes('const card=premiumMatchRow(source,null,false)'))
+    throw Error('BTTS_1X2_CARD_CLONE_ALREADY_APPLIED');
   if(typeof client!=='string'||
     !client.includes("function premiumMatchRow(item,hub,stale){")||
     !client.includes("function makeBttsCandidateCard(r){")||
