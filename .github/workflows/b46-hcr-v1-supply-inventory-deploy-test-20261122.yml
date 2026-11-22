@@ -1,0 +1,109 @@
+name: BALL46 HCR V1 supply planner isolated TEST refresh
+on:
+  push:
+    branches: [test/ball46-prematch-v1-20261120]
+    paths: ['.github/workflows/b46-hcr-v1-supply-inventory-deploy-test-20261122.yml']
+permissions: {contents: read}
+concurrency:
+  group: ball46-hcr-test-backend-exclusive
+  cancel-in-progress: false
+jobs:
+  safe-test-upgrade:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify HCR, history and odds feed invariants offline
+        run: |
+          node --test qa/prematch-history-20261120/history-five-rounds.test.mjs qa/prematch-history-20261120/history-cargo-registry.test.mjs qa/prematch-history-20261120/hub-upcoming-feed.test.mjs qa/prematch-history-20261120/stored-prematch-feed.test.mjs
+      - name: Replace only HCR report and two cached-fixture modules in isolated Worker
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&account,'CF_TEST_CREDENTIALS_REQUIRED');
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers',worker='ball46-prematch-only-test-20261120';
+          const host='https://'+worker+'.mccarey-supon.workers.dev';
+          const dir='qa/prematch-history-20261120/';
+          const changed=['history-cargo-registry.mjs','hub-upcoming-feed.mjs','stored-prematch-feed.mjs'];
+          const protectedWorkers=['ball46-production','nomadtips3-engine-343','nomadtips3-5usd-hub-343'];
+          const adminAuth='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          async function cf(url,options={}){
+            const r=await fetch(url,{...options,headers:{authorization:'Bearer '+token,...options.headers},signal:AbortSignal.timeout(40000)});
+            const j=await r.json();
+            assert(r.ok&&j.success,'CLOUDFLARE_FAIL '+r.status+' '+url.split('?')[0]+' '+JSON.stringify(j.errors||[]));
+            return j.result;
+          }
+          async function version(name){
+            const r=await cf(root+'/scripts/'+name+'/deployments?per_page=1'),id=r.deployments?.[0]?.versions?.[0]?.version_id;
+            assert(id,'MISSING_WORKER_VERSION_'+name);return id;
+          }
+          async function getReport(){
+            const response=await fetch(host+'/history-cargo-registry?detail=0',
+              {method:'GET',headers:{authorization:adminAuth},signal:AbortSignal.timeout(30000)});
+            assert(response.ok,'ADMIN_HCR_FAILED_'+response.status);return response.json();
+          }
+          const oldProd=await Promise.all(protectedWorkers.map(version)),oldTest=await version(worker);
+          const active=await cf(root+'/workers/'+worker+'/versions/'+oldTest+'?include=modules');
+          assert(active.main_module==='prematch-only-worker.mjs');
+          assert(Array.isArray(active.modules)&&active.modules.length>=13);
+          for(const name of changed)assert(active.modules.some(m=>m.name===name),'MISSING_CURRENT_MODULE_'+name);
+          const find=n=>Buffer.from(active.modules.find(m=>m.name===n).content_base64,'base64').toString('utf8');
+          assert(find('history-cargo-registry.mjs').includes('HCR_CODE=')&&!find('history-cargo-registry.mjs').includes('priorityTeams:priorityTeams.slice'),'HCR_VERSION_DRIFT_STOP');
+          assert(find('hub-upcoming-feed.mjs').includes('scheduledFromNormalHub')&&!find('hub-upcoming-feed.mjs').includes("league:{id:Number(f.league.id)"),'HUB_SOURCE_DRIFT_STOP');
+          assert(find('stored-prematch-feed.mjs').includes('mergeStoredPrematch')&&!find('stored-prematch-feed.mjs').includes("...(id(f.league?.id)?{league:"),'STORED_FEED_DRIFT_STOP');
+          const settings=await cf(root+'/scripts/'+worker+'/settings');
+          const names=(settings.bindings||[]).map(x=>x.name).sort();
+          assert.deepEqual(names,['FIVEDOLLAR_API_KEY','HUB','OWNER_SECRET','STORE'],'INHERITED_BINDING_LIST_CHANGED');
+          const historical=await getReport(),oldRoundCount=historical.scope?.rounds,oldHistory=historical.inventory?.finishedFixtures;
+          assert.equal(historical.registry?.code,'HCR-V1');
+          const form=new FormData();
+          form.append('metadata',new Blob([JSON.stringify({
+            main_module:active.main_module,compatibility_date:active.compatibility_date||'2026-11-20',
+            bindings:names.map(name=>({name,type:'inherit'}))
+          })],{type:'application/json'}),'metadata.json');
+          for(const m of active.modules){
+            assert(m.name.endsWith('.mjs')&&typeof m.content_base64==='string','UNKNOWN_ACTIVE_MODULE');
+            const bytes=changed.includes(m.name)?fs.readFileSync(dir+m.name,'utf8'):Buffer.from(m.content_base64,'base64');
+            form.append(m.name,new Blob([bytes],{type:'application/javascript+module'}),m.name);
+          }
+          await cf(root+'/scripts/'+worker+'?bindings_inherit=strict',{method:'PUT',body:form});
+          const newTest=await version(worker);
+          assert.notEqual(newTest,oldTest,'TEST_VERSION_UNCHANGED');
+          const after=await getReport();
+          assert.equal(after.registry.code,'HCR-V1');assert.equal(after.registry.providerCalls,0);
+          assert(Array.isArray(after.supplyPlanning.priorityTeams),'PRIORITY_TEAM_REPORT_MISSING');
+          assert(Array.isArray(after.supplyPlanning.priorityLeagues),'LEAGUE_REPORT_MISSING');
+          assert(after.supplyPlanning.uniqueTeams>0,'NO_UPCOMING_TEAM_INVENTORY');
+          assert(after.supplyPlanning.deduplicatedTeamMatchGaps<=after.supplyPlanning.aggregateTeamMatchGaps,'DEDUP_INVALID');
+          assert.equal(after.inventory.finishedFixtures,oldHistory,'ARCHIVE_MUTATED_BY_REPORT');
+          assert.equal(after.scope.rounds,oldRoundCount,'ROUND_STATE_MUTATED_BY_REPORT');
+          const settingsAfter=await cf(root+'/scripts/'+worker+'/settings');
+          assert.deepEqual((settingsAfter.bindings||[]).map(x=>x.name).sort(),names,'PROVIDER_SECRET_BINDINGS_CHANGED');
+          const newProd=await Promise.all(protectedWorkers.map(version));
+          assert.deepEqual(newProd,oldProd,'PRODUCTION_VERSION_CHANGED');
+          const summary={worker,oldTest,newTest,changed,archived:oldHistory,
+            incoming:after.supplyPlanning.upcomingFixtures,uniqueTeams:after.supplyPlanning.uniqueTeams,
+            missingHistoryTeams:after.supplyPlanning.uniqueTeamsNeedingHistory,
+            deduplicatedTeamMatchGaps:after.supplyPlanning.deduplicatedTeamMatchGaps,
+            plannedLeagueCount:after.supplyPlanning.priorityLeagues.length,
+            missingLeagueIds:after.supplyPlanning.upcomingLeagueIdsMissing,
+            priorityTeams:after.supplyPlanning.priorityTeams.slice(0,5),
+            quotaExtraCalls:0,productionWrites:0};
+          console.log('HCR_V1_SUPPLY_INVENTORY_TEST_VERIFIED '+JSON.stringify(summary));
+          if(process.env.GITHUB_STEP_SUMMARY)fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+            '# HCR V1 / จัดลำดับการสั่งประวัติเพิ่ม\n\n'+
+            '- **คลัง FT:** '+summary.archived+' คู่\n'+
+            '- **Upcoming ในคลังบอท:** '+summary.incoming+' คู่\n'+
+            '- **ทีมไม่ซ้ำที่ตรวจ:** '+summary.uniqueTeams+' ทีม\n'+
+            '- **ทีมที่ยังไม่ครบ 10 นัด:** '+summary.missingHistoryTeams+' ทีม\n'+
+            '- **League ID ที่ยังไม่ส่งมากับ fixture เก่า:** '+summary.missingLeagueIds+' (เติมในรอบใหม่เท่านั้น)\n'+
+            '- **API เพิ่ม:** 0, **Production:** ไม่เปลี่ยน\n');
+          JS
