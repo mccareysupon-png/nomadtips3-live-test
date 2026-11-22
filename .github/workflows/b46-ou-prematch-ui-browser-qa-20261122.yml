@@ -27,7 +27,7 @@ jobs:
             const page=await browser.newPage({viewport:{width,height},timezoneId:'Asia/Bangkok'});
             const errors=[];page.on('pageerror',e=>errors.push(String(e.message).slice(0,250)));
             await page.goto(url+'?b46pm=ou-predictions',{waitUntil:'domcontentloaded',timeout:45000});
-            await page.locator('[data-b46-prematch-route="ou-predictions"]').first().waitFor({timeout:22000});
+            await page.locator('[data-b46-prematch-route="ou-predictions"]').first().waitFor({state:'attached',timeout:22000});
             const a=await page.evaluate(()=>{
               const sidebar=[...document.querySelectorAll('aside.left-rail [data-b46-prematch-route]')].map(x=>x.dataset.b46PrematchRoute);
               const current=location.search;
