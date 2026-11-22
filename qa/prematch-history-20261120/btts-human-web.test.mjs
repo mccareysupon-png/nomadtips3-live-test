@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {init} from './history.mjs';
+import {initBttsHistory} from './btts-history-private.mjs';
 import {evaluateBttsUltra} from './btts-ultra-shadow.mjs';
 import {bttsTestHtml} from './btts-human-web.mjs';
 
@@ -11,7 +12,7 @@ function conn(){
   const s=sql.prepare(q);
   return /^\s*(SELECT|WITH|PRAGMA)/i.test(q)?s.all(...args):(s.run(...args),[]);
  },transaction:f=>{sql.exec('BEGIN');try{const r=f();sql.exec('COMMIT');return r}catch(e){sql.exec('ROLLBACK');throw e}}};
- init(db);return db;
+ init(db);initBttsHistory(db);return db;
 }
 const current=300;
 function fixture(i){
