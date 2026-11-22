@@ -4,7 +4,7 @@ import {mergeStoredPrematch} from './stored-prematch-feed.mjs';
 import {dryRunStored,BASELINE_SHADOW,ACCUMULATION_SHADOW,TRIAL_SHADOW,MARKET_SHADOW} from './stored-signal-adapter.mjs';
 import {initPickLedger,recordPicks,settlePicks,ledger,picksFromBot} from './test-pick-ledger.mjs';
 import {matchNormalHub} from './normal-hub-monitor.mjs';
-import {leagueNameRegistryFromFixtures,enrichLeagueNamesOnMonitor} from './league-name-cache.mjs';
+import {leagueNameRegistryFromFixtures,enrichLeagueNamesOnMonitor,leagueCatalogFromCachedHub} from './league-name-cache.mjs';
 import {preMatchDailyBook} from './london-cutoff.mjs';
 import {initHistoryRounds,historyRoundState,importHistoryRoundFromCache} from './history-five-rounds.mjs';
 import {historyCargoReport} from './history-cargo-registry.mjs';
@@ -13,8 +13,22 @@ import {scheduledFromNormalHub} from './hub-upcoming-feed.mjs';
 import {londonAccountingWindow} from './london-cutoff.mjs';
 const AUTO_PROFILE_VERSION='auto-shadow-market-1x2-v1';
 const json=x=>Response.json(x,{headers:{'cache-control':'no-store'}});
+// Only attribute a finished result's league ID to the exact locked fixture and teams.
+const archivedLeagueIdsForPicks=db=>{
+ const rows=Array.from(db.exec("SELECT p.fixture_id,r.league_id FROM test_pick_1x2 p JOIN result_version r ON r.fixture_id=p.fixture_id AND r.home_id=p.home_id AND r.away_id=p.away_id WHERE r.observed=(SELECT MAX(v.observed) FROM result_version v WHERE v.fixture_id=p.fixture_id AND v.home_id=p.home_id AND v.away_id=p.away_id)"));
+ return Object.fromEntries(rows.filter(r=>Number.isSafeInteger(r.league_id)&&r.league_id>0).map(r=>[String(r.fixture_id),r.league_id]));
+};
 export class PrematchStore extends DurableObject{
  constructor(ctx,env){super(ctx,env);this.db={exec:(q,...a)=>ctx.storage.sql.exec(q,...a),transaction:f=>ctx.storage.transactionSync(f)};this.missionInFlight=null;init(this.db);initPickLedger(this.db);initHistoryRounds(this.db)}
+ async rememberLeagueCatalog(snapshot){
+  const previous=await this.ctx.storage.get('prematchLeagueCatalogV1')??{};
+  const storedFixtures=await this.ctx.storage.get('botFixtures')??[];
+  const {catalog,conflicts}=leagueCatalogFromCachedHub(previous,snapshot,storedFixtures);
+  if(JSON.stringify(previous)!==JSON.stringify(catalog))
+   await this.ctx.storage.put('prematchLeagueCatalogV1',catalog);
+  if(conflicts.length)console.log('PREMATCH_LEAGUE_ID_CONFLICTS '+conflicts.length);
+  return catalog;
+ }
  async syncNormalHub(now,force=false,withHistory=false,providedSnapshot=null){
   const stored=await this.ctx.storage.get('normalHubState');
   if(!force&&stored&&now-stored.checkedAt<20)return stored;
@@ -25,6 +39,7 @@ export class PrematchStore extends DurableObject{
    if(!response.ok)throw Error('CACHED_HUB_HTTP_'+response.status);
    snapshot=await response.json()}
    const parsed=matchNormalHub(snapshot,ledger(this.db).rows,now);
+   await this.rememberLeagueCatalog(snapshot);
    const imported=parsed.finals.length?ingest(this.db,parsed.finals,parsed.observed):{added:0,duplicate:0,corrected:0,rejected:0};
    const settled=await this.ctx.storage.get('testLedgerEnabled')?settlePicks(this.db,now):0;
    const historyRound=withHistory?importHistoryRoundFromCache(this.db,snapshot,now):historyRoundState(this.db,now);
@@ -53,6 +68,9 @@ export class PrematchStore extends DurableObject{
    if(!response.ok)throw Error('CACHED_HUB_HTTP_'+response.status);
    snapshot=await response.json();
   }catch(e){return {state:'RETRY_NORMAL_HUB',day:window.businessDay,error:String(e.message).slice(0,120),history,extraProviderCalls:0}}
+  // Capture ALL provider league names already present in cached HUB data,
+  // including scheduled fixtures without eligible 1X2 odds.
+  await this.rememberLeagueCatalog(snapshot);
   const feed=scheduledFromNormalHub(snapshot,now);
   if(feed.status!=='READY')return {state:feed.status,day:window.businessDay,history,feed:feed.stats,extraProviderCalls:0};
   const roundResults=[];
@@ -89,7 +107,8 @@ export class PrematchStore extends DurableObject{
  const ledgerNow=ledger(this.db);
  const knownLeagueNames=await this.ctx.storage.get('prematchLeagueNamesV1')??{};
  const knownFixtures=await this.ctx.storage.get('botFixtures')??[];
- const displayMonitor=enrichLeagueNamesOnMonitor(testMonitor,ledgerNow.rows,knownFixtures,knownLeagueNames);
+ const catalog=await this.ctx.storage.get('prematchLeagueCatalogV1')??{};
+ const displayMonitor=enrichLeagueNamesOnMonitor(testMonitor,ledgerNow.rows,knownFixtures,knownLeagueNames,catalog,archivedLeagueIdsForPicks(this.db));
  const rows=Array.from(this.db.exec("SELECT r.* FROM result_version r WHERE r.status='finished' AND r.observed=(SELECT MAX(v.observed) FROM result_version v WHERE v.fixture_id=r.fixture_id) ORDER BY r.kickoff DESC LIMIT 50"));
  const allTeams=Array.from(this.db.exec("WITH latest AS (SELECT r.* FROM result_version r WHERE r.status='finished' AND r.observed=(SELECT MAX(v.observed) FROM result_version v WHERE v.fixture_id=r.fixture_id)), team_rows AS (SELECT home_id AS team FROM latest UNION ALL SELECT away_id AS team FROM latest) SELECT team,COUNT(*) AS matches FROM team_rows GROUP BY team"));
  const saved=await this.ctx.storage.get('previewSelections');
@@ -124,7 +143,26 @@ export class PrematchStore extends DurableObject{
   const knownLeagueNames=await this.ctx.storage.get('prematchLeagueNamesV1')??{};
   const knownFixtures=await this.ctx.storage.get('botFixtures')??[];
   return json({...savedLedger,dailyBook:preMatchDailyBook(this.db,now),historyRounds:historyRoundState(this.db,now),
-    testMonitor:enrichLeagueNamesOnMonitor(testMonitor,savedLedger.rows,knownFixtures,knownLeagueNames)})
+    testMonitor:enrichLeagueNamesOnMonitor(testMonitor,savedLedger.rows,knownFixtures,knownLeagueNames,
+      await this.ctx.storage.get('prematchLeagueCatalogV1')??{},archivedLeagueIdsForPicks(this.db))})
+ }
+ if(path==='/league-name-audit'&&req.method==='GET'){
+  // Owner-only, read existing persisted data. No HUB or provider request.
+  const picks=ledger(this.db).rows, fixtures=await this.ctx.storage.get('botFixtures')??[];
+  const saved=await this.ctx.storage.get('prematchLeagueNamesV1')??{};
+  const catalog=await this.ctx.storage.get('prematchLeagueCatalogV1')??{};
+  const archived=archivedLeagueIdsForPicks(this.db);
+  const testMonitor=await this.ctx.storage.get('normalHubState')??{monitor:{}};
+  const resolved=enrichLeagueNamesOnMonitor(testMonitor,picks,fixtures,saved,catalog,archived).monitor;
+  const breakdown={};
+  let named=0,missing=0,viaArchiveLeagueId=0;
+  for(const pick of picks){
+   const id=String(pick.fixture_id),phase=resolved[id]?.phase??'UNKNOWN',hasName=typeof resolved[id]?.leagueName==='string'&&!!resolved[id].leagueName.trim();
+   const entry=breakdown[phase]??{total:0,named:0,missing:0};
+   entry.total++;if(hasName){entry.named++;named++}else{entry.missing++;missing++}
+   if(hasName&&archived[id])viaArchiveLeagueId++;
+  }
+  return json({code:'PREMATCH_LEAGUE_ID_CATALOG_V1',mode:'TEST_ONLY',ledgerRows:picks.length,named,missing,catalogLeagues:Object.keys(catalog).length,archivedLeagueIdMatches:viaArchiveLeagueId,phases:breakdown,providerCalls:0,productionWrites:0});
  }
  if(path==='/test-ledger-start'&&req.method==='POST'){
  const j=await req.json();const matches=await this.ctx.storage.get('botFixtures')??[];const map=new Map(matches.map(f=>[String(f.id),f]));
