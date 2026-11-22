@@ -62,12 +62,17 @@ jobs:
               assert.equal(cargo.registry,'HISTORY-CARGO-FULL-V1');
               assert.equal(names.providerCalls,0);
               const monitor=d.testMonitor?.monitor||{};
-              const phases={};let named=0;
+              const phases={};const missingByPhase={};const missingByStatus={};const missingSamples=[];let named=0;
               for(const p of d.testLedger?.rows||[]){
-                const item=monitor[String(p.fixture_id)]||{};
-                if(item.leagueName){named++;const ph=item.phase||'UNKNOWN';phases[ph]=(phases[ph]||0)+1}
+                const item=monitor[String(p.fixture_id)]||{},ph=item.phase||'UNKNOWN';
+                if(item.leagueName){named++;phases[ph]=(phases[ph]||0)+1}
+                else{
+                  missingByPhase[ph]=(missingByPhase[ph]||0)+1;
+                  missingByStatus[p.status]=(missingByStatus[p.status]||0)+1;
+                  if(missingSamples.length<10)missingSamples.push({id:p.fixture_id,home:p.home,away:p.away,pickStatus:p.status,phase:ph});
+                }
               }
-              state={active,attempts,names,preview:{rows:d.testLedger.rows.length,named,missing:d.testLedger.rows.length-named,namedByPhase:phases},
+              state={active,attempts,names,preview:{rows:d.testLedger.rows.length,named,missing:d.testLedger.rows.length-named,namedByPhase:phases,missingByPhase,missingByStatus,missingSamples},
                 finishedResults:hcr.inventory.finishedFixtures,fullCargoRounds:cargo.roundsTracked,
                 protectedVersions:{
                   production:await version('ball46-production'),
