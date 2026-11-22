@@ -107,7 +107,8 @@ export function evaluateBttsUltra(db,fixtures,now,storedQuotes={},limit=250,view
     probabilityYes:complete?(metrics?.sides?.find(x=>x.signal==='BTTS_YES')?.model??null):null,
     probabilityNo:complete?(metrics?.sides?.find(x=>x.signal==='BTTS_NO')?.model??null):null,
     oddsYes:selected?.prices?.BTTS_YES??null,oddsNo:selected?.prices?.BTTS_NO??null,
-    quoteSource:selected?.source??(directValid?'STORED_BET365':null)});
+    quoteSource:selected?.source??(directValid?'STORED_BET365':null),
+    oddsObserved:selected?.observed??null});
  }
  const statusOf=row=>{
   if(row.signal!=='NO_SIGNAL')return 'QUALIFIED_TEST';
