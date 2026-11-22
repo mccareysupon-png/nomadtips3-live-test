@@ -1,0 +1,93 @@
+name: BALL46 BTTS qualified-only cards TEST worker deploy and real UI QA
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-qualified-only-ui-deploy-and-browser-test-20261122.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-premium-match-colors-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy-and-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Deploy BTTS only accepted predictions to existing TEST Worker
+        run: |
+          node --check qa/prematch-history-20261120/patch-btts-qualified-only-cards-ui-test-20261122.mjs
+          node --check qa/prematch-history-20261120/deploy-btts-qualified-only-cards-test-20261122.mjs
+          node qa/prematch-history-20261120/deploy-btts-qualified-only-cards-test-20261122.mjs
+      - name: Install real Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          npx playwright install chromium
+      - name: Verify user-visible BTTS no longer has unqualified prediction cards in PC or mobile
+        run: |
+          mkdir -p qa-artifacts
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+          const root='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/';
+          for(const device of [{id:'desktop',w:1440,h:900,mobile:false},
+             {id:'mobile',w:390,h:844,mobile:true}]){
+            const context=await browser.newContext({viewport:{width:device.w,height:device.h},
+              isMobile:device.mobile,hasTouch:device.mobile,deviceScaleFactor:1});
+            const page=await context.newPage();const jsErrors=[];
+            page.on('pageerror',err=>jsErrors.push(String(err.message)));
+            for(const market of ['btts','1x2']){
+              const resp=await page.goto(root+'?b46pm='+market,
+                {waitUntil:'domcontentloaded',timeout:45000});
+              assert.equal(resp.status(),200);
+              await page.waitForSelector('#b46-prematch-panel',{state:'visible',timeout:35000});
+              await page.waitForSelector('.b46pm-performance-subtitle',{state:'visible',timeout:35000});
+              await page.waitForTimeout(1900);
+              const state=await page.evaluate(()=>{
+                const p=document.querySelector('#b46-prematch-panel');
+                return {innerText:p?.innerText??'',
+                  screenCardCount:p?.querySelectorAll('.b46pm-btts-screen-card').length??-1,
+                  candidateSectionCount:p?.querySelectorAll('#b46pm-btts-candidates').length??-1,
+                  readinessCount:p?.querySelectorAll('#b46pm-btts-readiness').length??-1,
+                  issuedCardCount:p?.querySelectorAll('.b46pm-premium-match').length??-1,
+                  docWidth:document.documentElement.scrollWidth,
+                  viewportWidth:innerWidth};
+              });
+              console.log('B46_BTTS_QUALIFIED_ONLY_RENDER_'+device.id+'_'+market+' '+JSON.stringify({
+                 ...state,innerText:state.innerText.slice(0,900),jsErrors
+              }));
+              if(market==='btts'){
+                assert.equal(state.screenCardCount,0,'BTTS_SCREENING_CARD_STILL_VISIBLE');
+                assert.equal(state.candidateSectionCount,0,'BTTS_SCREENING_SECTION_STILL_VISIBLE');
+                assert.equal(state.readinessCount,0,'BTTS_SCREENING_STATUS_STILL_VISIBLE');
+                assert(!/BET365\s*·\s*(?:NOT OFFERED|PRICE NEEDED)/i.test(state.innerText),
+                  'UNQUALIFIED_BTTS_PRICE_MESSAGE_VISIBLE');
+                assert(!/Probability screening \(TEST\)/i.test(state.innerText),
+                  'UNQUALIFIED_SCREENING_LABEL_VISIBLE');
+                assert(!state.innerText.includes('No matches in this view.')||
+                   state.innerText.includes('No qualified BTTS predictions yet.'),
+                   'BTTS_EMPTY_MESSAGE_NOT_ACCURATE');
+              }else{
+                assert(state.issuedCardCount>0,'ORIGINAL_1X2_CARDS_MISSING');
+              }
+              assert.equal(jsErrors.length,0,'PAGE_JAVASCRIPT_ERRORS');
+              assert(state.docWidth<=state.viewportWidth+2,'HORIZONTAL_OVERFLOW');
+              await page.screenshot({path:'qa-artifacts/qualified-only-'+device.id+'-'+market+'.png',fullPage:false});
+            }
+            await context.close();
+          }
+          await browser.close();
+          console.log('B46_BTTS_QUALIFIED_ONLY_BROWSER_QA_PASS desktop+mobile');
+          JS
+      - name: Save actual browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b46-btts-qualified-only-test-ui-screenshots
+          path: qa-artifacts/
+          retention-days: 14
