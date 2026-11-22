@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {init,ingest,lastMatches} from './history.mjs';
-import {initBttsHistory,importBttsFinished,bttsLastMatches,bttsHistoryCoverage,candidateBttsLeagues} from './btts-history-private.mjs';
+import {initBttsHistory,importBttsFinished,importBttsTeamFallback,bttsLastMatches,bttsHistoryCoverage,candidateBttsLeagues} from './btts-history-private.mjs';
 import {evaluateBttsUltra} from './btts-ultra-shadow.mjs';
 function makeDb(){
  const sql=new DatabaseSync(':memory:');
@@ -78,4 +78,27 @@ test('league candidates use real fixture IDs only, ranked by upcoming count',()=
  const fi=[1,2,3].map(i=>({id:i,status:'scheduled',league:{id:i<3?77:66,name:i<3?'League A':'League B'},teams:{home:{id:i+10},away:{id:i+20}}}));
  const r=candidateBttsLeagues(fi);
  assert.equal(r[0].leagueId,77);assert.equal(r[0].upcoming,2);
+});
+
+test('Ultra team fallback can contain mixed verified leagues and provide 10+10 BTTS history',()=>{
+ const db=makeDb();
+ const home=Array.from({length:10},(_,i)=>result(500+i,11,1000+i,i%2===0?77:80));
+ const away=Array.from({length:10},(_,i)=>result(600+i,22,2000+i,i%2===0?77:81));
+ assert.equal(importBttsTeamFallback(db,home,500,{teamId:11}).added,10);
+ assert.equal(importBttsTeamFallback(db,away,500,{teamId:22}).added,10);
+ const f={id:'999',status:'scheduled',kickoff_ts:900,league:{id:77,name:'Test League'},
+  teams:{home:{id:11,name:'Home'},away:{id:22,name:'Away'}}};
+ const r=evaluateBttsUltra(db,[f],600);
+ assert.equal(r.totals.historyReady,1);
+ assert.equal(r.totals.quoteRequired,1);
+ assert.equal(bttsHistoryCoverage(db).privateFT,20);
+ assert.equal(Array.from(db.exec('SELECT COUNT(*) n FROM result_version'))[0].n,0);
+ assert.equal(r.published,0);
+});
+test('Ultra team fallback is blocked for unrelated teams, duplicates and future results',()=>{
+ const db=makeDb(),x=result(500,11,22,77);
+ assert.throws(()=>importBttsTeamFallback(db,[x],400,{teamId:987}),/INVALID_BTTS_TEAM_RESULT/);
+ assert.throws(()=>importBttsTeamFallback(db,[x,x],400,{teamId:11}),/INVALID_BTTS_TEAM_RESULT/);
+ assert.throws(()=>importBttsTeamFallback(db,[{...x,kickoff_ts:500}],400,{teamId:11}),/INVALID_BTTS_TEAM_RESULT/);
+ assert.equal(bttsHistoryCoverage(db).privateFT,0);
 });
