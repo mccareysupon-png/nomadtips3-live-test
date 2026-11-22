@@ -20,11 +20,11 @@ jobs:
         with: {node-version: '22'}
       - name: Confirm one Predictions nav, same card templates, no O-U model change
         run: |
-          node --check qa/prematch-history-20261120/patch-ou-into-unified-predictions-test-20261122.mjs
-          node --check qa/prematch-history-20261120/deploy-ou-unified-predictions-test-20261122.mjs
+          node --check qa/prematch-history-20261120/patch-ou-unified-nav-hotfix-test-20261122.mjs
+          node --check qa/prematch-history-20261120/deploy-ou-unified-nav-hotfix-test-20261122.mjs
           node --test qa/prematch-history-20261120/patch-ou-into-unified-predictions.test.mjs
       - name: Guarded embedded-client-only deploy to isolated TEST frontend
-        run: node qa/prematch-history-20261120/deploy-ou-unified-predictions-test-20261122.mjs
+        run: node qa/prematch-history-20261120/deploy-ou-unified-nav-hotfix-test-20261122.mjs
       - name: Install Playwright for PC and mobile smoke QA
         run: |
           npm install --no-save playwright@1.55.0
@@ -41,7 +41,8 @@ jobs:
             const page=await browser.newPage({viewport:{width,height},timezoneId:'Asia/Bangkok'});
             const errors=[];page.on('pageerror',e=>errors.push(e.message));
             await page.goto(base+'?b46pm=predictions',{waitUntil:'domcontentloaded',timeout:45000});
-            await page.locator('[data-b46-prematch-route="predictions"]').first().waitFor({state:'attached',timeout:25000});
+            await page.locator('aside.left-rail [data-b46-prematch-route="ou"]').first().waitFor({state:'attached',timeout:30000});
+            await page.waitForFunction(()=>{const p=document.getElementById('b46-prematch-panel');return !!p&&p.textContent.length>100},null,{timeout:30000});
             const p=await page.evaluate(()=>{
               const menu=[...document.querySelectorAll('[data-b46-prematch-route]')].map(n=>n.dataset.b46PrematchRoute);
               const region=document.getElementById('b46-prematch-panel');
