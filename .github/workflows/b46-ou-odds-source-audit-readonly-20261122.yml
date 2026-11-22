@@ -1,4 +1,4 @@
-name: BALL46 O/U vs 1X2 odds stored-source audit READONLY
+name: BALL46 O/U goal_line actual cached prices audit READONLY
 on:
   push:
     branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
@@ -78,6 +78,34 @@ jobs:
             }
           }
           console.log('ODDS_FULL_CARGO_MARKET_SHAPES '+JSON.stringify({sampled,cached1x2,cachedOU,distinctSchemas:exemplars.slice(0,7)}).slice(0,16500));
+
+          // Verify actual O/U goal_line payload values instead of searching for the literal "over_under" market name.
+          const result={inspected:0,goalLinePresent:0,closingNonNull:0,openingNonNull:0,
+            inplayNonNull:0,closingArray:0,closingObject:0,closingString:0,
+            usableQuoteCandidates:0,examples:[]};
+          const show=x=>{
+            if(x==null)return null;
+            const t=Array.isArray(x)?'array':typeof x;
+            const keys=t==='object'?Object.keys(x):[];
+            return {type:t,keys,example:JSON.stringify(x).slice(0,1700)};
+          };
+          for(const round of sampleRounds){
+            for(const fixtureId of round.fixtureIds.slice(0,10)){
+              const raw=await owner('/history-cargo-full?day='+round.businessDay+'&round='+round.roundNo+'&fixture='+fixtureId+'&detail=1');
+              const f=raw.fixture;if(!f)continue;
+              result.inspected++;
+              const m=f.providerOdds?.odds??{},gl=m.goal_line;
+              if(gl){result.goalLinePresent++;}
+              if(gl?.closing!=null){result.closingNonNull++;if(Array.isArray(gl.closing))result.closingArray++;else if(typeof gl.closing==='object')result.closingObject++;else if(typeof gl.closing==='string')result.closingString++;}
+              if(gl?.opening!=null)result.openingNonNull++;
+              if(gl?.inplay!=null)result.inplayNonNull++;
+              const sample={goalLine:show(gl),oneX2Closing:show(m['1x2']?.closing)};
+              if(gl&&result.examples.length<5)result.examples.push({day:round.businessDay,round:round.roundNo,...sample});
+              if(gl?.closing!=null&&JSON.stringify(gl.closing).match(/over|under|2[.]5|home|away/i))result.usableQuoteCandidates++;
+            }
+          }
+          console.log('ODDS_GOALLINE_DEEP_AUDIT '+JSON.stringify(result).slice(0,22000));
+
           const [state,bulk]=await Promise.all([owner('/bot-state'),owner('/btts-bulk-v2-state')]);
           console.log('ODDS_FEED_METRICS '+JSON.stringify({
             botFeedState:state.feedState??state.storedFeed??null,
