@@ -1,0 +1,125 @@
+name: BALL46 HCR V1 isolated Pre-Match TEST deploy and admin report
+on:
+  push:
+    branches: [test/ball46-prematch-v1-20261120]
+    paths: ['.github/workflows/b46-hcr-v1-deploy-test-20261122.yml']
+permissions: {contents: read}
+concurrency:
+  group: ball46-hcr-test-backend-exclusive
+  cancel-in-progress: false
+jobs:
+  deploy-hcr-test-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Offline SQLite and 5-round regressions first
+        run: |
+          node --test qa/prematch-history-20261120/history-five-rounds.test.mjs qa/prematch-history-20261120/history-cargo-registry.test.mjs
+      - name: Preserve current test Worker, add HCR module, audit real admin endpoint
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&account,'TEST_DEPLOY_CREDS_MISSING');
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const test='ball46-prematch-only-test-20261120';
+          const protectedWorkers=['ball46-production','nomadtips3-engine-343','nomadtips3-5usd-hub-343'];
+          const changed=['prematch-only-worker.mjs','history-five-rounds.mjs'];
+          const added='history-cargo-registry.mjs';
+          const sourceDir='qa/prematch-history-20261120/';
+          const auth='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          async function cf(url,options={}){
+            const response=await fetch(url,{...options,headers:{authorization:'Bearer '+token,...(options.headers||{})},signal:AbortSignal.timeout(40000)});
+            const json=await response.json();
+            assert(response.ok&&json.success,'CF_REQUEST_FAILED '+response.status+' '+url.split('?')[0]+' '+JSON.stringify(json.errors||[]));
+            return json.result;
+          }
+          async function latestVersion(worker){
+            const resp=await cf(root+'/scripts/'+worker+'/deployments?per_page=1');
+            const v=resp.deployments?.[0]?.versions?.[0]?.version_id;
+            assert(v,'MISSING_VERSION_'+worker);return v;
+          }
+          const beforeProd=await Promise.all(protectedWorkers.map(latestVersion));
+          const beforeTest=await latestVersion(test);
+          const active=await cf(root+'/workers/'+test+'/versions/'+beforeTest+'?include=modules');
+          assert(active.main_module==='prematch-only-worker.mjs','UNEXPECTED_MAIN_MODULE');
+          assert(Array.isArray(active.modules)&&active.modules.length>=12,'NOT_EXPECTED_TEST_WORKER_MODULES');
+          const modules=active.modules;
+          for(const mod of modules)assert(mod.name&&mod.name.endsWith('.mjs')&&typeof mod.content_base64==='string','UNSUPPORTED_TEST_MODULE');
+          for(const name of changed)assert(modules.some(m=>m.name===name),'MISSING_REPLACE_MODULE_'+name);
+          assert(!modules.some(m=>m.name===added),'HCR_ALREADY_PRESENT_CHECK_VERSION');
+          const currentMain=Buffer.from(modules.find(m=>m.name==='prematch-only-worker.mjs').content_base64,'base64').toString('utf8');
+          const updatedMain=fs.readFileSync(sourceDir+'prematch-only-worker.mjs','utf8');
+          const extraImport="import {historyCargoReport} from './history-cargo-registry.mjs';\n";
+          const routeStart=updatedMain.indexOf(' // Owner-only inventory: no HUB fetch');
+          const routeEnd=updatedMain.indexOf(" if(path==='/history-round-state'",routeStart);
+          assert(routeStart>=0&&routeEnd>routeStart,'HCR_ROUTE_NOT_UNIQUE');
+          const expectedPrior=updatedMain.replace(extraImport,'').slice(0);
+          const expectedMain=expectedPrior.slice(0,expectedPrior.indexOf(' // Owner-only inventory: no HUB fetch'))+
+            expectedPrior.slice(expectedPrior.indexOf(" if(path==='/history-round-state'",expectedPrior.indexOf(' // Owner-only inventory: no HUB fetch')));
+          assert.equal(currentMain,expectedMain,'ACTIVE_TEST_MAIN_SOURCE_DRIFT_STOP_NO_DEPLOY');
+          const currentHistory=Buffer.from(modules.find(m=>m.name==='history-five-rounds.mjs').content_base64,'base64').toString('utf8');
+          assert(currentHistory.includes('importHistoryRoundFromCache')&&!currentHistory.includes('history-cargo-registry.mjs'),'ACTIVE_HISTORY_SOURCE_DRIFT_STOP');
+          const settings=await cf(root+'/scripts/'+test+'/settings');
+          const bindingNames=(settings.bindings||[]).map(b=>b.name).sort();
+          assert.deepEqual(bindingNames,['FIVEDOLLAR_API_KEY','HUB','OWNER_SECRET','STORE'],'TEST_BINDINGS_DRIFT');
+          assert.equal(settings.bindings.find(b=>b.name==='HUB')?.service,'nomadtips3-5usd-hub-343');
+          const form=new FormData();
+          form.append('metadata',new Blob([JSON.stringify({
+            main_module:active.main_module,compatibility_date:active.compatibility_date||'2026-11-20',
+            bindings:bindingNames.map(name=>({name,type:'inherit'}))
+          })],{type:'application/json'}),'metadata.json');
+          for(const m of modules){
+            const data=changed.includes(m.name)?fs.readFileSync(sourceDir+m.name,'utf8'):Buffer.from(m.content_base64,'base64');
+            form.append(m.name,new Blob([data],{type:'application/javascript+module'}),m.name);
+          }
+          form.append(added,new Blob([fs.readFileSync(sourceDir+added,'utf8')],{type:'application/javascript+module'}),added);
+          await cf(root+'/scripts/'+test+'?bindings_inherit=strict',{method:'PUT',body:form});
+          const afterTest=await latestVersion(test);
+          assert(afterTest!==beforeTest,'WORKER_VERSION_DID_NOT_UPDATE');
+          const post=await cf(root+'/scripts/'+test+'/settings');
+          assert.deepEqual((post.bindings||[]).map(b=>b.name).sort(),bindingNames,'TEST_SECRET_BINDINGS_CHANGED');
+          const host='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          async function route(path,authRequired=true){
+            const response=await fetch(host+path,{method:'GET',headers:authRequired?{authorization:auth,accept:'application/json'}:{accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(30000)});
+            if(!authRequired)return {status:response.status};
+            assert(response.ok,'TEST_ROUTE_FAIL '+path+' '+response.status);return response.json();
+          }
+          const health=await route('/health'),r=await route('/history-cargo-registry?detail=0'),
+            all=await route('/history-cargo-registry?day=2026-11-21'),
+            unauth=await route('/history-cargo-registry',false);
+          assert.equal(unauth.status,404,'OWNER_ONLY_ROUTE_PUBLIC');
+          assert.equal(r.registry?.code,'HCR-V1');
+          assert.equal(r.registry?.providerCalls,0);
+          assert.equal(r.registry?.mode,'TEST_ONLY');
+          assert.equal(health.hubReadOnly,true);
+          assert.equal(health.historyRounds?.providerCalls,0);
+          assert.equal(health.historyRounds?.completed,5);
+          assert.equal(health.historyRounds?.imported,230);
+          assert.equal(all.scope?.legacyUntrackedRounds,5,'OLD_HISTORY_MUST_REMAIN_LEGACY');
+          assert.equal(all.scope?.trackedRounds,0,'NEVER_FABRICATE_OLD_ROUND_IDS');
+          const afterProd=await Promise.all(protectedWorkers.map(latestVersion));
+          assert.deepEqual(afterProd,beforeProd,'PROTECTED_WORKER_VERSION_CHANGED');
+          console.log('BALL46_HCR_V1_TEST_DEPLOY_VERIFIED '+JSON.stringify({
+            worker:test,beforeVersion:beforeTest,afterVersion:afterTest,changedModules:[...changed,added],
+            legacyRounds:all.scope.legacyUntrackedRounds,archive:r.inventory,
+            upcomingSupply:{...r.supplyPlanning,highestPriority:r.supplyPlanning.highestPriority.slice(0,4)},
+            authEnforced:true,providerCalls:0,productionWrites:0,bindingNames
+          }));
+          const summary=process.env.GITHUB_STEP_SUMMARY;
+          if(summary)fs.appendFileSync(summary,'# BALL46 HCR V1 - ทะเบียนสัมภาระข้อมูลย้อนหลัง\n\n'+
+            '- **TEST Worker:** '+test+'\n- **HCR:** deployed & authenticated\n'+
+            '- **Rounds from before installation:** '+all.scope.legacyUntrackedRounds+' (LEGACY_UNTRACKED, no guessed IDs)\n'+
+            '- **Historic finished fixtures:** '+r.inventory.finishedFixtures+'\n'+
+            '- **Upcoming fixtures checked for 10-match coverage:** '+r.supplyPlanning.upcomingFixtures+'\n'+
+            '- **Ready for 10-match analysis:** '+r.supplyPlanning.readyFixtures+'\n'+
+            '- **Direct provider calls:** 0\n- **Production Worker changes:** 0\n');
+          JS
