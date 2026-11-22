@@ -14,6 +14,7 @@ test('normal cached HUB scheduled 1X2 odds feed is valid and does not falsely cl
  assert.equal(data.fixtures[0].storedBet365,undefined);
  const merged=mergeStoredPrematch([],data.fixtures,now);
  assert.equal(merged.stats.oneX2Prices,1);
+ assert.equal(merged.fixtures[0].league.id,422,'league ID must survive persisted fixture normalization');
  const mergedAgain=mergeStoredPrematch(merged.fixtures,data.fixtures,now);
  assert.equal(mergedAgain.fixtures.length,1);
  const cfg={minProbabilityBySide:{HOME_WIN:0,DRAW:0,AWAY_WIN:0},minEdge:-1,minEV:-1,priceRanges:{HOME_WIN:[1,100],DRAW:[1,100],AWAY_WIN:[1,100]}};
