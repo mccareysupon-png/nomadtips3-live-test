@@ -88,3 +88,16 @@ The user chose to focus on BTTS Bulk V2 while leaving the 1X2 car/bot/workflow a
 - Real Chromium [run 44998362277](https://github.com/mccareysupon-png/nomadtips3-live-test/actions/runs/44998362277) **PASSED** at PC 1440×900 and mobile 390×844: 24 distinct cards visible on both screens, 21 waiting/3 not-offered, all cards contain history, probabilities, labels and Fixture IDs, no horizontal overflow, no JS errors, and 1X2 still shows 25 existing cards with no BTTS candidate leakage. Screenshots archived as run artifacts.
 - Backend BTTS worker unchanged, 1X2 ledger remains 76 picks, HCR/Live/Production untouched, 0 new 5USD provider calls.
 - URL: `https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/?b46pm=btts`.
+
+## 22 Nov 2026 — BTTS candidate UI crowding root-cause and verified responsive fix
+
+User reported the 24 pre-price BTTS cards were severely crowded. The previous addition had incorrectly reused the original Live Score five-column CSS grid; real-browser diagnostic [44998668029](https://github.com/mccareysupon-png/nomadtips3-live-test/actions/runs/44998668029) measured four `b46pm-premium-quick-metric` cells **25.5px wide on desktop 1440**, **55.5px on mobile 390**, and **38px on mobile 320**, with overlapping or unreadable text.
+
+The correction changes ONLY the BTTS pre-price candidate card subtree in the existing TEST front-end Worker; scoped `#b46pm-btts-candidates` responsive styles, no global CSS changes. Card layout: two full cards per row on desktop 1440; one full-width card per row at narrower resolutions; separate league/time row, centered VS team comparison, three readable metrics (BTTS Side, Probability, Last Matches), and independent Bet365 status and SCREENING ONLY disclaimer footer. Original issued-prediction history and all 1X2/Live cards unaffected.
+
+- Deployed to TEST via [44998866679](https://github.com/mccareysupon-png/nomadtips3-live-test/actions/runs/44998866679), new UI Worker version `356bc889-210c-42c9-9f3f-a0fb07ff517e`. Backend Worker version unchanged.
+- Real Chromium responsive QA [44998977861](https://github.com/mccareysupon-png/nomadtips3-live-test/actions/runs/44998977861) **PASSED** at 1440, 1024, 390 and 320px viewports: **24 actual BTTS candidates**, 21 waiting Bet365 and 3 not offered; 0 overlap, 0 scroll overflow, 0 JS errors, candidate click does not navigate away, and original 1X2 route shows cards with no candidate leakage.
+- Measured individual metric width after fix: **171px at desktop 1440**, **228px at 1024**, **111px at 390**, **88px at 320** — compared with pre-fix 25.5px/55.5px/38px. Font sizes 15–16px for values.
+- Screenshot artifacts for four viewports attached to run 44998977861. Model inspected actual rendered mobile and desktop screenshots.
+- BTTS screening/odds logic unchanged. At deploy upcoming count drifted to 690 as matches approached or started, while modelProbabilityReady remained 24 and fully qualified remained 0. The UI must continue showing these as screening candidates, not published predictions.
+- 5USD API requests for both deploy and UI QA = **0**; Production writes = **0**.
