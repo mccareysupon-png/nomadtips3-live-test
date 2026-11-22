@@ -1,4 +1,4 @@
-name: BALL46 TEST inspect Predictions chronological list READONLY
+name: BALL46 TEST inspect Predictions native league header geometry READONLY
 on:
   push:
     branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
@@ -36,7 +36,7 @@ jobs:
             if(terms.some(t=>ls[i].includes(t)))hits.push({n:i+1,t:ls[i].slice(0,260)});
           }
           console.log('B46_PREDICTIONS_SCAN '+JSON.stringify({version:ver,lines:ls.length,hits:hits.slice(0,240)}));
-          const blocks=[[630,745],[990,1170],[1180,1360],[1360,1510],[1510,1700],[1700,1850]];
+          const blocks=[[1,75],[745,825],[970,1045],[1035,1100],[1138,1178],[1355,1468]];
           for(const [a,b] of blocks){
             console.log('B46_PREDICTIONS_CODE '+JSON.stringify({from:a,to:b,code:ls.slice(a-1,b).map((line,i)=>(a+i)+': '+line).join('\n').slice(0,21500)}));
           }
