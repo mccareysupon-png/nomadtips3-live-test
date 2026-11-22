@@ -64,7 +64,7 @@ const now=Math.floor(Date.now()/1000),options=[];
 for(let page=1;page<=5;page++){
  const preview=await owner('/btts-preview-data?'+new URLSearchParams({page:String(page),filter:'ALL'}));
  assert.equal(preview.mode,'READ_ONLY_BTTS_SHADOW');
- for(const f of preview.preview.rows)if(f.kickoff>now+3600&&f.state==='WAITING_HISTORY')options.push(f);
+ for(const f of preview.preview.rows)if(f.kickoff>now+3600&&f.status==='WAITING_HISTORY')options.push(f);
  if(options.length)break;
 }
 assert(options.length,'NO_FUTURE_BTTS_TEST_FIXTURE');
