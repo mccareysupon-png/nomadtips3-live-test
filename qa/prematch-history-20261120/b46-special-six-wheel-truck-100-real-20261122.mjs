@@ -12,7 +12,7 @@ const token=process.env.CLOUDFLARE_API_TOKEN;
 const account=process.env.CLOUDFLARE_ACCOUNT_ID;
 const key=process.env.FIVEDOLLAR_API_KEY;
 assert(token&&account&&key,'MISSING_TEST_CREDENTIALS');
-const MAX_TEAM_CALLS=10,MAX_PROVIDER_CALLS=12,MIN_DELAY_MS=8500;
+const MAX_TEAM_CALLS=10,MAX_PROVIDER_CALLS=16,MIN_DELAY_MS=8500;
 const outdir='evidence/b46-special-truck-100';
 fs.mkdirSync(outdir,{recursive:true});
 const host='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
@@ -33,7 +33,7 @@ const report={
   oddsProbe:null,quoteImported:null,stopped:null,errors:[]
 };
 const evidence={operation:report.operation,verifiedSource:'api.5dollarfootballapi.com',
-  requestPaths:[],selectedFixtures:[],teamResponses:[],
+  requestPaths:[],selectedFixtures:[],fixtureResponses:[],teamResponses:[],
   verifiedUniqueHistory:[],oddsResponse:null,report:null};
 let providerCalls=0,lastProviderAt=0,lastRemaining=null;
 function save() {
@@ -128,29 +128,33 @@ async function run(){
   }
   if(page>=view.pages)break;
  }
- const hcr=beforeHcr;
- const idsByFixture=new Map((hcr.supplyPlanning?.highestPriority||[]).map(x=>[String(x.fixtureId),x]));
- const optionsById=new Map(options.map(x=>[String(x.fixtureId),x]));
- // Prefer the archived HCR planner's exact fixture/team mapping rather than
- // guessing a team ID from display names or selecting unsupported fixtures.
- const priorityOptions=[...idsByFixture.keys()].map(id=>optionsById.get(id)).filter(Boolean)
-   .sort((a,b)=>a.kickoff-b.kickoff||String(a.fixtureId).localeCompare(String(b.fixtureId)));
- const select=[],teamSeen=new Set();
- for(const f of [...priorityOptions,...options]){
+ // Choose five distinct real upcoming fixtures from the TEST bot's already
+ // stored IDs. The provider's single-fixture endpoint verifies exact team IDs,
+ // because HCR's top-20 supply list does not cover the whole upcoming card.
+ const select=[],seenNames=new Set();
+ for(const f of options.sort((a,b)=>a.kickoff-b.kickoff||String(a.fixtureId).localeCompare(String(b.fixtureId)))){
    if(select.length>=5)break;
-   const a=String(f.home).trim(),b=String(f.away).trim();
-   if(!a||!b||a===b||teamSeen.has(a)||teamSeen.has(b))continue;
-   if(!idsByFixture.has(String(f.fixtureId)))continue;
-   select.push(f);teamSeen.add(a);teamSeen.add(b);
+   const home=String(f.home).trim(),away=String(f.away).trim();
+   if(!home||!away||home===away||seenNames.has(home)||seenNames.has(away))continue;
+   select.push(f);seenNames.add(home);seenNames.add(away);
  }
- assert(select.length>=1,'NO_SUITABLE_HCR_MAPPED_UPCOMING_FIXTURES');
- assert(select.length<=5);
+ assert(select.length>=1,'NO_SUITABLE_UPCOMING_FIXTURES_NO_PROVIDER');
+ console.log('B46_SPECIAL_TRUCK_FIXTURE_PLAN '+JSON.stringify(select.map(f=>({
+   fixtureId:f.fixtureId,league:f.leagueName,home:f.home,away:f.away,kickoff:f.kickoff
+ }))));
  const teamJobs=[];
  for(const f of select){
-   const v=idsByFixture.get(String(f.fixtureId));
-   if(!v)continue;
-   const home=Number(v.home?.teamId),away=Number(v.away?.teamId);
-   if(!Number.isSafeInteger(home)||home<=0||!Number.isSafeInteger(away)||away<=0||home===away)continue;
+   const j=await provider('/v1/fixtures/'+encodeURIComponent(String(f.fixtureId)),'VERIFY_UPCOMING_FIXTURE_'+f.fixtureId);
+   const raw=j.data;
+   if(!raw||Number(raw.id)!==Number(f.fixtureId)||
+      Number(raw.kickoff_ts)!==Number(f.kickoff)||
+      !Number.isSafeInteger(Number(raw.teams?.home?.id))||
+      !Number.isSafeInteger(Number(raw.teams?.away?.id))||
+      Number(raw.teams.home.id)<=0||Number(raw.teams.away.id)<=0||
+      Number(raw.teams.home.id)===Number(raw.teams.away.id))
+      throw Error('PROVIDER_FIXTURE_TEAM_ID_EVIDENCE_FAILED_'+f.fixtureId);
+   const home=Number(raw.teams.home.id),away=Number(raw.teams.away.id);
+   evidence.fixtureResponses.push({fixtureId:String(f.fixtureId),body:j});
    if(teamJobs.some(x=>x.id===home||x.id===away))continue;
    teamJobs.push({id:home,name:f.home,fixture:f.fixtureId,kickoff:f.kickoff,side:'home'},
      {id:away,name:f.away,fixture:f.fixtureId,kickoff:f.kickoff,side:'away'});
@@ -158,30 +162,7 @@ async function run(){
      teamIds:{home,away}});
    if(teamJobs.length>=MAX_TEAM_CALLS)break;
  }
- // When the 20 high-priority fixture examples no longer match the current
- // scheduled preview, use the priorityTeams IDs mapped to their example
- // upcoming fixture by exact fixtureID, rather than guessing IDs.
- if(!teamJobs.length){
-   const priorities=hcr.supplyPlanning?.priorityTeams||[];
-   const grouped=new Map();
-   for(const x of priorities){
-     const k=String(x.exampleFixtureId);
-     if(!grouped.has(k))grouped.set(k,[]);
-     grouped.get(k).push(x);
-   }
-   for(const f of select){
-     const x=grouped.get(String(f.fixtureId))||[];
-     const home=x.find(z=>z.teamName===f.home),away=x.find(z=>z.teamName===f.away);
-     if(!home||!away)continue;
-     const h=Number(home.teamId),a=Number(away.teamId);
-     if(!Number.isSafeInteger(h)||!Number.isSafeInteger(a)||h<=0||a<=0||h===a)continue;
-     teamJobs.push({id:h,name:f.home,fixture:f.fixtureId,kickoff:f.kickoff,side:'home'},
-       {id:a,name:f.away,fixture:f.fixtureId,kickoff:f.kickoff,side:'away'});
-     report.targetFixtures.push({id:String(f.fixtureId),league:f.leagueName,home:f.home,away:f.away,kickoff:f.kickoff,teamIds:{home:h,away:a}});
-     if(teamJobs.length>=MAX_TEAM_CALLS)break;
-   }
- }
- assert(teamJobs.length>=2,'TEST_HCR_TEAM_ID_MAPPING_UNAVAILABLE_STOP_NO_PROVIDER');
+ assert(teamJobs.length>=2,'NO_VERIFIED_TEAM_IDS_FROM_PROVIDER_STOP');
  assert(teamJobs.length<=MAX_TEAM_CALLS);
  evidence.selectedFixtures=report.targetFixtures;
  console.log('B46_SPECIAL_TRUCK_PLAN '+JSON.stringify({targetFixtures:report.targetFixtures,
