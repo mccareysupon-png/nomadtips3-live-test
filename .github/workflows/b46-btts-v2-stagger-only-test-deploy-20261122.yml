@@ -1,0 +1,25 @@
+name: BALL46 BTTS Bulk V2 staggered hours ONLY TEST deploy
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-v2-stagger-only-test-deploy-20261122.yml]
+permissions: {contents: read}
+concurrency:
+  group: b46-prematch-worker-deploy-v2-test-only
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Recheck BTTS V2 time slots and HCR/1X2 tests
+        run: |
+          node --test qa/prematch-history-20261120/btts-bulk-truck-v2.test.mjs qa/prematch-history-20261120/btts-history-private.test.mjs qa/prematch-history-20261120/history-five-rounds.test.mjs
+      - name: Deploy ONLY BTTS V2 truck driver, leave 1X2/Production untouched
+        run: node qa/prematch-history-20261120/deploy-btts-v2-stagger-only-test-20261122.mjs
