@@ -1,4 +1,4 @@
-name: BALL46 O/U TEST backend post-deploy verification READONLY
+name: BALL46 O/U historical 750-match test readonly validation
 on:
   push:
     branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
@@ -40,7 +40,7 @@ jobs:
             if(i===19)throw Error('OU_OWNER_STATE_UNAVAILABLE');
             await new Promise(r=>setTimeout(r,1500));
           }
-          const back=await read('/ou-backtest-test?limit=350');
+          const back=await read('/ou-backtest-test?limit=750');
           console.log('OU_POSTDEPLOY_BACKTEST '+JSON.stringify(back));
           if(back.status!==200)throw Error('OU_BACKTEST_FAILED_'+back.status);
           const cycle=await read('/ou-cycle-test','POST');
