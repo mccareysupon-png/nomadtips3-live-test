@@ -62,7 +62,7 @@ assert.equal(full.registry,'HISTORY-CARGO-FULL-V1');assert.equal(btts.mode,'READ
 const frozenLedger=JSON.stringify({rows:ledger.rows,stats:ledger.stats});
 console.log('B46_BTTS_BACKEND_ONLY_PREPARE '+JSON.stringify({
  before,activeModules:active.modules.length,FT:hcr.inventory.finishedFixtures,
- 1X2LedgerRows:ledger.rows.length,bttsBefore:btts.totals,providerCalls:0,productionWrites:0
+ oneX2LedgerRows:ledger.rows.length,bttsBefore:btts.totals,providerCalls:0,productionWrites:0
 }));
 assert.equal(await ver(name),before,'CONCURRENT_TEST_CHANGE_ABORT');
 const form=new FormData();
