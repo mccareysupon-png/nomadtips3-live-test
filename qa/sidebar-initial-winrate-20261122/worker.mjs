@@ -15,12 +15,16 @@ function paint(s){if(!valid(s))return;document.querySelectorAll('.left-rail [dat
  el.title='Receiver Win Rate · sequence '+s.sequence;
 })}
 async function boot(){if(!document.querySelector('.left-rail [data-b46-rate-snapshot]'))return;
- state.requested++;try{
- const r=await fetch('/__b46_sidebar_initial_snapshot',{cache:'no-store'});
- if(!r.ok)throw Error('SNAPSHOT_HTTP_'+r.status);
- const d=await r.json();if(!valid(d.snapshot))throw Error('SNAPSHOT_INVALID');
- state.source='monitor-cache';state.sequence=d.snapshot.sequence;paint(d.snapshot);
- }catch(e){state.source='fallback';state.error=String(e)}
+ for(let attempt=0;attempt<3;attempt++){
+  state.requested++;
+  try{
+   const r=await fetch('/__b46_sidebar_initial_snapshot',{cache:'no-store'});
+   if(!r.ok)throw Error('SNAPSHOT_HTTP_'+r.status);
+   const d=await r.json();if(!valid(d.snapshot))throw Error('SNAPSHOT_INVALID');
+   state.source='monitor-cache';state.sequence=d.snapshot.sequence;paint(d.snapshot);return;
+  }catch(e){state.source='retrying';state.error=String(e);if(attempt<2)await new Promise(resolve=>setTimeout(resolve,350*(attempt+1)))}
+ }
+ state.source='fallback';
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();`;
