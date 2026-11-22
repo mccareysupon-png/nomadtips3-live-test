@@ -21,7 +21,7 @@ export function patchOuUiClient(input){
  "        units:null,staked:null,avgOdds:null};",
  "    }"
  ].join('\n');
- s=once(s,"     function perfSource(){","     function perfSource(){\n"+source+'\n','OU_PERFORMANCE_SOURCE');
+ s=once(s,"function perfSource(){","function perfSource(){\n"+source+'\n','OU_PERFORMANCE_SOURCE');
  s=once(s,"const series=receiver?receiver.series[graphKey]",
   "const series=mode==='ou'&&performanceMetric!=='winRate'?[]:receiver?receiver.series[graphKey]",
   'NO_UNPRICED_UNITS_SERIES');
@@ -60,8 +60,8 @@ export function patchOuUiClient(input){
  "           win:bw,loss:bl,winRate:bw+bl?100*bw/(bw+bl):null,",
  "           units:ouLedger.rows?.length?null:baseDay.settled?.units}}:ouDay;"
  ].join('\n');
- s=once(s,"       marketDailyBooks=j.marketDailyBooks??null;",
-  "       marketDailyBooks=j.marketDailyBooks??null;\n"+load,'LOAD_OU_FROM_TEST_PREVIEW');
+ s=once(s,"marketDailyBooks=j.marketDailyBooks??null;",
+  "marketDailyBooks=j.marketDailyBooks??null;\n"+load,'LOAD_OU_FROM_TEST_PREVIEW');
  s=once(s,
   "board.append(el('small','b46pm-stats-note','AVG ODDS uses the odds saved when the Bot selected each pick, not changing live odds.'));",
   "board.append(el('small','b46pm-stats-note',mode==='ou'?'O/U 2.5 · Model-only test. Unverified odds; Win Rate uses FT outcomes. ROI/P/L unavailable.':'AVG ODDS uses the odds saved when the Bot selected each pick, not changing live odds.'));",
