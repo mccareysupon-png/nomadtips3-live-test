@@ -50,13 +50,18 @@ jobs:
           const high=hcr.supplyPlanning?.highestPriority||[];
           const namedPriorities=priorities.filter(x=>typeof x.leagueName==='string'&&x.leagueName.trim()).length;
           const namedHighest=high.filter(x=>typeof x.leagueName==='string'&&x.leagueName.trim()).length;
+          const ledgerIds=new Set(rows.map(x=>Number(x.fixture_id)));
+          const sameHigh=high.filter(x=>ledgerIds.has(Number(x.fixtureId)));
+          const sameHighMissing=high.filter(x=>mon[x.fixtureId]?.phase==='NOT_IN_HUB');
+          const highSample=sameHigh.slice(0,5).map(x=>({fixtureId:x.fixtureId,leagueName:x.leagueName}));
+          
           const monitorKeys=[...new Set(Object.values(mon).flatMap(x=>Object.keys(x)))].sort();
           const sampleStatuses=Object.values(mon).reduce((o,x)=>(o[x.phase]=(o[x.phase]||0)+1,o),{});
           const summary={
             ledgerRows:rows.length,stats:j.testLedger.stats,
             phases:sampleStatuses,breakdown,monitorKeys,
             HCR:{upcoming:hcr.supplyPlanning.upcomingFixtures,upcomingWithLeagueID:hcr.supplyPlanning.upcomingLeagueIdsAvailable,
-              upcomingNoLeagueID:hcr.supplyPlanning.upcomingLeagueIdsMissing,namedPriorities,numberOfPriorityLeagues:priorities.length,namedHighest,highestCount:high.length},
+              upcomingNoLeagueID:hcr.supplyPlanning.upcomingLeagueIdsMissing,namedPriorities,numberOfPriorityLeagues:priorities.length,namedHighest,highestCount:high.length,highestMatchesLedger:sameHigh.length,highestMissingMonitor:sameHighMissing.length,highSample},
             apiKeys:Object.keys(j).sort(),providerCalls:0,productionWrites:0
           };
           console.log('B46_LEAGUE_AUDIT_READ_ONLY '+JSON.stringify(summary));
