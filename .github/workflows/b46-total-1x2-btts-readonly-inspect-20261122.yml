@@ -31,7 +31,7 @@ jobs:
           if(!m)throw Error('EMBEDDED_CLIENT_MISSING');
           const client=JSON.parse(m[1]);
           console.log('B46_TOTAL_INSPECT_VERSION '+version);
-          const needles=['Pre-Match · Total (1X2 + BTTS)','1X2 + BTTS','1X2+BTTS','allLedger','bttsLedger','function performancePanel','function stats','function summary','function compute','function totals','renderPreMatch','function render','mode===\\'all\\'','marketDaily','function build','function aggregate','function market','BTTS Statistics'];
+          const needles=['Pre-Match · Total (1X2 + BTTS)','1X2 + BTTS','1X2+BTTS','allLedger','bttsLedger','function performancePanel','function stats','function summary','function compute','function totals','renderPreMatch','function render','mode===','marketDaily','function build','function aggregate','function market','BTTS Statistics'];
           const lines=client.split('\n');
           for(const needle of needles){
             const found=[];
