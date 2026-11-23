@@ -1,0 +1,19 @@
+name: BALL46 read-only cross-device real-price visibility forensics
+on:
+  push:
+    branches: [test/ball46-default-odds-cross-device-20261123]
+    paths: ['.github/workflows/b46-real-odds-visibility-forensics-20261123.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Compare actual changes and animation visibility on live production and isolated TEST
+        run: node qa/default-odds-crossdevice-20261123/visibility-forensics.mjs
