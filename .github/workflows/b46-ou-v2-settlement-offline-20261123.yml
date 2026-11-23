@@ -1,0 +1,25 @@
+name: BALL46 O/U V2 settlement offline regression TEST no providers
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths:
+      - qa/prematch-history-20261120/ou-v2-settlement-test.mjs
+      - qa/prematch-history-20261120/ou-v2-settlement.test.mjs
+      - .github/workflows/b46-ou-v2-settlement-offline-20261123.yml
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Pure TEST offline FT settlement and market regression without API credentials
+        run: |
+          node --check qa/prematch-history-20261120/ou-v2-settlement-test.mjs
+          node --check qa/prematch-history-20261120/ou-v2-settlement.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-v2-settlement.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/prematch-ou-engine-v1.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/patch-priced-ou-into-existing-prematch-ui.test.mjs
+          echo B46_OU_V2_SETTLEMENT_PURE_QA_OK_PROVIDER_CALLS_0
