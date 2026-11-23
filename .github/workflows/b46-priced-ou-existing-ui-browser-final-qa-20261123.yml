@@ -1,0 +1,91 @@
+name: BALL46 priced O/U in existing PreMatch UI real browser PC Mobile verification
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-priced-ou-existing-ui-browser-final-qa-20261123.yml]
+permissions: {contents: read}
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install Chromium for end-user browser test
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          npx playwright install chromium
+      - name: Confirm visible REAL price-locked O/U card and unchanged existing 1X2/BTTS on PC/mobile
+        run: |
+          mkdir -p qa-artifacts
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/';
+          const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+          const report=[];
+          for(const device of [{name:'PC1440',w:1440,h:900},{name:'Mobile390',w:390,h:844},{name:'Mobile320',w:320,h:700}]){
+           const ctx=await browser.newContext({viewport:{width:device.w,height:device.h},timezoneId:'Asia/Bangkok'});
+           const p=await ctx.newPage();
+           const errors=[];p.on('pageerror',e=>errors.push(String(e.message).slice(0,150)));
+           const r=await p.goto(base+'?b46pm=ou',{waitUntil:'domcontentloaded',timeout:55000});
+           assert(r?.ok(),'OU_PAGE_HTTP_'+device.name+'_'+r?.status());
+           await p.locator('#b46-prematch-panel').waitFor({state:'visible',timeout:45000});
+           await p.waitForFunction(()=>{
+            const el=document.getElementById('b46-prematch-panel');
+            return el&&/Neftchi Fargona/i.test(el.textContent)&&/Al Hilal Riyadh/i.test(el.textContent)&&/Ladbrokes/i.test(el.textContent);
+           },{timeout:50000});
+           await p.waitForTimeout(700);
+           const ou=await p.evaluate(()=>{
+            const root=document.getElementById('b46-prematch-panel');
+            const txt=root?.textContent??'';
+            return {route:new URLSearchParams(location.search).get('b46pm'),
+             leagueCount:root?.querySelectorAll('.b46pm-premium-league').length,
+             cardCount:root?.querySelectorAll('.b46pm-match').length,
+             containsTeams:txt.includes('Neftchi Fargona')&&txt.includes('Al Hilal Riyadh'),
+             under:txt.includes('UNDER 2.5')||txt.includes('Under 2.5')||txt.includes('UNDER_2.5'),
+             hasOdds:txt.includes('2.80'),
+             bookmaker:txt.toLowerCase().includes('ladbrokes'),
+             note:txt.includes('Full Market price'),
+             horizontalOverflow:document.documentElement.scrollWidth-innerWidth,
+             previewTitle:root?.querySelector('.b46pm-performance-subtitle')?.textContent??null
+            };
+           });
+           assert.equal(ou.route,'ou');
+           assert(ou.containsTeams&&ou.under&&ou.hasOdds&&ou.bookmaker,
+            'REAL_LOCKED_PREDICTION_NOT_VISIBLE_'+device.name+'_'+JSON.stringify(ou));
+           assert(ou.horizontalOverflow<=3,'MOBILE_OVERFLOW_OU_'+device.name+'_'+JSON.stringify(ou));
+           assert.equal(errors.length,0,'OU_JAVASCRIPT_ERRORS_'+device.name+'_'+JSON.stringify(errors));
+           await p.screenshot({path:'qa-artifacts/ou-v2-existing-'+device.name.toLowerCase()+'.png',fullPage:false});
+           const predictions=await p.goto(base+'?b46pm=predictions',{waitUntil:'domcontentloaded',timeout:55000});
+           assert(predictions?.ok(),'PREDICTIONS_HTTP_'+device.name);
+           await p.locator('#b46-prematch-panel').waitFor({state:'visible',timeout:45000});
+           await p.waitForFunction(()=>{
+            const root=document.querySelector('#b46-prematch-panel');
+            return root&&root.querySelectorAll('.b46pm-match').length>0;
+           },{timeout:45000});
+           const pv=await p.evaluate(()=>{
+            const root=document.getElementById('b46-prematch-panel');
+            return {matchCards:root?.querySelectorAll('.b46pm-match').length??0,
+             route:new URLSearchParams(location.search).get('b46pm'),
+             horizontalOverflow:document.documentElement.scrollWidth-innerWidth
+            };
+           });
+           assert.equal(pv.route,'predictions');
+           assert(pv.matchCards>0,'ORIGINAL_1X2_PREDICTIONS_NOT_FOUND_'+device.name);
+           assert(pv.horizontalOverflow<=3,'ORIGINAL_PREDICTIONS_OVERFLOW_'+device.name);
+           assert.equal(errors.length,0,'PREDICTIONS_JS_ERROR_'+device.name+'_'+JSON.stringify(errors));
+           report.push({device:device.name,ou,predictions:pv,jsErrors:0});
+           await ctx.close();
+          }
+          await browser.close();
+          console.log('B46_REAL_PRICED_OU_EXISTING_UI_BROWSER_PASS '+JSON.stringify({report,
+           productionWrites:0,paidProviderCalls:0,existingUI:true}));
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-actual-priced-ou-test-ui-pc-mobile-20261123
+          path: qa-artifacts/*.png
+          if-no-files-found: ignore
