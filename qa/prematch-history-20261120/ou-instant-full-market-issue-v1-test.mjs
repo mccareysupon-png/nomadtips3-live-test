@@ -12,7 +12,7 @@ const positiveId=n=>Number.isSafeInteger(Number(n))&&Number(n)>0;
 export const OU_INSTANT_POLICY=Object.freeze({
  source:'FULL_MARKET_SERVICE_EXISTING_CACHE_THEN_GUARDED_ONE_REQUEST',
  maxReadBatch:70,maximumCachedAgeMs:120000,maxPaidCallsPerLondonDay:1,
- minimumSecondsBeforeKickoff:900,
+ minimumSecondsBeforeKickoff:300,
  noPostIssueReprice:true,noHistoricalBackfill:true,modelUnchanged:true,productionWrites:0
 });
 export function quoteFromFullMarketReply(reply,p,now,{cacheOnly=false}={}){
@@ -128,9 +128,8 @@ export async function captureAndIssueOu(db,{screening,now,market,hubHealth}={}){
   try{
    const [h,fm]=await Promise.all([hubHealth(),market('/health',{method:'GET'})]);
    healthy=inspectOuPickupHealth(h).allowed===true&&fm?.ok===true&&
-    fm.retryAfterSec===0&&fm.remainingLocalBudget>0&&fm.blockedUntil<=Date.now()||
-    (inspectOuPickupHealth(h).allowed===true&&fm?.ok===true&&
-      fm.retryAfterSec===0&&fm.remainingLocalBudget>0&&!fm.blockedUntil);
+    Number(fm.retryAfterSec??0)===0&&Number(fm.remainingLocalBudget)>0&&
+    (fm.blockedUntil==null||Number(fm.blockedUntil)<=Date.now());
   }catch{}
   if(healthy){
    let reserved=false;
