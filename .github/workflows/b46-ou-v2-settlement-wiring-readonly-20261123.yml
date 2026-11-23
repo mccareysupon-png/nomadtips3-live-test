@@ -1,0 +1,52 @@
+name: BALL46 O/U V2 settlement wiring audit read only
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-v2-settlement-wiring-readonly-20261123.yml]
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Inspect active TEST settlement and existing loop without any provider calls or writes
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const t=process.env.CLOUDFLARE_API_TOKEN,a=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const root='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers';
+          async function cf(p){const r=await fetch(root+p,{headers:{authorization:'Bearer '+t},signal:AbortSignal.timeout(30000)});
+           const j=await r.json();assert(r.ok&&j.success);return j.result;}
+          const worker='ball46-prematch-only-test-20261120';
+          const id=(await cf('/scripts/'+worker+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+          const s=await cf('/workers/'+worker+'/versions/'+id+'?include=modules');
+          const src=Buffer.from(s.modules.find(m=>m.name===s.main_module).content_base64,'base64').toString();
+          const lines=src.split('\n');
+          for(const term of ['async monitor','async runDailyMission','async dailyMission',
+            'async runBot','path===','/monitor','/preview-data','readOuValueShadow',
+            'settleOu(', 'syncOuSnapshot(','result_version','/prematch-ou-engine-tick',
+            'export default {async scheduled']){
+            const matches=[];
+            for(let i=0;i<lines.length;i++)if(lines[i].includes(term))matches.push(i);
+            const excerpt=matches.slice(0,9).map(i=>({line:i+1,context:lines.slice(Math.max(0,i-5),Math.min(lines.length,i+11))
+             .map((t,k)=>String(Math.max(0,i-5)+k+1)+':'+t.replace(/(Bearer\s+)[A-Za-z0-9._-]+/g,'$1[REDACTED]').slice(0,440)).join('\n')}));
+            if(excerpt.length)console.log('B46_OU_SETTLEMENT_WIRING '+JSON.stringify({term,excerpts:excerpt}).slice(0,24000));
+          }
+          const auth='Bearer '+crypto.createHmac('sha256',t).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const host='https://'+worker+'.mccarey-supon.workers.dev';
+          for(const p of ['/preview-data','/prematch-ou-engine-state','/history-cargo-registry?detail=0']){
+            const res=await fetch(host+p,{headers:{authorization:auth},cache:'no-store',signal:AbortSignal.timeout(25000)});
+            const x=await res.json().catch(()=>null);
+            console.log('B46_OU_SETTLEMENT_DATA '+JSON.stringify({p,http:res.status,
+              ouV2:x?.ouLedger?.rows?.map(y=>({id:y.fixture_id,status:y.status,kickoff:y.kickoff,picked_at:y.picked_at,price:y.price})).slice(0,7),
+              ouStats:x?.ouLedger?.stats,finished:x?.inventory?.finishedFixtures,
+              currentOU:x?.last?.status,quota:x?.quota, oneX2:x?.testLedger?.rows?.length}));
+          }
+          console.log('B46_OU_SETTLEMENT_AUDIT_READONLY_ZERO_PROVIDER_CALLS');
+          JS
