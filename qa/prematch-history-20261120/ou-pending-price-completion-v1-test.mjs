@@ -101,19 +101,25 @@ export function attachFirstPendingOuPrice(db,p,quote,now){
  let changed=false;
  db.transaction(()=>{
   const current=sql(db,"SELECT fixture_id,home_id,away_id,kickoff,picked_at,pick,line,model,status,price FROM b46_ou_pick_v1_test WHERE fixture_id=?",p.fixture_id)[0];
-  if(!current||!quoteForUnpricedPending(current,{
-   fullOdds:{fixture_id:current.fixture_id,bookmakers:[{
-    slug:quote.bookmaker,odds:{goal_line_fixed:[{
-     line:2.5,...(quote.market==='goal_line_fixed'?{
-      [quote.stage]:{over:quote.priceOver,under:quote.priceUnder}}:{})}],
-     ...(quote.market==='goal_line'?{goal_line:{[quote.stage]:{line:2.5,over:quote.priceOver,under:quote.priceUnder}}}:{})}}],
-   fetchedAt:quote.observedAt*1000,ageMs:(now-quote.observedAt)*1000,stale:false
-  },now))return;
+  // Recheck current row and source timing *inside* the same transaction.
+  if(!current||current.status!=='PENDING'||current.price!==null||
+    current.line!==2.5||current.model!==OU_MODEL||
+    current.kickoff<=now+MIN_PRE_KICKOFF_SEC||
+    current.picked_at>now||current.picked_at<=0||
+    !KNOWN_BOOKS.includes(quote.bookmaker)||
+    !['closing','opening'].includes(quote.stage)||
+    !['goal_line_fixed','goal_line'].includes(quote.market)||
+    !Number.isSafeInteger(quote.observedAt)||quote.observedAt>now+10||
+    now-quote.observedAt>MAX_CACHE_AGE_MS/1000||
+    quote.observedAt>=current.kickoff-MIN_PRE_KICKOFF_SEC||
+    quote.source!=='FULL_MARKET_LATE_FIRST_QUOTE_'+quote.bookmaker.toUpperCase()+'_'+
+      quote.market.toUpperCase()+'_'+quote.stage.toUpperCase())return;
   if(current.picked_at!==quote.originalPickedAt||
     quote.fixtureId!==current.fixture_id||quote.homeId!==current.home_id||
     quote.awayId!==current.away_id||quote.kickoff!==current.kickoff||
     quote.pick!==current.pick||quote.line!==2.5||quote.attachedAt!==now||
-    !decimal(quote.selectedPrice)||!decimal(quote.priceOver)||!decimal(quote.priceUnder))return;
+    !decimal(quote.selectedPrice)||!decimal(quote.priceOver)||!decimal(quote.priceUnder)||
+    quote.selectedPrice!==(current.pick==='OVER_2.5'?quote.priceOver:quote.priceUnder))return;
   // Preserve the original immutable pick and its picked_at. This is the FIRST
   // missing payout attachment, never a price revision of a settled bet.
   db.exec("INSERT INTO b46_ou_verified_quote_v1_test(fixture_id,home_id,away_id,pick,line,price_over,price_under,selected_price,observed_at,kickoff,source,bookmaker,model) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(fixture_id) DO NOTHING",
