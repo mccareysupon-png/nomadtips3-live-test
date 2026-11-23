@@ -28,3 +28,5 @@ jobs:
           node --experimental-sqlite --test qa/prematch-history-20261120/ou-pending-price-completion-v1.test.mjs
       - name: Guarded deploy isolated pre-match TEST Worker only, no provider calls in deployment
         run: node qa/prematch-history-20261120/deploy-ou-v2-provider-bridge-test-20261123.mjs
+
+# Strict one-time source-preserving cron order preflight recheck
