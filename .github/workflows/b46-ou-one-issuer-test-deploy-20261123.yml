@@ -1,0 +1,105 @@
+name: BALL46 single O/U V2 issuer TEST remove redundant legacy cron
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-one-issuer-test-deploy-20261123.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-prematch-only-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Single TEST O/U V2 scheduled issuer, retain old O/U route and settlement tables
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          import fs from 'node:fs';
+          import {execFileSync} from 'node:child_process';
+          const t=process.env.CLOUDFLARE_API_TOKEN,a=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const root='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers';
+          async function cf(p,opts={}){
+           const r=await fetch(root+p,{...opts,headers:{authorization:'Bearer '+t,...(opts.headers||{})},signal:AbortSignal.timeout(40000)});
+           const j=await r.json();assert(r.ok&&j.success,'CF_'+p+'_'+r.status);return j.result;
+          }
+          const name='ball46-prematch-only-test-20261120',mainName='prematch-only-worker.mjs';
+          const ver=async w=>(await cf('/scripts/'+w+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+          const protect=['ball46-production','nomadtips3-engine-343','nomadtips3-5usd-hub-343',
+           'nomadtips3-full-market-343-ball46','ball46-premium-match-colors-test-20261120'];
+          const oldProtected=Object.fromEntries(await Promise.all(protect.map(async x=>[x,await ver(x)])));
+          const old=await ver(name);assert.equal(old,'0860a22f-3619-481f-a4aa-c6db48aa8127','TEST_MAIN_CHANGED');
+          const v=await cf('/workers/'+name+'/versions/'+old+'?include=modules');
+          const main=v.modules.find(x=>x.name===mainName);
+          const original=Buffer.from(main.content_base64,'base64').toString('utf8');
+          const s=original.lastIndexOf('export default {async scheduled(');
+          const start=original.indexOf("const q=await stub.fetch('https://prematch.internal/ou-cycle-test'",s);
+          const end=original.indexOf('},async fetch(req,env)',start);
+          assert(s>=0&&start>s&&end>start,'LEGACY_CRON_ROUTING_DRIFT');
+          const removed=original.slice(start,end);
+          assert(removed.includes('OU_2P5_CAPTURE_AT_ISSUE_TEST')&&
+           removed.includes('OU_2P5_CAPTURE_AT_ISSUE_ERROR')&&
+           removed.includes("method:'POST'"),'LEGACY_CHUNK_UNEXPECTED');
+          const next=original.slice(0,start)+
+           "console.log('B46_LEGACY_OU_CRON_ISSUER_DISABLED_PRESERVE_PICKS_AND_FT_SETTLEMENT')"+
+           original.slice(end);
+          assert(next.includes("path==='/ou-cycle-test'&&req.method==='POST'"),'LEGACY_OWNER_ROUTE_REMOVED');
+          assert(next.includes('const ouSettled=settleOu(this.db,now);'),'LEGACY_RESULT_SETTLEMENT_REMOVED');
+          assert(next.includes("ctx.waitUntil(stub.fetch('https://prematch.internal/prematch-ou-engine-tick'"),'PRIMARY_V2_ISSUER_LOST');
+          assert(next.includes("enablePaidQuoteFallback:true"),'V2_FALLBACK_CHANGED');
+          assert(next.includes("event.cron!=='*/15 * * * *'"),'CRON_CHANGED');
+          assert(next.includes('B46_HUB_BULK_REFRESH_GUARD_V1'),'BULK_FRESHNESS_GUARD_CHANGED');
+          assert(next.includes('ou-v2-settlement-test.mjs'),'V2_FT_MODULE_LOST');
+          assert(!next.slice(s).includes("stub.fetch('https://prematch.internal/ou-cycle-test'"),'SECOND_PRICE_ISSUER_STILL_AUTO');
+          fs.writeFileSync('/tmp/b46-ou-one-issuer-test.mjs',next);
+          execFileSync(process.execPath,['--check','/tmp/b46-ou-one-issuer-test.mjs']);
+          const digest=b=>crypto.createHash('sha256').update(b).digest('hex');
+          const originalHashes=Object.fromEntries(v.modules.map(m=>[m.name,digest(Buffer.from(m.content_base64,'base64'))]));
+          const setting=await cf('/scripts/'+name+'/settings');
+          const bind=setting.bindings.map(x=>x.name).sort();
+          assert.deepEqual(bind,['FIVEDOLLAR_API_KEY','FULL_MARKET','HUB','OWNER_SECRET','STORE']);
+          assert.equal(await ver(name),old,'TEST_WORKER_RACE_ABORT');
+          console.log('B46_OU_ONE_ISSUER_PREFLIGHT '+JSON.stringify({worker:name,old,
+           scheduledV2Only:true,legacyPickArchivePreserved:true,legacyFtSettlementPreserved:true,
+           providerCalls:0,productionWrites:0}));
+          const metadata={main_module:v.main_module,compatibility_date:v.compatibility_date||'2026-11-20',
+           bindings:setting.bindings.map(b=>({name:b.name,type:'inherit'})),
+           ...(v.compatibility_flags?.length?{compatibility_flags:v.compatibility_flags}:{})};
+          const form=new FormData();
+          form.append('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}),'metadata.json');
+          for(const m of v.modules){
+           form.append(m.name,new Blob([m.name===mainName?next:Buffer.from(m.content_base64,'base64')],
+            {type:'application/javascript+module'}),m.name);
+          }
+          await cf('/scripts/'+name+'?bindings_inherit=strict',{method:'PUT',body:form});
+          let newVersion=null,installed=null;
+          for(let i=0;i<40;i++){
+           const id=await ver(name);
+           if(id!==old){
+            const data=await cf('/workers/'+name+'/versions/'+id+'?include=modules');
+            if(Buffer.from(data.modules.find(m=>m.name===mainName)?.content_base64??'','base64').toString('utf8')===next){
+             newVersion=id;installed=data;break;
+            }
+           }
+           await new Promise(r=>setTimeout(r,1000));
+          }
+          assert(newVersion&&installed,'NEW_TEST_NOT_ACTIVE');
+          assert.equal(installed.modules.length,v.modules.length,'MODULES_CHANGED');
+          for(const m of installed.modules)if(m.name!==mainName)
+           assert.equal(digest(Buffer.from(m.content_base64,'base64')),originalHashes[m.name],'MODULE_MUTATED_'+m.name);
+          const after=Object.fromEntries(await Promise.all(protect.map(async w=>[w,await ver(w)])));
+          assert.deepEqual(after,oldProtected,'PROTECTED_WORKER_CHANGED');
+          console.log('B46_OU_SINGLE_PRICE_ISSUER_TEST_DEPLOY_PASS '+JSON.stringify({
+           worker:name,old,newVersion,
+           cron:'*/15 * * * *',onlyScheduledPricedOU:'V2_PREMATCH',
+           preservedLegacyOUPicks:true,preservedLegacyOUSettlement:true,
+           persistedNewV2Ft:true,fullMarketPriceFallbackUnchanged:true,
+           currentEVThresholdsUnchanged:true,providerCallsDuringDeploy:0,productionWrites:0}));
+          JS
