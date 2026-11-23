@@ -38,11 +38,10 @@ const replace=(from,to,label)=>{
  const count=code.split(from).length-1;assert.equal(count,1,'SOURCE_ANCHOR_'+label+'_'+count);
  code=code.replace(from,to);
 };
-replace(
- "import {runPreMatchOuEngineV1,PREMATCH_OU_ENGINE_V1_POLICY} from './prematch-ou-engine-v1-test.mjs';",
- "import {runPreMatchOuEngineV1,PREMATCH_OU_ENGINE_V1_POLICY} from './prematch-ou-engine-v1-test.mjs';\n"+
- "import {settleOuV2FromExistingResults,syncOuV2SettlementSnapshot,readOuV2SettlementState} from './ou-v2-settlement-test.mjs';",
- 'SETTLEMENT_IMPORT');
+assert(code.includes('prematch-ou-engine-v1-test.mjs')&&code.includes('runPreMatchOuEngineV1'),
+ 'EXISTING_OU_ENGINE_IMPORT_MISSING');
+assert(!code.includes('ou-v2-settlement-test.mjs'),'SETTLEMENT_IMPORT_ALREADY_PRESENT');
+code="import {settleOuV2FromExistingResults,syncOuV2SettlementSnapshot,readOuV2SettlementState} from './ou-v2-settlement-test.mjs';\n"+code;
 replace(
  "   const b46BulkMs=Number(snapshot?.fetchedAt);",
  "   let b46Settlement={state:'NOT_ATTEMPTED'};\n"+
