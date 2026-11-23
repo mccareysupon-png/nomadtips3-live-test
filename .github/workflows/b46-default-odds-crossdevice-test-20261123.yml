@@ -1,0 +1,32 @@
+name: BALL46 Default Odds V3 all-visitor cross-device isolated QA 20261123
+on:
+  push:
+    branches: [test/ball46-default-odds-cross-device-20261123]
+    paths:
+      - '.github/workflows/b46-default-odds-crossdevice-test-20261123.yml'
+      - 'qa/default-odds-crossdevice-20261123/**'
+permissions: {contents: read}
+concurrency:
+  group: b46-default-odds-crossdevice-test-20261123
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          node --check qa/default-odds-crossdevice-20261123/crossdevice.mjs
+          node --check qa/default-odds-crossdevice-20261123/worker.mjs
+          node --check qa/default-odds-crossdevice-20261123/qa.mjs
+          npm install --no-save --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Deploy isolated test only, never production
+        run: npx --yes wrangler@4.50.0 deploy --config qa/default-odds-crossdevice-20261123/wrangler.toml
+      - name: Test up/down on desktop and mobile light/dark, reduced motion
+        run: node qa/default-odds-crossdevice-20261123/qa.mjs
