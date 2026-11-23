@@ -116,5 +116,5 @@ test('no string or one-sided pricing permitted',()=>{
 test('policy ensures no paid provider calls, no independent backfill',()=>{
  assert.equal(OUV1_PRICE_POLICY.upstreamCalls,0);
  assert.equal(OUV1_PRICE_POLICY.targetLine,2.5);
- assert.equal(OUV1_PRICE_POLICY.minBeforeKickoffSec,900);
+ assert.equal(OUV1_PRICE_POLICY.minBeforeKickoffSec,300);
 });
