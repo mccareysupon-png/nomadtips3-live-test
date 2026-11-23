@@ -25,6 +25,7 @@ jobs:
            const j=await r.json();assert(r.ok&&j.success);return j.result;
           };
           for(const cfg of [
+           {name:'ball46-production',file:'index.js',ranges:[[153,208],[299,358],[1110,1150]]},
            {name:'nomadtips3-full-market-343-ball46',file:'index.js',ranges:[[15,37],[62,82],[100,158],[194,264],[268,326],[329,383],[394,466]]},
            {name:'nomadtips3-5usd-hub-343',file:'index-viewer-safe.js',ranges:[[96,151],[180,240],[469,529],[578,624],[736,788]]},
            {name:'ball46-prematch-only-test-20261120',file:'prematch-only-worker.mjs',ranges:[[120,178],[453,523],[695,709]]}
