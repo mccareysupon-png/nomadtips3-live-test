@@ -2,7 +2,7 @@ name: BALL46 real odds movement visibility audit read-only 20261123
 on:
   push:
     branches: [test/ball46-default-odds-cross-device-20261123]
-    paths: ['.github/workflows/b46-real-odds-visibility-audit-20261123.yml']
+    paths: ['.github/workflows/b46-real-odds-visibility-audit-20261123.yml','qa/default-odds-crossdevice-20261123/real-odds-audit.mjs']
 permissions: {contents: read}
 jobs:
   inspect:
