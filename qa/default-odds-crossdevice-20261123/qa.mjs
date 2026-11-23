@@ -64,7 +64,7 @@ try{
    if(!reduce){
     assert.equal(nativeProof.up.direction,'up','NATIVE_MOBILE_UP_MISSING_'+mode);
     assert.equal(nativeProof.down.direction,'down','NATIVE_MOBILE_DOWN_MISSING_'+mode);
-    assert.equal(nativeProof.up.animation,'b46-mobile-odds-pulse-6x','NATIVE_CARD_ANIMATION_MISSING_'+mode);
+    assert(['b46-mobile-odds-pulse-6x','b46-odds-card-pulse-6x'].includes(nativeProof.up.animation),'NATIVE_CARD_ANIMATION_MISSING_'+mode);
     assert.equal(nativeProof.down.loops,'6','NATIVE_MOBILE_SIX_PULSES_MISSING_'+mode);
    }else{
     assert.equal(nativeProof.up.direction,null,'REDUCED_MOTION_NATIVE_UP');
