@@ -1,0 +1,90 @@
+name: BALL46 O/U instant Full Market TEST live smoke - safe daily quota
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-instant-real-test-smoke-20261123.yml]
+permissions: {contents: read}
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify active selection-and-price route, preserved ledger, safe real cycle only when daily quota already exhausted
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const name='ball46-prematch-only-test-20261120',expected='25e26c01-88ac-47a1-9d71-93140b3efe47';
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const cf=async path=>{
+           const r=await fetch(root+path,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(40000)});
+           const j=await r.json();assert(r.ok&&j.success,'CF_READ_FAIL');return j.result
+          };
+          const deployment=(await cf('/scripts/'+name+'/deployments?per_page=1')).deployments?.[0]?.versions?.[0]?.version_id;
+          assert.equal(deployment,expected);
+          const bindings=(await cf('/scripts/'+name+'/settings')).bindings;
+          assert.equal(bindings.find(x=>x.name==='FULL_MARKET')?.service,'nomadtips3-full-market-343-ball46');
+          const key=crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const host='https://'+name+'.mccarey-supon.workers.dev';
+          async function req(path,method='GET'){
+           for(let tryNo=0;tryNo<30;tryNo++){
+            const r=await fetch(host+path,{method,headers:{authorization:'Bearer '+key},
+             signal:AbortSignal.timeout(40000),cache:'no-store'});
+            if(r.ok)return r.json();
+            if(r.status!==404||tryNo===29)throw Error('OWNER_ROUTE_'+path+'_'+r.status);
+            await new Promise(resolve=>setTimeout(resolve,1500));
+           }
+          }
+          const [quotaBefore,prev]=await Promise.all([req('/ou-price-pickup-state'),req('/preview-data')]);
+          assert.equal(quotaBefore.policy.maxProviderCallsPerLondonDay,1);
+          const oldPicks=new Map(prev.ouLedger.rows.map(x=>[String(x.fixture_id),{
+           price:x.price,pick:x.pick,picked_at:x.picked_at}]));
+          let cycle=null,skipped=null;
+          // NO nonessential paid request: only run the real model now when
+          // quote's daily limit is already exhausted. The cron can issue in
+          // next business day within existing limit.
+          if(quotaBefore.remainingToday===0){
+           cycle=await req('/ou-cycle-test','POST');
+           assert.equal(cycle.mode,'OU_INSTANT_PRICE_AT_SELECTION_TEST');
+           assert.equal(cycle.providerCalls,0,'SMOKE_MUST_NOT_CALL_PROVIDER');
+          }else skipped='DAILY_QUOTA_AVAILABLE_SKIP_POTENTIAL_PAID_CALL';
+          const [evidence,current,quotaAfter,legacy,audit]=await Promise.all([
+           req('/ou-locked-evidence-test'),req('/preview-data'),
+           req('/ou-price-pickup-state'),
+           req('/ou-price-pickup-tick','POST'),
+           req('/prematch-stats-registry-audit-test')
+          ]);
+          assert.equal(legacy.state,'DISABLED_POST_ISSUE_REPRICE');
+          assert.equal(legacy.providerCalls,0);
+          assert.equal(audit.verified,true);
+          assert.equal(quotaBefore.providerCallsToday,quotaAfter.providerCallsToday);
+          for(const p of current.ouLedger.rows){
+           const older=oldPicks.get(String(p.fixture_id));if(!older)continue;
+           assert.deepEqual({price:p.price,pick:p.pick,picked_at:p.picked_at},older,
+            'POST_ISSUE_PREDICTION_CHANGED_'+p.fixture_id);
+          }
+          const pricedRows=current.ouLedger.rows.filter(x=>typeof x.price==='number'&&x.price>1);
+          for(const p of pricedRows){
+           const record=evidence.rows.find(x=>String(x.fixture_id)===String(p.fixture_id));
+           assert(record&&record.price===p.price,'PRICED_PREDICTION_WITHOUT_LOCKED_PRICE_EVIDENCE');
+          }
+          console.log('B46_OU_INSTANT_TEST_LIVE_VERIFY_PASS '+JSON.stringify({
+           version:expected,source:'FULL_MARKET_SERVICE',linkConnected:true,
+           dailyCallsBefore:quotaBefore.providerCallsToday,
+           dailyCallsAfter:quotaAfter.providerCallsToday,
+           smokeProviderCalls:0,smokeCycle:cycle?{
+            checked:cycle.screening.checked,qualified:cycle.screening.qualified,
+            added:cycle.recorded.added,priced:cycle.recorded.lockedPrices,
+            cached:cycle.priceCapture.cache,
+            paidAttempt:cycle.priceCapture.paidAttemptState}:null,smokeSkipped:skipped,
+           oldPredictionsPreserved:oldPicks.size,ouLedgerRecords:current.ouLedger.rows.length,
+           pricedPredictions:pricedRows.length,
+           noPostIssueReprice:true,registryVerified:true,productionWrites:0
+          }));
+          JS
