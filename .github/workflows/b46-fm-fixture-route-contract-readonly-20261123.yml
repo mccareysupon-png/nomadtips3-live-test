@@ -1,0 +1,26 @@
+name: BALL46 FM fixture quote endpoint exact method and query READONLY
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-fm-fixture-route-contract-readonly-20261123.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Read live FM Worker exact /fixture-odds route and parameter
+        run: |
+          node --input-type=module <<'JS'
+          const root='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers',h={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},name='nomadtips3-full-market-343-ball46';
+          const v=await fetch(root+'/scripts/'+name+'/deployments?per_page=1',{headers:h}).then(r=>r.json()),id=v.result.deployments[0].versions[0].version_id;
+          const a=await fetch(root+'/workers/'+name+'/versions/'+id+'?include=modules',{headers:h}).then(r=>r.json());
+          const s=Buffer.from(a.result.modules.find(m=>m.name==='index.js').content_base64,'base64').toString();
+          for(const k of ['route === "/fixture-odds"','route === "/board-cache"','async fetch(request)']){
+           let p=s.indexOf(k);console.log('FM_ROUTE '+JSON.stringify({term:k,index:p,near:p>=0?s.slice(Math.max(0,p-250),Math.min(s.length,p+1900)):null}));}
+          JS
