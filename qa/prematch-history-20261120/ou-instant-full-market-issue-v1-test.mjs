@@ -95,7 +95,7 @@ async function cacheLookup(market,ids){
 }
 export async function captureAndIssueOu(db,{screening,now,market,hubHealth}={}){
  if(!Array.isArray(screening?.qualified)||!Number.isSafeInteger(now)||
-   typeof market!=='function'||typeof hubHealth!=='function)
+   typeof market!=='function'||typeof hubHealth!=='function')
    throw Error('OU_PRICE_ISSUE_INVALID_ARGUMENTS');
  initOu(db);initOuPricePickup(db);
  const candidates=screening.qualified.filter(p=>valid(p,now)&&!exists(db,p.fixture_id));
