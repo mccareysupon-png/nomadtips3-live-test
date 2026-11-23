@@ -145,7 +145,7 @@ test('explicit price pickup goes ONLY through EXISTING Full Market and shared 1/
  try{
   const first=await runPreMatchOuEngineV1(db,{
    snapshot:hub(),now,market:svc.market,hubHealth:healthyHub,
-   enablePaidQuoteFallback:true
+   enablePaidQuoteFallback:true,clock:()=>now
   });
   assert.equal(first.priceBridge.budgetReserved,1);
   assert.equal(first.priceBridge.providerCalls,1);
@@ -156,7 +156,7 @@ test('explicit price pickup goes ONLY through EXISTING Full Market and shared 1/
   assert.equal(budget.remainingToday,0);
   const second=await runPreMatchOuEngineV1(db,{
    snapshot:hub(),now:now+60,market:svc.market,hubHealth:healthyHub,
-   enablePaidQuoteFallback:true
+   enablePaidQuoteFallback:true,clock:()=>now+60
   });
   assert.equal(second.priceBridge.state,'DAILY_SHARED_OU_CAP');
   assert.equal(svc.calls.filter(x=>x.startsWith('/fixture-odds')).length,1);
