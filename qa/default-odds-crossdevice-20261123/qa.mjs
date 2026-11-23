@@ -38,12 +38,12 @@ try{
    assert.equal(result.down.move,null,'REDUCED_MOTION_DOWN');
   }
   if(mobile){
-   await page.waitForFunction(()=>document.querySelectorAll('.match-row[data-match-id] .market-quote strong[data-nomad-odds-raw]').length>0,null,{timeout:40000});
+   await page.waitForFunction(()=>document.querySelectorAll('.match-row[data-b46-kind="live"] .market-cell-1x2[title*="LIVE"] .market-quote strong[data-nomad-odds-raw]').length>0,null,{timeout:40000});
    const nativeProof=await page.evaluate(async()=>{
     const wait=ms=>new Promise(r=>setTimeout(r,ms));
-    const real=document.querySelector('.match-row[data-match-id] .market-cell-1x2');
+    const real=document.querySelector('.match-row[data-b46-kind="live"] .market-cell-1x2[title*="LIVE"]');
     if(!real)return {error:'NO_REAL_MOBILE_MARKET'};
-    const clone=document.createElement('article');clone.className='match-row';clone.dataset.matchId='B46_NATIVE_MOBILE_QA_ONLY';
+    const clone=document.createElement('article');clone.className='match-row';clone.dataset.matchId='B46_NATIVE_MOBILE_QA_ONLY';clone.dataset.b46Kind='live';
     clone.style.cssText='position:fixed;left:5px;top:260px;z-index:100000;width:250px';
     clone.style.setProperty('display','block','important');
     const cell=real.cloneNode(true);cell.style.setProperty('display','block','important');clone.append(cell);document.body.append(clone);
