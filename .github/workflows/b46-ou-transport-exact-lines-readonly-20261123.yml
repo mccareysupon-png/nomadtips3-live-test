@@ -1,0 +1,46 @@
+name: BALL46 O/U read exact active price routing source excerpts 20261123
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-transport-exact-lines-readonly-20261123.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Exact main worker source routing and cache criteria; never call 5USD provider
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const key=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const cf=async path=>{
+           const r=await fetch(root+path,{headers:{authorization:'Bearer '+key},signal:AbortSignal.timeout(35000)});
+           const j=await r.json();assert(r.ok&&j.success);return j.result;
+          };
+          for(const cfg of [
+           {name:'nomadtips3-full-market-343-ball46',file:'index.js',ranges:[[15,37],[62,82],[100,158],[194,264],[268,326],[329,383],[394,466]]},
+           {name:'nomadtips3-5usd-hub-343',file:'index-viewer-safe.js',ranges:[[96,151],[180,240],[469,529],[578,624],[736,788]]},
+           {name:'ball46-prematch-only-test-20261120',file:'prematch-only-worker.mjs',ranges:[[120,178],[453,523],[695,709]]}
+          ]){
+           const deploy=await cf('/scripts/'+cfg.name+'/deployments?per_page=1');
+           const id=deploy.deployments[0].versions[0].version_id;
+           const ver=await cf('/workers/'+cfg.name+'/versions/'+id+'?include=modules');
+           const module=ver.modules.find(x=>x.name===cfg.file);
+           assert(module,'MODULE_MISSING_'+cfg.file);
+           const lines=Buffer.from(module.content_base64,'base64').toString('utf8').split('\n');
+           for(const [a,b] of cfg.ranges){
+            const slice=lines.slice(a-1,b).map((line,i)=>{
+             let t=line.replace(/(?:[A-Za-z0-9-_]{28,}\.[A-Za-z0-9-_]{20,}\.[A-Za-z0-9-_]{20,})/g,'[REDACTED]');
+             return (a+i)+': '+t.slice(0,300);
+            });
+            console.log('B46_EXACT_SOURCE '+JSON.stringify({worker:cfg.name,module:cfg.file,range:a+'-'+b,text:slice}));
+           }
+          }
+          JS
