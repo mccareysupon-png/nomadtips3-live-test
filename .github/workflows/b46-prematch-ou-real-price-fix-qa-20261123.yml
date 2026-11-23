@@ -1,0 +1,20 @@
+name: BALL46 existing PreMatch O/U full market quote repair QA
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-prematch-ou-real-price-fix-qa-20261123.yml]
+permissions: {contents: read}
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: All current PreMatch engine, V2 EV and original V2 quote bridge regression tests OFFLINE
+        run: |
+          node --check qa/prematch-history-20261120/prematch-ou-engine-v1-test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/prematch-ou-engine-v1.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-value-screener-v2.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-value-v2-provider-bridge.test.mjs
