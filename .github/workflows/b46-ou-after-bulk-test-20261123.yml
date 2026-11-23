@@ -1,0 +1,129 @@
+name: BALL46 O/U TEST run after bulk with fresh HUB guard
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-after-bulk-test-20261123.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-prematch-only-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Isolated TEST worker move OU after daily bulk and gate on new fresh HUB snapshot
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          import fs from 'node:fs';
+          import {execFileSync} from 'node:child_process';
+          const token=process.env.CLOUDFLARE_API_TOKEN,acc=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&acc,'MISSING_CF_TEST_ACCESS');
+          const base='https://api.cloudflare.com/client/v4/accounts/'+acc+'/workers';
+          const name='ball46-prematch-only-test-20261120',mainName='prematch-only-worker.mjs';
+          const protectedWorkers=['ball46-production','nomadtips3-engine-343','nomadtips3-5usd-hub-343','nomadtips3-full-market-343-ball46','ball46-premium-match-colors-test-20261120'];
+          async function cf(path,opts={}){
+           const r=await fetch(base+path,{...opts,headers:{authorization:'Bearer '+token,...(opts.headers||{})},signal:AbortSignal.timeout(45000)});
+           const j=await r.json();assert(r.ok&&j.success,'CF_'+r.status+'_'+path);return j.result;
+          }
+          const ver=async n=>(await cf('/scripts/'+n+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+          const before=Object.fromEntries(await Promise.all(protectedWorkers.map(async n=>[n,await ver(n)])));
+          const old=await ver(name);
+          const deployed=await cf('/workers/'+name+'/versions/'+old+'?include=modules');
+          const main=deployed.modules.find(m=>m.name===mainName);
+          assert(main?.content_base64,'TEST_MAIN_NOT_FOUND');
+          const src=Buffer.from(main.content_base64,'base64').toString('utf8');
+          assert(!src.includes('B46_HUB_BULK_REFRESH_GUARD_V1'),'GUARD_ALREADY_PRESENT');
+          const scheduledAt=src.lastIndexOf('export default {async scheduled(');
+          assert(scheduledAt>=0,'CRON_MISSING');
+          const stub="const stub=env.STORE.get(env.STORE.idFromName('prematch-only-v1'));";
+          const stubAt=src.indexOf(stub,scheduledAt);
+          assert(stubAt>=0,'SCHEDULER_STORE_MISSING');
+          const first=stubAt+stub.length;
+          const history="console.log('BTTS_HISTORY_API_DISABLED_PROJECT_CLOSED')";
+          const last=src.indexOf(history,first);
+          assert(last>first,'HISTORY_DELIVERY_MARKER_MISSING');
+          const auto=src.slice(first,last);
+          assert(auto.startsWith("ctx.waitUntil(stub.fetch('https://prematch.internal/prematch-ou-engine-tick'"),'OU_AUTO_NOT_EARLY');
+          assert(auto.includes("PREMATCH_OU_ENGINE_TEST status="),'OU_AUTO_SIGNATURE_CHANGED');
+          const afterHistory="console.log('PREMATCH_OU_REPLACES_V2_OLD_CRON')";
+          assert.equal(src.split(afterHistory).length-1,1,'POST_HISTORY_ANCHOR_CHANGED');
+          let changed=src.slice(0,first)+src.slice(last);
+          changed=changed.replace(afterHistory,auto+afterHistory);
+          const market="   const market=async(path,opts={})=>{";
+          assert.equal(changed.split(market).length-1,1,'OU_MARKET_ANCHOR_CHANGED');
+          const gate=[
+           "   // B46_HUB_BULK_REFRESH_GUARD_V1: only process a newly completed HUB bulk snapshot.",
+           "   const b46BulkMs=Number(snapshot?.fetchedAt);",
+           "   const b46PreviousBulk=Number(await this.ctx.storage.get('b46OuLastHubBulkMs')??0);",
+           "   if(snapshot?.ok!==true||snapshot?.cacheOnly!==true||snapshot?.stale===true||",
+           "    !Number.isSafeInteger(b46BulkMs)||b46BulkMs<=1e12||",
+           "    now*1000-b46BulkMs>120000||b46BulkMs>now*1000+60000||",
+           "    b46BulkMs<=b46PreviousBulk){",
+           "    const wait={engine:'B46_PREMATCH_OU_ENGINE_V1_TEST',",
+           "     status:b46BulkMs<=b46PreviousBulk?'HUB_BULK_ALREADY_PROCESSED':'WAITING_FOR_FRESH_HUB_BULK',",
+           "     at:now,hubBulkFetchedAt:b46BulkMs,previousBulkFetchedAt:b46PreviousBulk,",
+           "     cursorIn:cursor,cursorOut:cursor,providerCalls:0,liveEngineCalls:0,productionWrites:0};",
+           "    await this.ctx.storage.put('b46PreMatchOuEngineLast',wait);return wait;",
+           "   }",
+           ""
+          ].join('\n');
+          changed=changed.replace(market,gate+market);
+          const cursor="   await this.ctx.storage.put('b46PreMatchOuEngineCursor',result.cursorOut);";
+          assert.equal(changed.split(cursor).length-1,1,'OU_CURSOR_ANCHOR_CHANGED');
+          changed=changed.replace(cursor,cursor+
+           "\n   if(result.status==='SCREENED_PREMATCH'||result.status==='NO_PREMATCH_FIXTURES')"+
+           "\n    await this.ctx.storage.put('b46OuLastHubBulkMs',b46BulkMs);");
+          assert(changed.indexOf(auto,scheduledAt)>changed.indexOf(history,scheduledAt),'OU_RUNS_BEFORE_HISTORY');
+          assert(changed.includes("event.cron!=='*/15 * * * *'"),'CRON_CHANGED');
+          assert(changed.includes("enablePaidQuoteFallback:true"),'FALLBACK_CHANGED');
+          const temp='/tmp/b46-ou-bulk-first.mjs';
+          fs.writeFileSync(temp,changed);
+          execFileSync(process.execPath,['--check',temp]);
+          const settings=await cf('/scripts/'+name+'/settings');
+          const bn=settings.bindings.map(b=>b.name).sort();
+          assert.deepEqual(bn,['FIVEDOLLAR_API_KEY','FULL_MARKET','HUB','OWNER_SECRET','STORE']);
+          const digest=b=>crypto.createHash('sha256').update(b).digest('hex');
+          const hashes=Object.fromEntries(deployed.modules.map(m=>[m.name,digest(Buffer.from(m.content_base64,'base64'))]));
+          assert.equal(await ver(name),old,'CONCURRENT_TEST_DEPLOY_ABORT');
+          console.log('B46_AFTER_BULK_PREFLIGHT '+JSON.stringify({old,cron:'*/15 * * * *',freshBulkMaxAgeSeconds:120,paidCalls:0,protected:before}));
+          const meta={main_module:deployed.main_module,compatibility_date:deployed.compatibility_date||'2026-11-20',
+           bindings:settings.bindings.map(b=>({name:b.name,type:'inherit'})),
+           ...(deployed.compatibility_flags?.length?{compatibility_flags:deployed.compatibility_flags}:{})};
+          const form=new FormData();
+          form.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}),'metadata.json');
+          for(const m of deployed.modules){
+           const body=m.name===mainName?changed:Buffer.from(m.content_base64,'base64');
+           form.append(m.name,new Blob([body],{type:'application/javascript+module'}),m.name);
+          }
+          await cf('/scripts/'+name+'?bindings_inherit=strict',{method:'PUT',body:form});
+          let newVersion=null,confirm=null;
+          for(let i=0;i<35;i++){
+           const id=await ver(name);
+           if(id!==old){
+            const v=await cf('/workers/'+name+'/versions/'+id+'?include=modules');
+            const m=v.modules.find(x=>x.name===mainName);
+            if(m&&Buffer.from(m.content_base64,'base64').toString('utf8')===changed){
+             newVersion=id;confirm=v;break;
+            }
+           }
+           await new Promise(resolve=>setTimeout(resolve,1000));
+          }
+          assert(newVersion&&confirm,'ACTIVE_TEST_NOT_VERIFIED');
+          assert.equal(confirm.modules.length,deployed.modules.length,'MODULE_COUNT_DRIFT');
+          for(const m of confirm.modules)if(m.name!==mainName)
+           assert.equal(digest(Buffer.from(m.content_base64,'base64')),hashes[m.name],'UNRELATED_MODULE_CHANGED_'+m.name);
+          const after=Object.fromEntries(await Promise.all(protectedWorkers.map(async n=>[n,await ver(n)])));
+          assert.deepEqual(after,before,'PROTECTED_WORKER_CHANGED');
+          assert.deepEqual((await cf('/scripts/'+name+'/settings')).bindings.map(b=>b.name).sort(),bn);
+          console.log('B46_AFTER_BULK_TEST_DEPLOY_PASS '+JSON.stringify({worker:name,old,newVersion,
+           cron:'*/15 * * * *',ouAfterBulkMission:true,requiresNewFreshHubBulk:true,maxHubAgeSeconds:120,
+           fallbackPolicyUnchanged:true,allOtherModulesUnchanged:true,productionWrites:0,providerCallsDuringDeploy:0}));
+          JS
