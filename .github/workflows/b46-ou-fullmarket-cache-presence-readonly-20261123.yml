@@ -73,5 +73,33 @@ jobs:
            }catch(e){console.log('B46_READONLY_PUBLIC_CACHE '+JSON.stringify({
             path,error:String(e.message).slice(0,110),providerCalls:0}));}
           }
+          // Compare the cache-only phase already performed by the real engine
+          // against its optional paid fallback. GET only: no engine ticks.
+          const engine=await get('/prematch-ou-engine-state');
+          if(engine.status!==200||!engine.value?.last){
+           throw Error('NO_ACTIVE_ENGINE_LAST_CYCLE_TO_COMPARE');
+          }
+          const last=engine.value.last;
+          const bridge=last.priceBridge??{};
+          const scan=last.scan??{};
+          const freshPriced=Number(bridge.pricedFixtures??0);
+          const freshQualified=bridge.selected?1:0;
+          const cachePriced=Math.max(0,Number(scan.pricedFixtures??0)-freshPriced);
+          const cacheQualified=Math.max(0,Number(scan.valueQualified??0)-freshQualified);
+          const cacheLocked=Math.max(0,Number(last.locked?.added??0)-freshQualified);
+          const decision=cacheQualified>0?'CACHE_QUALIFIED_IN_LATEST_CYCLE':'KEEP_EXISTING_FALLBACK_UNTIL_CACHE_VALUE_AVAILABLE';
+          console.log('B46_CACHE_ONLY_REAL_CYCLE_COMPARISON '+JSON.stringify({
+           evaluatedAt:new Date().toISOString(),lastCycleAt:last.at??null,
+           engine:last.engine,status:last.status,feed:last.feed,
+           checked:scan.checked??null,modeled:scan.modeled??null,
+           cacheHits:scan.cacheHits??null,
+           cachePricedFixtures:cachePriced,cacheQualifiedSelections:cacheQualified,
+           cacheNewLocks:cacheLocked,
+           fallbackPricedFixtures:freshPriced,fallbackQualified:freshQualified,
+           fallbackProviderCalls:Number(bridge.providerCalls??0),
+           totalProviderCalls:Number(last.providerCalls??0),
+           currentOuDailyQuota:engine.value.quota,
+           decision,deployChanges:0,apiProviderCallsByAudit:0
+          }));
           console.log('B46_CACHE_ONLY_NO_PROVIDER_CALLS');
           JS
