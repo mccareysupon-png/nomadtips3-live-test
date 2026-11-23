@@ -1,0 +1,42 @@
+name: BALL46 PreMatch O/U TEST real fixture name source read only
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-prematch-ou-ui-fixture-name-source-readonly-20261123.yml]
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Compare named match identity in cached HUB versus current UI feed; no paid odds calls
+        run: |
+          node --input-type=module <<'JS'
+          const urls=[
+           'https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/__b46_prematch_data',
+           'https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/snapshot'];
+          for(const url of urls){
+           const r=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(25000)});
+           const j=await r.json();
+           if(url.includes('hub-343')){
+            const found=(j.fixtures??[]).filter(f=>String(f.fixtureId??f.id)==='204906152');
+            console.log('B46_OU_REAL_NAME_HUB '+JSON.stringify({http:r.status,fixtures:j.fixtures?.length,found:found.map(f=>({
+             id:f.fixtureId,home:f.home?.name,away:f.away?.name,
+             league:f.league?.name,kickoff:f.kickoffUtc,status:f.status,boardState:f.boardState
+            }))}));
+           }else{
+            const t=j.testMonitor??{},m=t.monitor??{};
+            const candidates=[j.testLedger?.rows,j.ouLedger?.rows,t.fixtures,m.fixtures,m.upcoming,m.scheduled,
+             t.rows,m.rows,t.matchRows].filter(Array.isArray);
+            const picked=candidates.flat().filter(x=>String(x.fixtureId??x.fixture_id??x.id)==='204906152');
+            console.log('B46_OU_REAL_NAME_UI '+JSON.stringify({http:r.status,monitorKeys:Object.keys(t),
+             innerMonitorKeys:Object.keys(m),sampleRows:picked.slice(0,10).map(x=>({
+              id:x.fixtureId??x.fixture_id,home:x.home?.name??x.home,
+              away:x.away?.name??x.away,league:x.league?.name??x.leagueName,
+              kickoff:x.kickoff??x.kickoffUtc
+             }))}));
+           }
+          }
+          JS
