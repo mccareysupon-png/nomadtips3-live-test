@@ -1,0 +1,21 @@
+name: BALL46 TEST O/U PENDING first real cache price OFFLINE
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-pending-completion-offline-20261123.yml]
+permissions: {contents: read}
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify safe test-only pending quote capture without paid provider calls
+        run: |
+          node --check qa/prematch-history-20261120/ou-pending-price-completion-v1-test.mjs
+          node --check qa/prematch-history-20261120/ou-pending-price-completion-v1.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-pending-price-completion-v1.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-instant-full-market-issue-v1.test.mjs
+          node --test qa/prematch-history-20261120/ou-verified-price-ingest-v1.test.mjs
