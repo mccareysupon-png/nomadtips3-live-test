@@ -1,0 +1,27 @@
+name: BALL46 temporary Bot Fight Mode OFF then restore — Production read-only
+on:
+  push:
+    branches: [ops/ball46-temporary-bot-bypass-audit-20261123]
+    paths: ['.github/workflows/b46-temporary-bot-visibility-audit-20261123.yml']
+permissions: {contents: read}
+concurrency:
+  group: b46-bot-mode-setting-20261123
+  cancel-in-progress: false
+jobs:
+  temporary-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Temporarily disable Bot Fight Mode only, audit real Production and restore
+        run: node qa/default-odds-crossdevice-20261123/temporary-bot-audit.mjs
+      - name: Emergency restore Bot Fight Mode after error, cancellation or timeout
+        if: always()
+        run: node qa/default-odds-crossdevice-20261123/bot-restore-safety.mjs
