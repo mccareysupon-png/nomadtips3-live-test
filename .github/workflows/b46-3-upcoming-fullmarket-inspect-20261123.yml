@@ -1,0 +1,74 @@
+name: BALL46 Current 3 Upcoming Waiting Full Market actual market discovery
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-3-upcoming-fullmarket-inspect-20261123.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Discover ACTUAL BALL46 app Full Market public route and current eligible fixtures read only
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          const cfroot='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const cf=async(path)=>{
+            const r=await fetch(cfroot+path,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(25000)});
+            const j=await r.json();assert(r.ok&&j.success,'CF_'+r.status);return j.result;
+          };
+          const d=await cf('/scripts/ball46-production/deployments?per_page=1');
+          const version=d.deployments[0].versions[0].version_id;
+          const v=await cf('/workers/ball46-production/versions/'+version+'?include=modules');
+          const main=v.modules.find(x=>x.name==='index.js');
+          assert(main,'MAIN_NOT_FOUND');
+          const lines=Buffer.from(main.content_base64,'base64').toString('utf8').split('\n');
+          const match=[];
+          for(let i=0;i<lines.length;i++){
+           if(/fullMarketCompat\(|\/fixture-odds|\/full-market|\/fullmarket|\/api\/engine\/board|prewarmLiveFullMarket/.test(lines[i])){
+            match.push(...lines.slice(Math.max(0,i-2),Math.min(lines.length,i+3))
+             .map((t,j)=>({line:i-1+j,code:t.slice(0,400)})));
+           }
+          }
+          console.log('B46_APP_SOURCE_ROUTE '+JSON.stringify({version,match:match.filter(x=>x.line>=0).slice(0,90)}).slice(0,19000));
+          // Probe known public read-only dynamic fixture feeds. No provider odds calls here.
+          const hosts=['https://ball46.com','https://www.ball46.com',
+           'https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev'];
+          const paths=['/api/engine/board','/api/engine/board?mode=all','/api/live/board','/snapshot'];
+          const options=[];
+          for(const host of hosts){
+           for(const path of paths){
+            try{
+             const r=await fetch(host+path,{headers:{accept:'application/json'},
+              cache:'no-store',signal:AbortSignal.timeout(7500)});
+             const contentType=r.headers.get('content-type')||'';
+             if(!contentType.includes('json'))continue;
+             const j=await r.json().catch(()=>null);
+             const fixtures=Array.isArray(j?.fixtures)?j.fixtures:Array.isArray(j?.data?.fixtures)?j.data.fixtures:[];
+             const upcoming=fixtures.filter(f=>{
+              const s=String(f.boardState??f.status??f.matchStatus??'').toLowerCase();
+              return /upcoming|waiting|scheduled|not.?started/.test(s);
+             }).slice(0,8).map(f=>({
+              id:f.fixtureId??f.id,
+              home:f.home?.name??f.teams?.home?.name,
+              away:f.away?.name??f.teams?.away?.name,
+              boardState:f.boardState,status:f.status,
+              kickoffUtc:f.kickoffUtc??f.kickoffAt??f.kickoff_ts,
+              hasOdds:!!f.providerOdds,keys:Object.keys(f.providerOdds??{}).slice(0,12)
+             }));
+             options.push({host,path,http:r.status,ok:j?.ok,
+              keys:Object.keys(j??{}).slice(0,12),
+              all:fixtures.length,upcoming});
+            }catch(e){options.push({host,path,error:String(e).slice(0,85)})}
+           }
+          }
+          console.log('B46_CURRENT_BOARDS '+JSON.stringify(options).slice(0,22000));
+          console.log('B46_SOURCE_AND_FIXTURE_INSPECTION_COMPLETE_NO_5USD_CALLS');
+          JS
