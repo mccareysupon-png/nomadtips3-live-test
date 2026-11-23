@@ -109,7 +109,7 @@ next=once(next,
  "last:await this.ctx.storage.get('ouValueV2Last')??null,",
  'EXPOSE_BUDGET_AUDIT_GET_OWNER');
 const oldFirst="const q=await stub.fetch('https://prematch.internal/ou-cycle-test',{method:'POST'});if(q.ok){const result=await q.json();console.log('OU_2P5_CAPTURE_AT_ISSUE_TEST added='+(result.recorded?.added??0)+' priced='+(result.recorded?.lockedPrices??0)+' callReserve='+(result.providerCalls??0))}else console.log('OU_2P5_CAPTURE_AT_ISSUE_ERROR '+q.status)";
-const oldSecond="const v=await stub.fetch('https://prematch.internal/ou-value-v2-run',{method:'POST'});if(v.ok){const result=await v.json();console.log('OU_VALUE_V2_SHADOW_SCREEN_TEST inspected='+(result.checked??0)+' pricedFixtures='+(result.pricedFixtures??0)+' selected='+(result.recorded?.added??0)+' providerCalls=0')}else console.log('OU_VALUE_V2_SHADOW_SCREEN_ERROR '+v.status)";
+const oldSecond="const v=await stub.fetch('https://prematch.internal/ou-value-v2-run',{method:'POST'});if(v.ok){const result=await v.json(); console.log('OU_VALUE_V2_SHADOW_SCREEN_TEST inspected='+(result.checked??0)+' pricedFixtures='+(result.pricedFixtures??0)+' selected='+(result.recorded?.added??0)+' providerCalls=0')}else console.log('OU_VALUE_V2_SHADOW_SCREEN_ERROR '+v.status)";
 const atQ=next.indexOf(oldFirst),atV=next.indexOf(oldSecond);
 assert(atQ>=0&&atV>atQ&&next.indexOf(oldFirst,atQ+1)<0&&
  next.indexOf(oldSecond,atV+1)<0,'CRON_REORDER_SOURCE_CHANGED_ABORT');
