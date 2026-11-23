@@ -1,0 +1,70 @@
+name: BALL46 TEST O/U existing PENDING price cache-only live smoke
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-pending-first-price-live-smoke-20261123.yml]
+permissions: {contents: read}
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Check first real pending prices against current Full Market cache, no 5USD calls
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const worker='ball46-prematch-only-test-20261120',expected='e947f2d8-168e-4048-a33a-a6ff8fd7a743';
+          const base='https://'+worker+'.mccarey-supon.workers.dev';
+          const cf='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const key=crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const d=await fetch(cf+'/scripts/'+worker+'/deployments?per_page=1',{headers:{authorization:'Bearer '+token}}).then(r=>r.json());
+          assert(d.success);assert.equal(d.result.deployments[0].versions[0].version_id,expected);
+          async function owner(path,method='GET'){
+            const r=await fetch(base+path,{method,headers:{authorization:'Bearer '+key,accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(25000)});
+            assert(r.ok,'OWNER_'+path+'_'+r.status);
+            return r.json();
+          }
+          let before;
+          for(let i=0;i<35;i++){
+            try{before=await owner('/ou-pending-price-completion-state');if(before.mode==='OU_PENDING_PRICE_COMPLETION_TEST')break}
+            catch{}
+            await new Promise(r=>setTimeout(r,1200));
+          }
+          assert.equal(before?.mode,'OU_PENDING_PRICE_COMPLETION_TEST');
+          const [old,quoteBefore]=await Promise.all([owner('/preview-data'),owner('/ou-price-pickup-state')]);
+          const beforeRows=old.ouLedger.rows;
+          const run=await owner('/ou-pending-price-completion-tick','POST');
+          assert.equal(run.providerCalls,0);
+          assert.equal(run.state,'CACHE_ONLY_PENDING_PRICE_COMPLETION');
+          const [after,quoteAfter,detail]=await Promise.all([
+           owner('/preview-data'),owner('/ou-price-pickup-state'),
+           owner('/ou-pending-price-completion-state')]);
+          const afterRows=after.ouLedger.rows;
+          assert.equal(afterRows.length,beforeRows.length,'ISSUED_LEDGER_COUNT_CHANGED');
+          assert.equal(quoteBefore.lifetimeRequests,quoteAfter.lifetimeRequests,'O_U_PAID_CALL_COUNT_CHANGED');
+          for(const original of beforeRows){
+           const latest=afterRows.find(x=>x.fixture_id===original.fixture_id);
+           assert(latest,'PICK_MISSING_'+original.fixture_id);
+           assert.equal(latest.pick,original.pick,'PICK_CHANGED_'+original.fixture_id);
+           assert.equal(latest.picked_at,original.picked_at,'ISSUE_TIME_CHANGED_'+original.fixture_id);
+           if(original.price!=null)assert.equal(latest.price,original.price,'PREVIOUS_PRICE_CHANGED_'+original.fixture_id);
+          }
+          console.log('B46_OU_EXISTING_PENDING_CACHE_ONLY_LIVE_PASS '+JSON.stringify({
+           version:expected,priorIssued:beforeRows.length,eligibleBeforeTick:before.waiting?.length,
+           attemptedCached:run.cached,examined:run.examined,
+           newlyPriced:run.attached,newlyPricedIds:run.attachedIds,
+           noOffer:run.noOffer,cacheFailures:run.failures,
+           unpricedBefore:beforeRows.filter(x=>x.price==null).length,
+           unpricedAfter:afterRows.filter(x=>x.price==null).length,
+           afterPriced:afterRows.filter(x=>x.price!=null).map(x=>({id:x.fixture_id,price:x.price,pick:x.pick})),
+           recordedLateQuotes:detail.attached?.map(x=>({id:x.fixture_id,source:x.source,price:x.selected_price}))??[],
+           paidProviderRequestsThisTest:0,originalSelectionsImmutable:true,productionWrites:0
+          }).slice(0,16000));
+          JS
