@@ -119,9 +119,10 @@ function sliceRoundRobin(fixtures,cursor){
 }
 export async function runPreMatchOuEngineV1(db,{
  snapshot,now,market,hubHealth=null,
- cursor=0,enablePaidQuoteFallback=false
+ cursor=0,enablePaidQuoteFallback=false,
+ clock=()=>Math.floor(Date.now()/1000)
 }={}){
- if(!db||!Number.isSafeInteger(now)||typeof market!=='function')
+ if(!db||!Number.isSafeInteger(now)||typeof market!=='function'||typeof clock!=='function')
   throw Error('INVALID_PREMATCH_OU_ENGINE');
  const feed=upcomingWaitingFromHub(snapshot,now);
  const result={
@@ -154,7 +155,7 @@ export async function runPreMatchOuEngineV1(db,{
   // request through existing Full Market service-> HUB bridge. The hook here
   // cannot use raw 5USD credentials or bypass V1's daily ledger.
   const priced=await captureOneValueV2Price(db,{
-   fixtures:batch,now,market,hubHealth
+   fixtures:batch,now,market,hubHealth,clock
   });
   result.priceBridge={
    state:priced.state,candidateId:priced.candidateId??null,
