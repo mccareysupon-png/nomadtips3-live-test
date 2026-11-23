@@ -23,4 +23,28 @@ jobs:
             estimatedBulkRequestsPerMinute:b?.estimatedBulkRequestsPerMinute,
             refreshMs:b?.refreshMs,control:b?.control,bulkSpeedV3:b?.bulkSpeedV3,bulkSpeedV3Ready:b?.bulkSpeedV3Ready,
             keys:b&&typeof b==='object'?Object.keys(b):[]}));
+          // Check the actual existing HUB BULK refresh cadence without changing it.
+          const base='https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev';
+          const h=async()=>{const r=await fetch(base+'/health',{cache:'no-store',signal:AbortSignal.timeout(18000)});
+           const j=await r.json().catch(()=>null);
+           return {http:r.status,at:Date.now(),fetchedAt:j?.fetchedAt,ageMs:j?.ageMs,
+            refreshMs:j?.refreshMs,providerRequestCount:j?.providerRequestCount,
+            stale:j?.stale,fixtureCount:j?.fixtureCount,estimatedBulkRequestsPerMinute:j?.estimatedBulkRequestsPerMinute};};
+          const before=await h();
+          await new Promise(resolve=>setTimeout(resolve,12000));
+          const after=await h();
+          console.log('B46_HUB_BULK_TWO_REFRESH_PROBE '+JSON.stringify({before,after,
+           snapshotAdvanced:Number(after.fetchedAt)>Number(before.fetchedAt),
+           cadenceMs:Number(after.fetchedAt)-Number(before.fetchedAt),
+           providerCallsByAudit:0,workerDeployments:0}));
+          const snap=await fetch(base+'/snapshot',{cache:'no-store',signal:AbortSignal.timeout(20000)});
+          const s=await snap.json().catch(()=>null);
+          const fixtureList=Array.isArray(s?.fixtures)?s.fixtures: Array.isArray(s?.data)?s.data:[];
+          const pending=fixtureList.filter(f=>['scheduled','upcoming','waiting'].includes(String(f?.status??f?.boardState).toLowerCase()));
+          const line=pending.filter(f=>f?.providerOdds?.odds?.goal_line||f?.odds?.goal_line);
+          console.log('B46_HUB_BULK_SNAPSHOT_SHAPE '+JSON.stringify({http:snap.status,keys:Object.keys(s??{}),
+           fetchedAt:s?.fetchedAt,ageMs:s?.ageMs,cacheOnly:s?.cacheOnly,stale:s?.stale,
+           fixtures:fixtureList.length,pending:pending.length,withGoalLine:line.length,
+           sample:line.slice(0,3).map(f=>({id:f?.fixtureId??f?.id,goalLine:f?.providerOdds?.odds?.goal_line??f?.odds?.goal_line})),
+           providerCallsByAudit:0}));
           JS
