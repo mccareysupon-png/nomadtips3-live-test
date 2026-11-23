@@ -1,0 +1,59 @@
+name: BALL46 PreMatch O/U real-price immutable ledger read-only verification
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-prematch-ou-real-price-ledger-readonly-proof-20261123.yml]
+permissions: {contents: read}
+jobs:
+  proof:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: GET only — verify locked real O/U quote and audit for same fixture; no new price calls
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          const owner=crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const base='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          async function get(path){
+           const r=await fetch(base+path,{method:'GET',
+            headers:{authorization:'Bearer '+owner,accept:'application/json'},
+            cache:'no-store',signal:AbortSignal.timeout(30000)});
+           assert(r.ok,'OWNER_ROUTE_HTTP_'+r.status+'_'+path);
+           return r.json();
+          }
+          const [e,v]=await Promise.all([
+           get('/prematch-ou-engine-state'),get('/ou-value-v2-state')]);
+          const match=(v.selections??[]).find(x=>Number(x.fixture_id)===204906152);
+          const attempt=(v.priceBridge?.recent??[]).find(x=>Number(x.fixture_id)===204906152);
+          assert(match&&attempt,'IMMUTABLE_PICK_OR_AUDIT_MISSING');
+          assert.equal(match.pick,'UNDER');
+          assert.equal(match.line,2.5);
+          assert.equal(match.price,2.8);
+          assert.equal(match.bookmaker,'ladbrokes');
+          assert(match.ev>=0.05);
+          assert.equal(attempt.state,'PRICE_LOCKED');
+          assert.equal(attempt.price,match.price);
+          assert.equal(attempt.bookmaker,match.bookmaker);
+          assert.equal(attempt.line,match.line);
+          assert.equal(e.policy.maxFullMarketRequestsPerTick,1);
+          assert.equal(e.policy.maxSharedOuRequestsPerLondonDay,4);
+          console.log('B46_REAL_OU_SHADOW_LEDGER_VERIFIED '+JSON.stringify({
+           engine:e.engine,fixtureId:match.fixture_id,bookmaker:match.bookmaker,
+           side:match.pick,line:match.line,price:match.price,ev:match.ev,
+           pickedAt:match.picked_at,source:match.source,
+           sourceObservedAt:match.source_observed_at,
+           historyHome:match.home_history,historyAway:match.away_history,
+           matchingAuditState:attempt.state,
+           auditUpstreamRequests:attempt.upstream_added,
+           currentQuota:e.quota,existingSelections:(v.selections??[]).length,
+           lastCycleStatus:e.last?.status,
+           providerRequestsDuringProof:0
+          }));
+          JS
