@@ -1,0 +1,44 @@
+name: BALL46 PreMatch O/U TEST live source and fixture-status inspection
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-prematch-ou-engine-wire-inspect-20261123.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Inspect exact deployed module, HUB read path, O/U cron and owner state (GET only)
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const api='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+          async function cf(p){const r=await fetch(api+p,{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},signal:AbortSignal.timeout(35000)});const j=await r.json();assert(r.ok&&j.success,'CF_READ_FAILED_'+p);return j.result}
+          const names=['ball46-prematch-only-test-20261120','nomadtips3-5usd-hub-343','nomadtips3-full-market-343-ball46','ball46-production','nomadtips3-engine-343'];
+          for(const name of names){const d=await cf('/scripts/'+name+'/deployments?per_page=1');const id=d.deployments?.[0]?.versions?.[0]?.version_id;console.log('B46_WIRE_VERSION '+JSON.stringify({name,id}));
+           if(name==='ball46-prematch-only-test-20261120'){
+            const v=await cf('/workers/'+name+'/versions/'+id+'?include=modules');const main=v.modules.find(x=>x.name==='prematch-only-worker.mjs');
+            assert(main,'MAIN_NOT_FOUND');const s=Buffer.from(main.content_base64,'base64').toString('utf8');const ls=s.split('\n');
+            console.log('B46_WIRE_META '+JSON.stringify({id,modules:v.modules.map(x=>x.name),bindings:(await cf('/scripts/'+name+'/settings')).bindings.map(x=>({name:x.name,type:x.type,service:x.service||null})),length:s.length}));
+            for(const [a,b] of [[1,195],[510,554]])console.log('B46_WIRE_SOURCE '+JSON.stringify({range:a+'-'+b,lines:ls.slice(a-1,b).map((t,i)=>(a+i)+':'+t).map(x=>x.slice(0,260)).filter(x=>/hub|ouValue|runOu|prematch|snapshot|last|state|price|market|scheduled|import|cron|policy|async|record|route|path|fetch/i.test(x)).slice(0,130)}));
+            const i=s.lastIndexOf('export default {async scheduled(');
+            console.log('B46_WIRE_CRON '+JSON.stringify({schedule:s.slice(i,i+2700)}));
+           }}
+          const owner=crypto.createHmac('sha256',process.env.CLOUDFLARE_API_TOKEN).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const base='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          for(const path of ['/ou-value-v2-state','/normal-hub-state','/preview-data']){
+           try{const r=await fetch(base+path,{headers:{authorization:'Bearer '+owner},signal:AbortSignal.timeout(15000),cache:'no-store'});
+            const j=await r.json().catch(()=>null);
+            const summary=path.includes('ou-value')?{mode:j?.mode,priceBridge:j?.priceBridge?.sharedOuDailyBudget,last:j?.last&&{checked:j.last.checked,modeled:j.last.modeled,priceBridge:j.last.pricedBridge?.state},shadow:j?.selections?.length}:path.includes('preview')?{stored:j?.stored,ouCount:j?.ouLedger?.rows?.length}:{keys:j&&Object.keys(j).slice(0,25),normal:j?.normal?.source??null};
+            console.log('B46_WIRE_OWNER '+JSON.stringify({path,status:r.status,summary}));
+           }catch(e){console.log('B46_WIRE_OWNER '+JSON.stringify({path,error:String(e).slice(0,90)}));}
+          }
+          console.log('B46_WIRE_AUDIT_GET_ONLY_ZERO_PROVIDER_CALLS');
+          JS
