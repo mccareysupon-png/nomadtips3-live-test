@@ -52,10 +52,10 @@ function fm({quotes=false,miss=false}={}){
    }:{}};
   }
   if(path==='/health')return {ok:true,remainingLocalBudget:7,retryAfterSec:0,blockedUntil:null};
-  if(path==='/fixture-odds?fixtureId=7001')return {
-   ok:true,fixtureId:7001,stale:false,cached:false,
+  if(/^\/fixture-odds\?fixtureId=[1-9]\d*$/.test(path))return {
+   ok:true,fixtureId:Number(path.split('=')[1]),stale:false,cached:false,
    externalRequestsAdded:1,ageMs:1000,fetchedAt:now*1000-1000,
-   fullOdds:{fixture_id:7001,bookmakers:[{slug:'bet365',odds:{
+   fullOdds:{fixture_id:Number(path.split('=')[1]),bookmakers:[{slug:'bet365',odds:{
     goal_line_fixed:[{line:4.5,closing:{over:1.55,under:1.95}}]
    }}]}
   };
@@ -140,7 +140,7 @@ test('missing Full Market cache never makes paid provider call by default or fak
   assert.deepEqual(svc.calls,['/board-cache']);
  }finally{db.close()}
 });
-test('explicit price pickup goes ONLY through EXISTING Full Market and shared 1/day V1+V2 quota',async()=>{
+test('real Full Market endpoint quote locks selection exactly once through the existing ledger and test budget',async()=>{
  const db=database();const svc=fm();
  try{
   const first=await runPreMatchOuEngineV1(db,{
@@ -149,16 +149,19 @@ test('explicit price pickup goes ONLY through EXISTING Full Market and shared 1/
   });
   assert.equal(first.priceBridge.budgetReserved,1);
   assert.equal(first.priceBridge.providerCalls,1);
-  assert.equal(first.priceBridge.state,'VALUE_PICK_PRICED');
+  assert.equal(first.priceBridge.state,'PRICE_LOCKED');
+  assert.equal(first.scan.pricedFixtures,1);
+  assert(first.scan.prices>0);
   assert.equal(first.locked.added,1);
   assert.equal(readOuValueShadow(db).length,1);
   const budget=readOuPricePickupState(db,now);
-  assert.equal(budget.remainingToday,0);
+  assert.equal(budget.providerCallsToday,1);
+  assert.equal(first.priceBridge.budget.remaining,3);
   const second=await runPreMatchOuEngineV1(db,{
    snapshot:hub(),now:now+60,market:svc.market,hubHealth:healthyHub,
    enablePaidQuoteFallback:true,clock:()=>now+60
   });
-  assert.equal(second.priceBridge.state,'DAILY_SHARED_OU_CAP');
+  assert.equal(second.priceBridge.state,'NO_MODELLED_NEW_UPCOMING');
   assert.equal(svc.calls.filter(x=>x.startsWith('/fixture-odds')).length,1);
  }finally{db.close()}
 });
@@ -182,4 +185,96 @@ test('500 upcoming fixtures can be scanned across rounds without exceeding 350 p
  const res=upcomingWaitingFromHub(hub(all),now);
  assert.equal(res.fixtures.length,500);
  assert.equal(PREMATCH_OU_ENGINE_V1_POLICY.scanBatchLimit,350);
+});
+
+
+test('existing O/U V1 quota + three new V2 quotes share exact 4/day cap; no paid quote repeat',async()=>{
+ const db=database(),svc=fm();
+ try{
+  const oldDay=readOuPricePickupState(db,now).day;
+  db.exec("INSERT INTO b46_ou_price_request_v1_test(fixture_id,business_day,requested_at,state,provider_calls) VALUES(?,?,?,'LEGACY_V1_RESERVED',1)",9978,oldDay,now-3600);
+  const snapshots=[7001,7002,7003,7004].map(id=>hub([fixture(id)]));
+  const reports=[];
+  for(let i=0;i<4;i++)reports.push(await runPreMatchOuEngineV1(db,{
+   snapshot:snapshots[i],now:now+i*15,market:svc.market,hubHealth:healthyHub,
+   enablePaidQuoteFallback:true,clock:()=>now+i*15
+  }));
+  assert.deepEqual(reports.slice(0,3).map(x=>x.priceBridge.state),['PRICE_LOCKED','PRICE_LOCKED','PRICE_LOCKED']);
+  assert.equal(reports[3].priceBridge.state,'TEST_SHARED_OU_DAILY_CAP');
+  assert.equal(svc.calls.filter(x=>x.startsWith('/fixture-odds')).length,3);
+  assert.equal(readOuValueShadow(db).length,3);
+  assert.equal(readOuPricePickupState(db,now).providerCallsToday,4);
+  assert.equal(reports[2].priceBridge.budget.remaining,0);
+ }finally{db.close()}
+});
+test('not-ready HUB or FULL MARKET halts paid pickup with no reservation and no invented O/U',async()=>{
+ for(const [hubstatus,marketStatus] of [
+  [{...await healthyHub(),stale:true},null],
+  [await healthyHub(),{ok:true,retryAfterSec:300,remainingLocalBudget:1,blockedUntil:null}]
+ ]){
+  const db=database(),svc=fm();
+  const market=async(path,options)=>path==='/health'&&marketStatus?marketStatus:svc.market(path,options);
+  try{
+   const result=await runPreMatchOuEngineV1(db,{
+    snapshot:hub(),now,market,hubHealth:()=>Promise.resolve(hubstatus),
+    enablePaidQuoteFallback:true,clock:()=>now
+   });
+   assert.equal(result.priceBridge.state,'FULLMARKET_OR_HUB_QUOTA_UNVERIFIED');
+   assert.equal(result.locked.added,0);
+   assert.equal(readOuPricePickupState(db,now).providerCallsToday,0);
+   assert.equal(svc.calls.filter(x=>x.startsWith('/fixture-odds')).length,0);
+  }finally{db.close()}
+ }
+});
+test('priced Full Market with no positive EV records market prices but no fake prediction or price retry',async()=>{
+ const db=database(),svc=fm();let quoteCalls=0;
+ const market=async(path,opts)=>{
+  const result=await svc.market(path,opts);
+  if(path.startsWith('/fixture-odds')){
+   quoteCalls++;
+   result.fullOdds.bookmakers=[{slug:'bet365',odds:{
+    goal_line_fixed:[{line:4.5,closing:{over:1.01,under:1.01}}]}}];
+  }
+  return result;
+ };
+ try{
+  const first=await runPreMatchOuEngineV1(db,{
+   snapshot:hub(),now,market,hubHealth:healthyHub,
+   enablePaidQuoteFallback:true,clock:()=>now
+  });
+  assert.equal(first.priceBridge.state,'PRICE_RECEIVED_NO_VALUE');
+  assert(first.scan.prices>0);
+  assert.equal(first.locked.added,0);
+  assert.equal(readOuValueShadow(db).length,0);
+  const second=await runPreMatchOuEngineV1(db,{
+   snapshot:hub(),now:now+60,market,hubHealth:healthyHub,
+   enablePaidQuoteFallback:true,clock:()=>now+60
+  });
+  assert.equal(second.priceBridge.state,'NO_MODELLED_NEW_UPCOMING');
+  assert.equal(quoteCalls,1);
+ }finally{db.close()}
+});
+test('Full Market wrong fixture ID is recorded NO PRICE, never locks prediction or retries',async()=>{
+ const db=database(),svc=fm();
+ const market=async(path,opts)=>{
+  const result=await svc.market(path,opts);
+  if(path.startsWith('/fixture-odds'))result.fixtureId=999999;
+  return result;
+ };
+ try{
+  const first=await runPreMatchOuEngineV1(db,{
+   snapshot:hub(),now,market,hubHealth:healthyHub,
+   enablePaidQuoteFallback:true,clock:()=>now
+  });
+  assert.equal(first.priceBridge.state,'FULLMARKET_RESPONSE_MISMATCH');
+  assert.equal(first.locked.added,0);
+  assert.equal(readOuValueShadow(db).length,0);
+  assert.equal(readOuPricePickupState(db,now).providerCallsToday,1);
+  const second=await runPreMatchOuEngineV1(db,{
+   snapshot:hub(),now:now+30,market,hubHealth:healthyHub,
+   enablePaidQuoteFallback:true,clock:()=>now+30
+  });
+  assert.equal(second.priceBridge.state,'NO_MODELLED_NEW_UPCOMING');
+  assert.equal(svc.calls.filter(x=>x.startsWith('/fixture-odds')).length,1);
+ }finally{db.close()}
 });
