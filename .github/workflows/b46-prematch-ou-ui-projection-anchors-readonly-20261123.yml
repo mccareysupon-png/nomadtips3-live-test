@@ -1,0 +1,50 @@
+name: BALL46 PreMatch O/U existing TEST UI preview-data backend projection read-only anchors
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-prematch-ou-ui-projection-anchors-readonly-20261123.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Read only exact current frontend PROXY and backend preview-data implementation
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const api='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+          async function cf(p){const r=await fetch(api+p,{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},signal:AbortSignal.timeout(40000)});
+           const j=await r.json();assert(r.ok&&j.success,'CF '+p);return j.result;}
+          for(const name of ['ball46-premium-match-colors-test-20261120','ball46-prematch-only-test-20261120']){
+           const ds=await cf('/scripts/'+name+'/deployments?per_page=1');
+           const id=ds.deployments[0].versions[0].version_id;
+           const v=await cf('/workers/'+name+'/versions/'+id+'?include=modules');
+           const m=v.modules.find(x=>x.name===v.main_module);
+           const src=Buffer.from(m.content_base64,'base64').toString('utf8');
+           console.log('B46_PREVIEW_ACTUAL '+JSON.stringify({name,id,main:v.main_module,sourceBytes:src.length}));
+           function hit(term,before,after,n=4){let at=0,i=0;while(i<n){const j=src.indexOf(term,at);if(j<0)break;
+             console.log('B46_PREVIEW_ANCHOR '+JSON.stringify({name,term,index:j,
+              slice:src.slice(Math.max(0,j-before),Math.min(src.length,j+after))}).slice(0,7500));
+             at=j+term.length;i++;}}
+           if(name.startsWith('ball46-premium')){
+            hit("'/__b46_prematch_data'",1200,3200,3);
+            hit('__b46_prematch_data',250,1800,2);
+            hit('PREMATCH_STORE.fetch',400,1600,3);
+            hit("'/preview-data'",350,1700,2);
+           }else{
+            hit("path==='/preview-data'",450,3200,3);
+            hit("path==='/ou-value-v2-state'",350,2000,1);
+            hit("readOuLedger(",400,1500,4);
+            hit("readOuValueShadow(",350,1200,3);
+            hit("ouDailyBook:",250,1000,2);
+            hit("ouLedger:",250,1000,2);
+           }
+          }
+          console.log('B46_PREVIEW_ONLY_READ');
+          JS
