@@ -137,6 +137,7 @@ function sharedQuoteBudget(db,now){
  const used=Number(get(db,"SELECT COUNT(*) AS n FROM b46_ou_price_request_v1_test WHERE business_day=?",day)[0]?.n??0);
  return {day,used,remaining:Math.max(0,PREMATCH_OU_ENGINE_V1_POLICY.maxSharedOuRequestsPerLondonDay-used)};
 }
+export const readPreMatchOuQuoteBudget=(db,now)=>sharedQuoteBudget(db,now);
 function reserveQuote(db,model,now){
  const day=londonAccountingWindow(now).businessDay;
  let reserved=false;
