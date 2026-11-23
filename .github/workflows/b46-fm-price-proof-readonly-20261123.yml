@@ -1,0 +1,35 @@
+name: BALL46 Full Market exact O/U price flow READONLY proof
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-fm-price-proof-readonly-20261123.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Read exact FULL_MARKET Gate pricing requests/caching; no paid provider request
+        run: |
+          node --input-type=module <<'JS'
+          const root='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+          const h={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          const name='nomadtips3-full-market-343-ball46';
+          const v=await fetch(root+'/scripts/'+name+'/deployments?per_page=1',{headers:h}).then(r=>r.json());
+          const id=v.result.deployments[0].versions[0].version_id;
+          const a=await fetch(root+'/workers/'+name+'/versions/'+id+'?include=modules',{headers:h}).then(r=>r.json());
+          const src=Buffer.from(a.result.modules.find(x=>x.name==='index.js').content_base64,'base64').toString();
+          console.log('B46_FM_VERSION '+JSON.stringify({id,chars:src.length}));
+          const keys=['BOOKMAKERS =','API_BASE =','async function providerRequest','async fixtureOdds(','async cacheSnapshot(','async prewarm(','async health(','/fixture-odds','/board-cache','/v1/fixtures/','forwardProvider','class FullMarketGate'];
+          for(const key of keys){
+           let i=src.indexOf(key);
+           if(i<0)continue;
+           const fragment=src.slice(Math.max(0,i-230),Math.min(src.length,i+(key.includes('providerRequest')?2900:1800)));
+           console.log('B46_FM_CODE '+JSON.stringify({key,offset:i,fragment:fragment.replace(/(?:(authorization|Bearer|SECRET|API_KEY)([^,}]{1,90}))/gi,'[REDACTED]')}).slice(0,9000));
+          }
+          JS
