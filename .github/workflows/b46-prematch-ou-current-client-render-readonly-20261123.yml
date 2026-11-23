@@ -1,0 +1,37 @@
+name: BALL46 current O/U TEST UI exact rendering markers read only
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-prematch-ou-current-client-render-readonly-20261123.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Inspect existing UI card pick, price, and quote stage text
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const api='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+          const h={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          async function cf(p){const r=await fetch(api+p,{headers:h,signal:AbortSignal.timeout(30000)});
+           const j=await r.json();assert(r.ok&&j.success);return j.result}
+          const name='ball46-premium-match-colors-test-20261120';
+          const d=await cf('/scripts/'+name+'/deployments?per_page=1');
+          const v=await cf('/workers/'+name+'/versions/'+d.deployments[0].versions[0].version_id+'?include=modules');
+          const source=Buffer.from(v.modules[0].content_base64,'base64').toString('utf8');
+          const m=source.match(/var prematchClientScript = ("(?:\\.|[^"\\])*");/);
+          assert(m,'NO_CLIENT');const s=JSON.parse(m[1]);
+          for(const t of ['function prematchMarketStrip(items){','function premiumMatchRow(','const quick=','mode===\\x27ou\\x27?\\x27O/U 2.5',
+           'if(modeNext===\\x27ou\\x27||modeNext===\\x27ou-predictions\\x27)return;',
+           "mode==='ou'?'O/U 2.5",'if(item.market===\\x27O/U\\x27)']){
+           const i=s.indexOf(t);
+           console.log('B46_OU_UI_RENDER '+JSON.stringify({t,i,part:i>=0?s.slice(i,Math.min(s.length,i+3400)):null}).slice(0,4500));
+          }
+          JS
