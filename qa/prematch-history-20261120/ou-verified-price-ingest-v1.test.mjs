@@ -103,7 +103,7 @@ test('refuses ambiguous or unidentified bookmaker',()=>{
 test('refuses bad identity, quote timestamps or changed pick line',()=>{
  const odds=response({goal_line_fixed:[{line:2.5,closing:{over:1.85,under:1.95}}]});
  assert.equal(parseOuPriceFromExistingPayload(odds,{...opt,fixtureId:1004}).state,'FIXTURE_ID_MISMATCH');
- assert.equal(parseOuPriceFromExistingPayload(odds,{...opt,observed:kickoff-400,now:kickoff-400}).state,'INVALID_OR_LATE_PRICE_CONTEXT');
+ assert.equal(parseOuPriceFromExistingPayload(odds,{...opt,observed:kickoff-250,now:kickoff-250}).state,'INVALID_OR_LATE_PRICE_CONTEXT');
  assert.equal(parseOuPriceFromExistingPayload(odds,{...opt,now:kickoff-200}).state,'INVALID_OR_LATE_PRICE_CONTEXT');
  assert.equal(parseOuPriceFromExistingPayload(odds,{...opt,line:2.75}).state,'UNSUPPORTED_OU_SELECTION');
 });
