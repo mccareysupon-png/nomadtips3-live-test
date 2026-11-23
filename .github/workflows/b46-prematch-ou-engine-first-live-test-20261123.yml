@@ -1,0 +1,73 @@
+name: BALL46 PreMatch O/U installed engine real HUB/FullMarket TEST first smoke
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-prematch-ou-engine-first-live-test-20261123.yml]
+permissions: {contents: read}
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Owner-only TEST tick once, real existing HUB /snapshot and FULL MARKET; obey existing daily shared request limit
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const owner=crypto.createHmac('sha256',process.env.CLOUDFLARE_API_TOKEN).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const base='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          const call=async(path,method='GET')=>{
+           const r=await fetch(base+path,{method,headers:{authorization:'Bearer '+owner,accept:'application/json'},
+            cache:'no-store',signal:AbortSignal.timeout(90000)});
+           const j=await r.json().catch(()=>({error:'NOT_JSON'}));
+           assert(r.ok,'HTTP_ERROR_'+path+'_'+r.status+'_'+JSON.stringify(j).slice(0,150));
+           return j;
+          };
+          const before=await call('/prematch-ou-engine-state');
+          const oldQuota=await call('/ou-price-pickup-state');
+          assert.equal(before.engine,'B46_PREMATCH_OU_ENGINE_V1_TEST');
+          assert.equal(before.policy.needs1X2Odds,false);
+          assert.equal(before.policy.preservesLiveEngine,true);
+          assert.equal(before.policy.providerPickupOffUnlessExplicitlyEnabled,true);
+          assert.equal(oldQuota.providerCallsToday,before.quota.used);
+          console.log('B46_PREMATCH_OU_FIRST_BEFORE '+JSON.stringify({
+            previousLast:before.last?.status??null,day:before.quota.day,
+            callsUsed:before.quota.used,remaining:before.quota.remaining,
+            cursor:before.cursor,shadowCount:before.shadowCount}));
+          const result=await call('/prematch-ou-engine-tick','POST');
+          console.log('B46_PREMATCH_OU_FIRST_TICK '+JSON.stringify({
+           status:result.status,engine:result.engine,at:result.at,
+           feed:result.feed,scan:result.scan,
+           locked:result.locked,cursorIn:result.cursorIn,cursorOut:result.cursorOut,
+           bridge:result.priceBridge,
+           quota:result.quota,error:result.error??null,
+           hubSnapshotAt:result.hubSnapshotAt??null,
+           productionWrites:result.productionWrites,liveEngineCalls:result.liveEngineCalls,
+           providerCalls:result.providerCalls}).slice(0,11000));
+          const after=await call('/prematch-ou-engine-state');
+          assert.equal(after.last?.engine,'B46_PREMATCH_OU_ENGINE_V1_TEST');
+          assert.equal(after.last?.status,result.status);
+          assert.equal(after.last?.liveEngineCalls,0);
+          assert.equal(after.last?.productionWrites,0);
+          assert(after.quota.used-before.quota.used<=1,'EXCESS_OU_PROVIDER_CALLS');
+          if(result.status==='SCREENED_PREMATCH'){
+           assert(result.scan?.checked>=0&&result.feed?.accepted>=0);
+          }
+          console.log('B46_PREMATCH_OU_FIRST_LIVE_SMOKE '+JSON.stringify({
+            status:result.status,success:result.status==='SCREENED_PREMATCH'||result.status==='NO_PREMATCH_FIXTURES',
+            shadowCountBefore:before.shadowCount,shadowCountAfter:after.shadowCount,
+            newLocked:result.locked?.added??0,
+            checked:result.scan?.checked??0,modeled:result.scan?.modeled??0,
+            pricedFixtures:result.scan?.pricedFixtures??0,
+            quoteState:result.priceBridge?.state??null,
+            day:after.quota.day,usedAfter:after.quota.used,
+            upstreamAddedByThisTick:result.providerCalls??0,
+            productionWrites:0,liveEngineCalls:0
+          }));
+          if(result.status!=='SCREENED_PREMATCH'&&result.status!=='NO_PREMATCH_FIXTURES')
+           throw Error('ENGINE_NOT_FULLY_CONNECTED_'+result.status);
+          JS
