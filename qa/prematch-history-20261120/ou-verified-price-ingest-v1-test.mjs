@@ -1,7 +1,8 @@
 // BALL46 O/U verified price ingestion V1 — pure TEST-only parser.
 // NO upstream calls, no source-odds inference, no 1X2/BTTS changes.
 // Input must be a trusted, already obtained /v1/fixtures/{id}/odds response.
-// `closing` is latest pre-kickoff only when received before kickoff.
+// `closing` is latest pre-kickoff until kickoff; `opening` is a recorded earlier
+// price, and may NOT have been executable at the time the prediction was issued.
 // Main goal_line values in cached HUB snapshots are LINES, NOT PAYOUT PRICES.
 const positiveId=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
 const price=x=>typeof x==='number'&&Number.isFinite(x)&&x>1&&x<=1000;
@@ -34,40 +35,55 @@ export function parseOuPriceFromExistingPayload(response,{fixtureId,homeId,awayI
  if(bet365.length!==1)return fail('BET365_NOT_UNIQUELY_IDENTIFIED');
  const odds=bet365[0]?.odds;
  if(!odds||typeof odds!=='object'||Array.isArray(odds))return fail('NO_ODDS_OBJECT');
- let quote=null,source=null;
+ let quote=null,source=null,stage=null;
  const fixed=odds.goal_line_fixed;
+ let fixed25=null;
  if(fixed!=null){
    if(!Array.isArray(fixed)||fixed.length>OUV1_PRICE_POLICY.maxLines)
      return fail('INVALID_FIXED_LINE_LADDER');
-   const hit=fixed.filter(x=>x&&typeof x==='object'&&x.line===2.5);
-   if(hit.length>1)return fail('DUPLICATE_FIXED_LINE');
-   if(hit.length===1){
-     // Explicit null closing means Bet365 withdrew the fixed line. Do NOT
-     // revive an earlier opening tick or use an in-play price.
-     if(hit[0].closing===null)return fail('PRICE_WITHDRAWN');
-     if(!quoteIsValid(hit[0].closing))return fail('PRICE_NOT_OFFERED');
-     quote=hit[0].closing;source='BET365_GOAL_LINE_FIXED_CLOSING';
+   const matches=fixed.filter(x=>x&&typeof x==='object'&&x.line===2.5);
+   if(matches.length>1)return fail('DUPLICATE_FIXED_LINE');
+   fixed25=matches[0]??null;
+ }
+ // Read the PRE-MATCH full payout for the SAME 2.5 strike. Never treat a
+ // number 2.5/2.75/3.0 (bulk fixture goal-line marker) as a decimal price.
+ // Prefer latest closing, but user also accepts an authentic recorded opening.
+ // A recorded opening may be historical; the returned stage remains explicit.
+ const accept=(value,name,fromStage)=>{
+   if(!quoteIsValid(value))return false;
+   quote=value;source=name+'_'+fromStage.toUpperCase();stage=fromStage;
+   return true;
+ };
+ if(fixed25){
+   accept(fixed25.closing,'BET365_GOAL_LINE_FIXED','closing')||
+   accept(fixed25.opening,'BET365_GOAL_LINE_FIXED','opening');
+ }
+ const main=odds.goal_line;
+ if(!quote&&main&&typeof main==='object'&&!Array.isArray(main)){
+   for(const step of ['closing','opening']){
+     const values=main[step];
+     if(values&&typeof values==='object'&&!Array.isArray(values)&&
+       line(values.line)&&values.line===2.5&&
+       accept(values,'BET365_MAIN_GOAL_LINE',step))break;
    }
  }
  if(!quote){
-   // Fallback to moving main goal line ONLY if that *same* line is 2.5 and
-   // the full-price object provides both payout sides.
-   const closing=odds.goal_line?.closing;
-   if(closing!==null&&closing!==undefined){
-     if(!closing||typeof closing!=='object'||!line(closing.line))
-       return fail('MAIN_GOAL_LINE_NOT_FULL_PRICES');
-     if(closing.line!==2.5)return fail('MAIN_GOAL_LINE_MISMATCH',{observedMainLine:closing.line});
-     if(!quoteIsValid(closing))return fail('PRICE_NOT_OFFERED');
-     quote=closing;source='BET365_MAIN_GOAL_LINE_CLOSING';
-   }
+   if(fixed25&&fixed25.closing===null&&!quoteIsValid(fixed25.opening))
+     return fail('PRICE_WITHDRAWN');
+   const stages=[main?.closing,main?.opening];
+   if(stages.some(v=>v!==null&&v!==undefined&&typeof v!=='object'))
+     return fail('MAIN_GOAL_LINE_NOT_FULL_PRICES');
+   const other=stages.find(v=>v&&typeof v==='object'&&line(v.line)&&v.line!==2.5);
+   if(other)return fail('MAIN_GOAL_LINE_MISMATCH',{observedMainLine:other.line});
+   return fail('PRICE_NOT_OFFERED');
  }
- if(!quote)return fail('PRICE_NOT_OFFERED');
  const selectedPrice=pick==='OVER_2.5'?quote.over:quote.under;
  // This observed timestamp is local trusted receipt time. The provider's
  // closing quote has no per-quote timestamp on this endpoint.
  return {state:'PRICED',fixtureId:Number(fixtureId),homeId:Number(homeId),
    awayId:Number(awayId),market:'O/U',line:2.5,pick,
-   bookmaker:'bet365',stage:'closing',source,
+   bookmaker:'bet365',stage,source,
+   priceStage:stage,openingIsHistorical:stage==='opening',
    observedAt:observed,kickoff,priceOver:quote.over,priceUnder:quote.under,
    selectedPrice,providerQuoteTimestamp:null,
    providerCalls:0,estimatedFromOtherMarket:false};
