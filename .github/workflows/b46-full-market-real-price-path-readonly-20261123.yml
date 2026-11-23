@@ -1,0 +1,66 @@
+name: BALL46 live Full Market worker real O/U price path READONLY
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-full-market-real-price-path-readonly-20261123.yml]
+permissions: {contents: read}
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Trace production Full Market service binding, actual odds endpoint and price extraction without paid calls
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const token=process.env.CLOUDFLARE_API_TOKEN,a=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const root='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers';
+          async function cf(p){const r=await fetch(root+p,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(44000)});const j=await r.json();assert(r.ok&&j.success,'CF '+p+' '+r.status);return j.result}
+          async function inspect(name){
+            const ver=(await cf('/scripts/'+name+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+            const v=await cf('/workers/'+name+'/versions/'+ver+'?include=modules');
+            console.log('FM_ACTIVE_SERVICE '+JSON.stringify({worker:name,version:ver,modules:v.modules.length,main:v.main_module}));
+            const focused=[];
+            for(const m of v.modules.filter(m=>m.content_base64)){
+              const src=Buffer.from(m.content_base64,'base64').toString('utf8');
+              if(m.name==='index.js'&&name==='ball46-production'){
+               for(const q of ['async function fullMarketCacheSnapshot','/api/full-market/','env.FULL_MARKET','fullMarketRequest(','/board-cache']){
+                let idx=src.indexOf(q);let n=0;
+                while(idx!==-1&&n<9){const frag=src.slice(Math.max(0,idx-220),Math.min(src.length,idx+490)).replace(/\s+/g,' '); 
+                  if(!/api_key|authorization|secret|token|bearer/i.test(frag))focused.push({needle:q,offset:idx,fragment:frag});
+                  idx=src.indexOf(q,idx+q.length);n++;}
+               }
+              }else{
+               const needles=['goal_line','goalline','OVER','Under','closing','opening','/v1/fixtures/','bookmakers','/board-cache','/odds','O/U','over_under'];
+               let total=0;for(const w of needles)total+=src.split(w).length-1;
+               if(total<1)continue;
+               if(src.length>400000)continue;
+               const snippets=[];
+               for(const term of needles){
+                let n=0,offset=src.indexOf(term);
+                while(offset>=0&&n<5){
+                  const frag=src.slice(Math.max(0,offset-260),Math.min(src.length,offset+380)).replace(/\s+/g,' ');
+                  if(!/api_key|authorization|secret|token|bearer/i.test(frag))
+                   snippets.push({term,offset,fragment:frag});
+                  offset=src.indexOf(term,offset+term.length);n++;
+                }
+               }
+               console.log('FM_SERVICE_MODULE '+JSON.stringify({worker:name,module:m.name,length:src.length,total,excerpts:snippets.slice(0,20)}).slice(0,13000));
+              }
+            }
+            if(focused.length)console.log('FM_PRODUCTION_ROUTES '+JSON.stringify(focused).slice(0,18500));
+          }
+          const prod=await cf('/scripts/ball46-production/settings');
+          console.log('FM_PROD_BINDINGS '+JSON.stringify(prod.bindings.filter(x=>x.type==='service'||x.name==='FULL_MARKET').map(x=>({type:x.type,name:x.name,service:x.service,environment:x.environment}))));
+          const fm=prod.bindings.find(x=>x.name==='FULL_MARKET'&&x.type==='service');
+          if(!fm?.service)throw Error('FULL_MARKET_SERVICE_BINDING_NOT_IDENTIFIED');
+          await inspect('ball46-production');
+          await inspect(fm.service);
+          const test=await cf('/scripts/ball46-prematch-only-test-20261120/settings');
+          console.log('FM_PREMATCH_BINDINGS '+JSON.stringify(test.bindings.map(x=>({name:x.name,type:x.type,service:x.service}))));
+          JS
