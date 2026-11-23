@@ -37,6 +37,40 @@ try{
    assert.equal(result.up.move,null,'REDUCED_MOTION_UP');
    assert.equal(result.down.move,null,'REDUCED_MOTION_DOWN');
   }
+  if(mobile){
+   await page.waitForFunction(()=>document.querySelectorAll('.match-row[data-match-id] .market-quote strong[data-nomad-odds-raw]').length>0,null,{timeout:40000});
+   const nativeProof=await page.evaluate(async()=>{
+    const wait=ms=>new Promise(r=>setTimeout(r,ms));
+    const real=document.querySelector('.match-row[data-match-id] .market-cell-1x2');
+    if(!real)return {error:'NO_REAL_MOBILE_MARKET'};
+    const clone=document.createElement('article');clone.className='match-row';clone.dataset.matchId='B46_NATIVE_MOBILE_QA_ONLY';
+    clone.style.cssText='position:fixed;left:5px;top:260px;z-index:100000;width:250px';
+    clone.style.setProperty('display','block','important');
+    const cell=real.cloneNode(true);cell.style.setProperty('display','block','important');clone.append(cell);document.body.append(clone);
+    const quote=clone.querySelector('.market-quote'),n=quote?.querySelector('strong[data-nomad-odds-raw]');
+    if(!n){clone.remove();return {error:'REAL_MOBILE_MARKUP_MISMATCH'}}
+    n.setAttribute('data-nomad-odds-raw','1.80');n.textContent='1.80';
+    await wait(400);
+    const initial=quote.getAttribute('data-b46-mobile-odds-move');
+    n.setAttribute('data-nomad-odds-raw','1.90');n.textContent='1.90';await wait(280);
+    const up={direction:quote.getAttribute('data-b46-mobile-odds-move'),animation:getComputedStyle(quote).animationName,loops:getComputedStyle(quote).animationIterationCount,color:getComputedStyle(n).color};
+    n.setAttribute('data-nomad-odds-raw','1.70');n.textContent='1.70';await wait(280);
+    const down={direction:quote.getAttribute('data-b46-mobile-odds-move'),animation:getComputedStyle(quote).animationName,loops:getComputedStyle(quote).animationIterationCount,color:getComputedStyle(n).color};
+    const stats={...window.__b46NativeMobileOddsStats};clone.remove();return {initial,up,down,stats};
+   });
+   console.log('B46_NATIVE_MOBILE_MARKUP_PROOF '+JSON.stringify({mode,...nativeProof}));
+   assert(!nativeProof.error,'REAL_MOBILE_DOM_NOT_SUPPORTED_'+nativeProof.error);
+   assert.equal(nativeProof.initial,null,'NATIVE_INITIAL_PHANTOM_'+mode);
+   if(!reduce){
+    assert.equal(nativeProof.up.direction,'up','NATIVE_MOBILE_UP_MISSING_'+mode);
+    assert.equal(nativeProof.down.direction,'down','NATIVE_MOBILE_DOWN_MISSING_'+mode);
+    assert.equal(nativeProof.up.animation,'b46-mobile-odds-pulse-6x','NATIVE_MOBILE_ANIMATION_MISSING_'+mode);
+    assert.equal(nativeProof.down.loops,'6','NATIVE_MOBILE_SIX_PULSES_MISSING_'+mode);
+   }else{
+    assert.equal(nativeProof.up.direction,null,'REDUCED_MOTION_NATIVE_UP');
+    assert.equal(nativeProof.down.direction,null,'REDUCED_MOTION_NATIVE_DOWN');
+   }
+  }
   assert.deepEqual(errors,[],'PAGE_ERRORS_'+mode);
   console.log('B46_DEFAULT_ODDS_CROSS_DEVICE_PASS '+JSON.stringify({mode,up:result.up.move,down:result.down.move,flashes:result.stats?.flashes??0}));
   await ctx.close();
