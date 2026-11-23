@@ -4,6 +4,7 @@ on:
     branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
     paths:
       - .github/workflows/b46-ou-v2-settlement-deploy-20261123.yml
+      - qa/prematch-history-20261120/deploy-ou-v2-settlement-test-20261123.mjs
 permissions: {contents: read}
 concurrency:
   group: ball46-prematch-only-test-20261120
