@@ -25,5 +25,5 @@ jobs:
           node --experimental-sqlite --test qa/prematch-history-20261120/patch-priced-ou-into-existing-prematch-ui.test.mjs
           node --experimental-sqlite --test qa/prematch-history-20261120/ou-value-screener-v2.test.mjs
           node --experimental-sqlite --test qa/prematch-history-20261120/prematch-ou-engine-v1.test.mjs
-      - name: Guarded backend TEST deploy: add actual immutable O/U V2 picks to EXISTING UI data path
+      - name: 'Guarded backend TEST deploy - add immutable priced O/U V2 picks to existing UI data path'
         run: node qa/prematch-history-20261120/deploy-priced-ou-existing-test-ui-backend-20261123.mjs
