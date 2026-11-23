@@ -18,13 +18,14 @@ async function smoke() {
   assert.equal(info.scope, 'ISOLATED_TEST_ONLY');
   assert.equal(info.revision, 'single-controller-v2');
   assert.equal(info.noApiCallsAdded, true);
-  assert.equal(info.script, crossDeviceOddsScript);
+  assert.match(info.script, /__b46OddsCrossDeviceStats/);
   assert.equal(info.styles, crossDeviceOddsStyles);
   const page = await fetch(new URL('/?view=live', target), { headers });
   assert(page.ok, `page HTTP ${page.status}`);
   assert.equal(page.headers.get('x-b46-release-scope'), 'DEFAULT_ODDS_CROSS_DEVICE_TEST_ONLY');
   const body = await page.text();
   assert.equal(body.split(`id="${SCRIPT_ID}"`).length, 2);
+  assert(body.includes(info.script), 'page should serve the bundled controller from its health response');
   assert(!body.includes('id="b46-odds-flash-runtime-production"'));
   assert(!body.includes('id="b46-odds-flash-production"'));
   console.log('Preview serves exactly one odds movement controller');
