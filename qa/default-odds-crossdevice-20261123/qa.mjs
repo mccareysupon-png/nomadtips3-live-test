@@ -18,13 +18,13 @@ try{
    const wait=n=>new Promise(r=>setTimeout(r,n));
    const box=document.createElement('div');box.className='match-row';box.setAttribute('data-match-id','B46_CROSS_DEVICE_LOCAL_FIXTURE');box.style.cssText='position:fixed;left:2px;top:200px;width:220px;min-height:60px;z-index:99999';
    box.innerHTML='<div class="market-cell market-cell-1x2" title="QA"><div class="b46-v3-quote"><strong data-b46-align="1x2-H" data-nomad-odds-raw="1.80">1.80</strong></div></div>';
-   document.body.append(box);const q=box.querySelector('.b46-v3-quote'),n=q.querySelector('strong');
+   document.body.append(box);box.style.setProperty('display','block','important');box.style.setProperty('visibility','visible','important');const cell=box.querySelector('.market-cell');cell.style.setProperty('display','block','important');const q=box.querySelector('.b46-v3-quote'),n=q.querySelector('strong');q.style.setProperty('display','inline-block','important');q.style.setProperty('visibility','visible','important');n.style.setProperty('display','inline-block','important');
    await wait(350);const initial=q.getAttribute('data-b46-odds-move');
    n.setAttribute('data-nomad-odds-raw','1.90');n.textContent='1.90';await wait(250);
    const up={move:q.getAttribute('data-b46-odds-move'),animation:getComputedStyle(q).animationName,color:getComputedStyle(n).color};
    n.setAttribute('data-nomad-odds-raw','1.75');n.textContent='1.75';await wait(250);
    const down={move:q.getAttribute('data-b46-odds-move'),animation:getComputedStyle(q).animationName,color:getComputedStyle(n).color};
-   const stats=window.__b46OddsCrossDeviceStats||null;const rect={q:q.getBoundingClientRect().toJSON(),n:n.getBoundingClientRect().toJSON()};const theme=document.documentElement.getAttribute('data-theme');const reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;box.remove();return {initial,up,down,stats,rect,theme,reduced};
+   const stats=window.__b46OddsCrossDeviceStats||null;const rect={q:q.getBoundingClientRect().toJSON(),n:n.getBoundingClientRect().toJSON()};const native={rows:document.querySelectorAll('.match-row[data-match-id]').length,quotes:document.querySelectorAll('.match-row[data-match-id] .market-cell .b46-v3-quote strong[data-nomad-odds-raw]').length,marketCells:document.querySelectorAll('.market-cell').length};const theme=document.documentElement.getAttribute('data-theme');const reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;box.remove();return {initial,up,down,stats,rect,theme,reduced,native};
   });
   console.log('CROSSDEVICE_DEBUG '+JSON.stringify({mode,...result}));
   assert.equal(result.initial,null,'INITIAL_FAKE_ANIMATION_'+mode);
