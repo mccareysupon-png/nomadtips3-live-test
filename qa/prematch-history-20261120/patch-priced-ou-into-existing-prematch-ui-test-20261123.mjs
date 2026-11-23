@@ -1,7 +1,7 @@
 // PURE TEST VIEW PROJECTION: Show ONLY genuine, immutable, priced O/U V2
 // selections in the EXISTING Pre-Match Predictions/Over-Under UI. No model,
 // provider call, settlement write, additional ledger, or new page.
-export function projectPricedOuV2Ui({shadowRows,identities,now,window,dayForTime,evaluate}){
+export function projectPricedOuV2Ui({shadowRows,identities,now,window,dayForTime,evaluate,settlementState=null}){
  if(!Array.isArray(shadowRows)||!Number.isSafeInteger(now)||now<=0||
   !window||typeof dayForTime!=='function'||typeof evaluate!=='function')
   throw Error('OU_PRICED_UI_PROJECTION_INVALID_ARGUMENTS');
@@ -26,6 +26,12 @@ export function projectPricedOuV2Ui({shadowRows,identities,now,window,dayForTime
   const who=identities?.[String(id)]??{};
   const home=safeName(who.home)??'Team #'+homeId;
   const away=safeName(who.away)??'Team #'+awayId;
+  const settled=settlementState?.settlements?.[String(id)]??null;
+  const validSettled=['WIN','LOSS','PUSH'].includes(settled?.status)&&
+   Number.isSafeInteger(Number(settled?.hg))&&Number(settled.hg)>=0&&
+   Number.isSafeInteger(Number(settled?.ag))&&Number(settled.ag)>=0&&
+   Number.isSafeInteger(Number(settled?.settled_at))&&Number(settled.settled_at)>kickoff&&
+   Number.isFinite(Number(settled?.units));
   let probability=null;
   try{
    const calc=evaluate(Number(r.expected_goals),line,r.pick,price);
@@ -44,7 +50,11 @@ export function projectPricedOuV2Ui({shadowRows,identities,now,window,dayForTime
    expectedTotalGoals:Number(r.expected_goals),
    home_count:Number(r.home_history)||0,away_count:Number(r.away_history)||0,
    historyConfidence:String(r.history_confidence??'LOW_SAMPLE'),
-   status:'PENDING',hg:null,ag:null,settled_at:null,units:null,
+   status:validSettled?settled.status:'PENDING',
+   hg:validSettled?Number(settled.hg):null,ag:validSettled?Number(settled.ag):null,
+   settled_at:validSettled?Number(settled.settled_at):null,
+   units:validSettled?Number(settled.units):null,
+   settlementKind:validSettled?String(settled.kind??''):null,
    model:String(r.model),pricedV2:true,
    quoteTimestampUnverified:true
   });
@@ -62,7 +72,7 @@ export function projectPricedOuV2Ui({shadowRows,identities,now,window,dayForTime
    stakedUnits:null,netUnits:null,cumulativeUnits:null}));
  const ouLedger={mode:'TEST_ONLY',market:'O/U',modelOnly:false,pricedOnly:true,
   source:'B46_OU_VALUE_V2_IMMUTABLE_SHADOW',rows,
-  stats:{total:rows.length,pending:rows.length,win:0,loss:0,push:0,draw:0,
+  stats:settlementState?.stats??{total:rows.length,pending:rows.length,win:0,loss:0,push:0,draw:0,
    settled:0,winRate:null,units:null,pricedSettled:0,
    pricedPending:rows.length},publishedTest:rows.length,
   providerCalls:0,productionWrites:0};
@@ -72,7 +82,9 @@ export function projectPricedOuV2Ui({shadowRows,identities,now,window,dayForTime
   basis:'PRICED_V2_PENDING_NO_FT_SETTLEMENT',
   model:'LONDON_06_SHARED_WITH_LIVE',
   source:'O_U_V2_PRICE_LOCKED_TEST_UI',providerCalls:0};
- return {ouLedger,ouDailyBook,ouDailySeries:dailySeries,
+ return {ouLedger,
+  ouDailyBook:settlementState?.dailyBook??ouDailyBook,
+  ouDailySeries:settlementState?.dailySeries??dailySeries,
   excludedModelOnlyV1:true,frontendDesignUnchanged:true,
   providerCalls:0,productionWrites:0};
 }
