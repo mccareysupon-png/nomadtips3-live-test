@@ -110,7 +110,12 @@ next=once(next,
  'EXPOSE_BUDGET_AUDIT_GET_OWNER');
 const oldFirst="const q=await stub.fetch('https://prematch.internal/ou-cycle-test',{method:'POST'});if(q.ok){const result=await q.json();console.log('OU_2P5_CAPTURE_AT_ISSUE_TEST added='+(result.recorded?.added??0)+' priced='+(result.recorded?.lockedPrices??0)+' callReserve='+(result.providerCalls??0))}else console.log('OU_2P5_CAPTURE_AT_ISSUE_ERROR '+q.status)";
 const oldSecond="const v=await stub.fetch('https://prematch.internal/ou-value-v2-run',{method:'POST'});if(v.ok){const result=await v.json();console.log('OU_VALUE_V2_SHADOW_SCREEN_TEST inspected='+(result.checked??0)+' pricedFixtures='+(result.pricedFixtures??0)+' selected='+(result.recorded?.added??0)+' providerCalls=0')}else console.log('OU_VALUE_V2_SHADOW_SCREEN_ERROR '+v.status)";
-next=once(next,oldFirst+';'+oldSecond,oldSecond+';'+oldFirst,'V2_FIRST_SHARED_DAILY_QUOTA');
+const atQ=next.indexOf(oldFirst),atV=next.indexOf(oldSecond);
+assert(atQ>=0&&atV>atQ&&next.indexOf(oldFirst,atQ+1)<0&&
+ next.indexOf(oldSecond,atV+1)<0,'CRON_REORDER_SOURCE_CHANGED_ABORT');
+const between=next.slice(atQ+oldFirst.length,atV);
+assert(/^[\s;]*$/.test(between),'UNEXPECTED_CRON_CODE_BETWEEN_V1_V2_'+JSON.stringify(between.slice(0,150)));
+next=next.slice(0,atQ)+oldSecond+between+oldFirst+next.slice(atV+oldSecond.length);
 // Original daily-collection and 1X2 mechanisms remain in exact original order.
 assert(next.includes('OU_VALUE_V2_SHADOW_SCREEN_TEST')&&
  next.includes('OU_2P5_CAPTURE_AT_ISSUE_TEST')&&
