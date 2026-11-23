@@ -16,8 +16,8 @@ const row={
 const view=(rows=[row],identities={'204906152':{
  home:'Neftchi Fargona',away:'Al Hilal Riyadh',
  leagueName:'AFC Champions League Elite',leagueId:100
-}})=>projectPricedOuV2Ui({shadowRows:rows,identities,now,
- window:londonAccountingWindow(now),dayForTime,evaluate:evaluateAsianOu});
+}},settlementState=null)=>projectPricedOuV2Ui({shadowRows:rows,identities,now,
+ window:londonAccountingWindow(now),dayForTime,evaluate:evaluateAsianOu,settlementState});
 test('real fixed O/U quote maps exactly to EXISTING TEST UI ledger with actual market identity and bookmaker',()=>{
  const v=view();
  assert.equal(v.ouLedger.mode,'TEST_ONLY');
@@ -78,4 +78,27 @@ test('all quarter/half/full Asian O/U lines support same existing UI pick text',
   const v=view([{...row,line}]);
   assert.equal(v.ouLedger.rows[0].pick,'UNDER_'+line);
  }
+});
+
+test('priced O/U V2 UI reflects only persisted verified settlement state, not ad hoc FT calculation',()=>{
+ const persisted={
+  settlements:{'204906152':{status:'WIN',kind:'FULL_WIN',hg:1,ag:1,
+   units:1.8,settled_at:row.kickoff+600}},
+  stats:{total:1,pending:0,win:1,loss:0,push:0,draw:0,settled:1,
+   winRate:100,units:1.8,pricedSettled:1,pricedPending:0},
+  dailyBook:{source:'PERSISTED_OU_V2_TEST',selected:{total:1},
+   settled:{total:1,win:1,loss:0,units:1.8}},
+  dailySeries:[{date:'2026-11-23',selected:1,settled:1,netUnits:1.8}]
+ };
+ const output=view([row],undefined,persisted);
+ const record=output.ouLedger.rows[0];
+ assert.equal(record.status,'WIN');
+ assert.equal(record.hg,1);
+ assert.equal(record.ag,1);
+ assert.equal(record.units,1.8);
+ assert.equal(record.settlementKind,'FULL_WIN');
+ assert.equal(output.ouLedger.stats.pending,0);
+ assert.equal(output.ouLedger.stats.win,1);
+ assert.equal(output.ouDailyBook.settled.units,1.8);
+ assert.equal(output.ouDailySeries[0].netUnits,1.8);
 });
