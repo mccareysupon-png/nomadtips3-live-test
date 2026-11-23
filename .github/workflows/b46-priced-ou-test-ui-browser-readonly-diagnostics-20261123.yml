@@ -1,0 +1,65 @@
+name: BALL46 PreMatch O/U existing TEST browser diagnostics real visible card
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-priced-ou-test-ui-browser-readonly-diagnostics-20261123.yml]
+permissions: {contents: read}
+jobs:
+  diagnosis:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 11
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install browser
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          npx playwright install chromium
+      - name: Inspect real existing UI data loading and rendered DOM without changes
+        run: |
+          mkdir -p qa-artifacts
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/';
+          const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+          for(const view of ['ou','predictions']){
+           const page=await browser.newPage({viewport:{width:1440,height:900}});
+           const errs=[],responses=[];
+           page.on('pageerror',e=>errs.push('pageerror '+String(e.message).slice(0,160)));
+           page.on('console',c=>c.type()==='error'?errs.push('console '+c.text().slice(0,160)):null);
+           page.on('response',r=>{
+            if(r.url().includes('__b46_prematch_data')||r.url().includes('__b46_prematch_graph'))
+             responses.push({url:r.url().slice(-95),status:r.status()});
+           });
+           let nav=null;try{
+            nav=await page.goto(base+'?b46pm='+view,{waitUntil:'domcontentloaded',timeout:40000});
+            await page.waitForTimeout(13000);
+           }catch(e){errs.push('wait '+String(e).slice(0,250))}
+           const details=await page.evaluate(()=>{
+            const b=document.getElementById('b46-prematch-panel'),t=b?.textContent??'';
+            return {href:location.href,title:document.title,
+             bodyPreview:document.body.innerText.slice(0,800),panelPreview:t.slice(0,3200),
+             panelVisible:b?getComputedStyle(b).display!=='none'&&!b.hidden:false,
+             panelCards:b?.querySelectorAll('.b46pm-match').length??0,
+             samples:[...b?.querySelectorAll('.b46pm-match')??[]].slice(0,3).map(x=>x.textContent.slice(0,260)),
+             hasTeams:t.includes('Neftchi Fargona')&&t.includes('Al Hilal Riyadh'),
+             hasUnder:t.includes('UNDER 2.5')||t.includes('Under 2.5'),
+             hasBookie:t.toLowerCase().includes('ladbrokes'),
+             hasPrice:t.includes('2.80'),
+             width:innerWidth,scrollWidth:document.documentElement.scrollWidth,
+             scriptLoaded:[...document.scripts].some(x=>x.textContent.includes('PREMATCH'))};
+           });
+           await page.screenshot({path:'qa-artifacts/ou-ui-diagnosis-'+view+'.png'});
+           console.log('B46_OU_UI_BROWSER_DIAG '+JSON.stringify({
+            view,http:nav?.status(),responses,errors:errs,details}).slice(0,10000));
+           await page.close();
+          }
+          await browser.close();
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: b46-existing-ou-real-ui-diagnostic-20261123
+          path: qa-artifacts/*.png
+          if-no-files-found: ignore
