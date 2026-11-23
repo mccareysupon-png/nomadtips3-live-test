@@ -1,0 +1,35 @@
+name: BALL46 read actual O/U TEST cron source anchor no writes
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-v2-cron-anchor-readonly-20261123.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Print last actual 15minute O/U TEST scheduler source from active version, no provider calls
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const root='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+          const tok=process.env.CLOUDFLARE_API_TOKEN;
+          const get=async path=>{
+           const r=await fetch(root+path,{headers:{authorization:'Bearer '+tok}});
+           const j=await r.json();assert(j.success);return j.result;
+          };
+          const name='ball46-prematch-only-test-20261120';
+          const id=(await get('/scripts/'+name+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+          const v=await get('/workers/'+name+'/versions/'+id+'?include=modules');
+          const m=v.modules.find(x=>x.name==='prematch-only-worker.mjs');
+          const code=Buffer.from(m.content_base64,'base64').toString('utf8');
+          const idx=code.lastIndexOf('export default {async scheduled(');
+          assert(idx>=0);
+          console.log('B46_OU_REAL_CRON '+JSON.stringify({version:id,source:code.slice(idx,idx+4000)}));
+          JS
