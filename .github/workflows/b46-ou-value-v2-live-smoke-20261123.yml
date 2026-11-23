@@ -1,0 +1,75 @@
+name: BALL46 O/U value V2 active TEST real data owner-only smoke
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-value-v2-live-smoke-20261123.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Run real TEST data screened against existing Full Market cache; no paid calls
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const name='ball46-prematch-only-test-20261120',version='4015d2f5-1ab0-43b0-8474-25593fe997d2';
+          const host='https://'+name+'.mccarey-supon.workers.dev';
+          const auth=crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const prefix='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const cloud=await fetch(prefix+'/scripts/'+name+'/deployments?per_page=1',{headers:{authorization:'Bearer '+token}}).then(r=>r.json());
+          assert(cloud.success);assert.equal(cloud.result.deployments[0].versions[0].version_id,version,'TEST_WORKER_CHANGED');
+          async function owner(path,method='GET'){
+            const r=await fetch(host+path,{method,headers:{authorization:'Bearer '+auth,accept:'application/json'},
+              cache:'no-store',signal:AbortSignal.timeout(60000)});
+            const j=await r.json().catch(()=>null);
+            assert(r.ok,'OWNER_'+path+'_'+r.status+'_'+JSON.stringify(j).slice(0,300));
+            return j;
+          }
+          let state=null;
+          for(let i=0;i<30;i++){
+           try{state=await owner('/ou-value-v2-state');if(state?.mode==='OU_VALUE_V2_TEST_SHADOW')break}catch{}
+           await new Promise(r=>setTimeout(r,1100));
+          }
+          assert.equal(state?.mode,'OU_VALUE_V2_TEST_SHADOW');
+          const [before,paidBefore]=await Promise.all([
+            owner('/preview-data'),owner('/ou-price-pickup-state')]);
+          const oldPickIds=(before.ouLedger?.rows??[]).map(x=>[x.fixture_id,x.pick,x.price,x.picked_at]);
+          const result=await owner('/ou-value-v2-run','POST');
+          assert.equal(result.mode,'O_U_ALL_MARKET_VALUE_SCREEN_V2_TEST_SHADOW');
+          assert.equal(result.providerCalls,0);assert.equal(result.paidRequests,0);
+          assert.equal(result.productionWrites,0);assert.equal(result.existingPredictionsUnchanged,true);
+          assert.equal(result.recorded?.oldPredictionLedgerChanged,false);
+          const [after,paidAfter,newState]=await Promise.all([
+            owner('/preview-data'),owner('/ou-price-pickup-state'),owner('/ou-value-v2-state')]);
+          assert.deepEqual((after.ouLedger?.rows??[]).map(x=>[x.fixture_id,x.pick,x.price,x.picked_at]),
+            oldPickIds,'LEGACY_OU_PREDICTIONS_CHANGED');
+          assert.equal(paidAfter.lifetimeRequests,paidBefore.lifetimeRequests,'TEST_COST_LEDGER_CHANGED');
+          assert.equal(newState.last?.mode,result.mode);
+          const shadow=(newState.selections??[]).slice(0,25);
+          console.log('B46_OU_VALUE_V2_LIVE_TEST_PASS '+JSON.stringify({
+            worker:name,version,fixturesInFeed:result.feedRows,screened:result.checked,
+            historyModeled:result.modeled,historyInsufficient:result.insufficientHistory,
+            fullMarketCacheEntries:result.cached,pricedFixtures:result.pricedFixtures,
+            marketsOffered:result.offers,realOptionsEvaluated:result.evaluatedSelections,
+            EV5AndPrice15Passed:result.passedSelections,qualifiedFixtureCount:result.qualified,
+            newShadowSelections:result.recorded?.added??0,
+            duplicateShadowSelections:result.recorded?.duplicate??0,
+            selected:(result.selected??[]).slice(0,25).map(x=>({
+              id:x.fixtureId,pick:x.pick,line:x.line,price:x.price,book:x.bookmaker,
+              evPercent:Math.round(x.ev*10000)/100,
+              expectedGoals:Math.round(x.expectedTotalGoals*100)/100})),
+            shadowRows:shadow.map(x=>({
+              id:x.fixture_id,pick:x.pick,line:x.line,price:x.price,ev:x.ev})),
+            legacyOuCount:oldPickIds.length,
+            remaining5UsdPaidRequestsThisRun:0,
+            otherWorkerChanges:0,productionWrites:0
+          }).slice(0,15000));
+          JS
