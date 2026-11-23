@@ -1,0 +1,85 @@
+name: BALL46 TEST O/U bulk cached opening-closing values READONLY
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-bulk-opening-closing-audit-readonly-20261123.yml]
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Inspect original bulk cargo and HUB-cached O/U odds, ZERO provider API calls
+        run: |
+          node --input-type=module <<'JS'
+          import crypto from 'node:crypto';
+          const key=crypto.createHmac('sha256',process.env.CLOUDFLARE_API_TOKEN)
+           .update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const root='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          async function owner(path){
+           const r=await fetch(root+path,{headers:{authorization:'Bearer '+key},
+            cache:'no-store',signal:AbortSignal.timeout(40000)});
+           return {status:r.status,data:await r.json().catch(()=>null)};
+          }
+          function keys(o){return o&&typeof o==='object'?Object.keys(o):[]}
+          const bulk=await owner('/btts-bulk-v2-state');
+          const rounds=bulk.data?.transport?.rounds??[];
+          console.log('B46_OU_BULK_ROUNDS '+JSON.stringify({status:bulk.status,
+           businessDay:bulk.data?.transport?.businessDay,mode:bulk.data?.config?.mode,
+           rounds:rounds.map(r=>({day:r.business_day,round:r.round_no,state:r.state,rows:r.received}))}));
+          const totals={bulkRows:0,bulkOdds:0,bulkGoalLine:0,bulkGoalPrices:0,bulkGoalOpening:0,bulkGoalClosing:0,
+           historicalCache:0,cacheGoalLine:0,cacheOpeningPrices:0,cacheClosingPrices:0};
+          const examples=[];
+          function inspect(o,type){
+           if(!o||typeof o!=='object')return;
+           const odds=o.odds??o.odds_full??o.providerOdds?.odds??null;
+           if(type==='BULK')totals.bulkRows++;else totals.historicalCache++;
+           if(odds&&type==='BULK')totals.bulkOdds++;
+           const g=odds?.goal_line??odds?.goalline;
+           if(g){
+            if(type==='BULK')totals.bulkGoalLine++;else totals.cacheGoalLine++;
+            const opening=g.opening,closing=g.closing;
+            const openPrices=opening&&typeof opening==='object'&&typeof opening.over==='number'&&typeof opening.under==='number';
+            const closePrices=closing&&typeof closing==='object'&&typeof closing.over==='number'&&typeof closing.under==='number';
+            if(type==='BULK'){
+             if(openPrices)totals.bulkGoalOpening++;
+             if(closePrices)totals.bulkGoalClosing++;
+             if(openPrices||closePrices)totals.bulkGoalPrices++;
+            }else{
+             if(openPrices)totals.cacheOpeningPrices++;
+             if(closePrices)totals.cacheClosingPrices++;
+            }
+           }
+           const fixed=odds?.goal_line_fixed;
+           const hasFixed=Array.isArray(fixed)&&fixed.some(x=>x.line===2.5&&
+            ['opening','closing'].some(stage=>x[stage]&&typeof x[stage].over==='number'&&typeof x[stage].under==='number'));
+           if(examples.length<12&&(g||hasFixed)){
+            examples.push({type,fixtureId:o.id??o.fixtureId,
+             oddsKeys:keys(odds),goalLine:g??null,fixed25:fixed?.find?.(x=>x.line===2.5)??null,
+             hasFullPayout:hasFixed||((g?.opening&&typeof g.opening.over==='number')||
+             (g?.closing&&typeof g.closing.over==='number'))});
+           }
+          }
+          for(const round of rounds){
+           if(round.state!=='COMPLETED')continue;
+           const resp=await owner('/btts-bulk-v2-raw?day='+round.business_day+'&round='+round.round_no);
+           const data=resp.data?.body?.data??[];
+           if(Array.isArray(data))for(const row of data)inspect(row,'BULK');
+          }
+          const cargo=await owner('/history-cargo-full');
+          for(const r of (cargo.data?.rounds??[]).slice(0,5)){
+           for(const id of (r.fixtureIds??[]).slice(0,6)){
+            const f=await owner('/history-cargo-full?day='+r.businessDay+'&round='+r.roundNo+'&fixture='+id+'&detail=1');
+            inspect(f.data?.fixture,'HUB_CACHE');
+           }
+          }
+          console.log('B46_OU_BULK_ODDS_AUDIT_PASS '+JSON.stringify({
+           totals,examples,providerCalls:0,
+           conclusion:totals.bulkGoalPrices+totals.cacheOpeningPrices+totals.cacheClosingPrices>0?
+            'SOME_CACHED_FULL_PRICES_FOUND':'NO_FULL_OU_PAYOUT_IN_INSPECTED_CACHES'
+          }).slice(0,15000));
+          JS
