@@ -35,7 +35,12 @@ assert.equal(active.main_module,main);
 assert.equal(active.modules.length,26);
 const mainText=Buffer.from(active.modules.find(m=>m.name===main)?.content_base64??'','base64').toString('utf8');
 const quoteReader=Buffer.from(active.modules.find(m=>m.name==='ou-verified-price-ingest-v1-test.mjs')?.content_base64??'','base64').toString('utf8');
-assert(quoteReader.includes("minBeforeKickoffSec:300")&&quoteReader.includes("openingIsHistorical:stage==='opening'"));
+assert(quoteReader.includes("minBeforeKickoffSec:900")&&quoteReader.includes("openingIsHistorical:stage==='opening'"));
+const parserModule='ou-verified-price-ingest-v1-test.mjs';
+const newReader=fs.readFileSync('qa/prematch-history-20261120/'+parserModule,'utf8');
+assert(newReader.includes('minBeforeKickoffSec:300')&&
+ newReader.includes("openingIsHistorical:stage==='opening'"),
+ 'PRICE_VALIDATION_MUST_ALIGN_TO_EXISTING_5MIN_SCREEN_WINDOW');
 const quotePickup=Buffer.from(active.modules.find(m=>m.name==='ou-price-pickup-v1-test.mjs')?.content_base64??'','base64').toString('utf8');
 assert(quotePickup.includes('maxProviderCallsPerLondonDay:1'));
 const quoteSource=fs.readFileSync('qa/prematch-history-20261120/'+newModule,'utf8');
@@ -142,7 +147,7 @@ const metadata={main_module:main,compatibility_date:active.compatibility_date||'
  ...(active.compatibility_flags?.length?{compatibility_flags:active.compatibility_flags}:{})};
 assert.equal(await version(name),expectedVersion,'TEST_CONCURRENT_DEPLOY_ABORT');
 console.log('B46_OU_SELECTION_PRICE_PREFLIGHT '+JSON.stringify({before:expectedVersion,
- modulesBefore:26,modulesAfter:27,
+ modulesBefore:26,modulesAfter:27,changedExistingModules:[main,parserModule],
  newBinding:{name:'FULL_MARKET',service:fullMarket},
  newModule,oldScreenModelUnchanged:true,
  existingDailyPaidRequestCap:1,providerRequestsDuringDeploy:0,
@@ -150,7 +155,7 @@ console.log('B46_OU_SELECTION_PRICE_PREFLIGHT '+JSON.stringify({before:expectedV
 const form=new FormData();
 form.append('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}),'metadata.json');
 for(const m of active.modules){
- const source=m.name===main?next:Buffer.from(m.content_base64,'base64');
+ const source=m.name===main?next:m.name===parserModule?newReader:Buffer.from(m.content_base64,'base64');
  form.append(m.name,new Blob([source],{type:'application/javascript+module'}),m.name);
 }
 form.append(newModule,new Blob([quoteSource],{type:'application/javascript+module'}),newModule);
@@ -160,9 +165,11 @@ for(let i=0;i<45;i++){
  const id=await version(name);
  if(id!==expectedVersion){
   const v=await cf('/workers/'+name+'/versions/'+id+'?include=modules');
-  const n=v.modules.find(x=>x.name===newModule),m=v.modules.find(x=>x.name===main);
-  if(v.modules.length===27&&n&&m&&
+  const n=v.modules.find(x=>x.name===newModule),m=v.modules.find(x=>x.name===main),
+    p=v.modules.find(x=>x.name===parserModule);
+  if(v.modules.length===27&&n&&m&&p&&
     Buffer.from(n.content_base64,'base64').toString('utf8')===quoteSource&&
+    Buffer.from(p.content_base64,'base64').toString('utf8')===newReader&&
     Buffer.from(m.content_base64,'base64').toString('utf8')===next){
    current=id;installed=v;break;
   }
@@ -173,7 +180,7 @@ assert(current&&installed,'NEW_TEST_INSTANT_PRICING_NOT_ACTIVE');
 for(const m of active.modules){
  const newm=installed.modules.find(x=>x.name===m.name);
  assert(newm,'TEST_MODULE_DISAPPEARED_'+m.name);
- if(m.name!==main)assert.equal(sha(Buffer.from(newm.content_base64,'base64')),hashes[m.name],
+ if(m.name!==main&&m.name!==parserModule)assert.equal(sha(Buffer.from(newm.content_base64,'base64')),hashes[m.name],
   'EXISTING_MODULE_CHANGED_'+m.name);
 }
 const afterBindings=(await cf('/scripts/'+name+'/settings')).bindings;
@@ -185,7 +192,7 @@ assert.deepEqual(Object.fromEntries(await Promise.all(protectedNames.map(async x
  protection,'PROTECTED_WORKER_CHANGED');
 console.log('B46_OU_INSTANT_FULL_MARKET_DEPLOY_PASS '+JSON.stringify({
  worker:name,version:current,previous:expectedVersion,
- fullMarketService:fullMarket,previousModulesUntouched:25,
+ fullMarketService:fullMarket,previousModulesUntouched:24,
  preservedDb:true,immutableOldPredictions:true,priceAtIssuance:true,
  oldCronQuotePickupDisabled:true,cronIssuesNewPredictions:true,
  preMatchCaptureStage:['opening','closing'],maximumPaidRequestsPerLondonDay:1,
