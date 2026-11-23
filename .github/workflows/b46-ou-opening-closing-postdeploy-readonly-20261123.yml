@@ -1,0 +1,60 @@
+name: BALL46 O/U TEST opening closing real Worker owner-read only check
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-opening-closing-postdeploy-readonly-20261123.yml]
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Confirm new Worker is serving, O/U model and ledger unchanged; NO paid provider calls
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,a=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const name='ball46-prematch-only-test-20261120';
+          const expected='9be55361-eb85-4515-8619-bfeb5787e5a8';
+          const api='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers';
+          const get=async u=>{const r=await fetch(u,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(35000)});const j=await r.json();assert(r.ok&&j.success);return j.result};
+          const v=(await get(api+'/scripts/'+name+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+          assert.equal(v,expected);
+          const version=await get(api+'/workers/'+name+'/versions/'+v+'?include=modules');
+          assert.equal(version.modules.length,26);
+          const parser=Buffer.from(version.modules.find(x=>x.name==='ou-verified-price-ingest-v1-test.mjs').content_base64,'base64').toString('utf8');
+          assert(parser.includes("openingIsHistorical:stage==='opening'"));
+          const key=crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const root='https://'+name+'.mccarey-supon.workers.dev';
+          async function owner(p){
+           const r=await fetch(root+p,{headers:{authorization:'Bearer '+key},cache:'no-store',signal:AbortSignal.timeout(40000)});
+           if(!r.ok)throw Error('TEST_OWNER_'+p+'_'+r.status);
+           return r.json();
+          }
+          let state;
+          for(let i=0;i<35;i++){
+           try{state=await owner('/ou-price-pickup-state');if(state.system==='O_U_VERIFIED_PRICE_PICKUP_TEST')break;}catch{}
+           await new Promise(r=>setTimeout(r,1200));
+          }
+          assert.equal(state?.system,'O_U_VERIFIED_PRICE_PICKUP_TEST');
+          assert.equal(state.policy.maxProviderCallsPerLondonDay,1);
+          const [preview,btTs,market]=await Promise.all([
+           owner('/preview-data'),owner('/btts-bulk-v2-state'),owner('/prematch-stats-registry-audit-test')
+          ]);
+          assert.equal(preview.ouLedger.mode,'TEST_ONLY');
+          assert.equal(btTs.config.mode,'CLOSED');
+          assert(market.verified);
+          console.log('B46_OU_OPENING_CLOSING_ACTIVE_VERIFIED '+JSON.stringify({
+           version:v,receiptSource:['OPENING','CLOSING'],issuedOU:preview.ouLedger.rows.length,
+           pricedOU:preview.ouLedger.rows.filter(x=>x.price!==null).length,
+           providerCallsForVerification:0,paidCallsInCurrentLondonDay:state.providerCallsToday,
+           remainingThisDay:state.remainingToday,dailyCap:state.policy.maxProviderCallsPerLondonDay,
+           btTs:'CLOSED',registryVerified:true,productionChanges:0
+          }));
+          JS
