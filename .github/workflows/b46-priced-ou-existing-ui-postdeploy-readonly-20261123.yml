@@ -1,0 +1,49 @@
+name: BALL46 priced O/U existing UI post-deploy live read-only verification
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-priced-ou-existing-ui-postdeploy-readonly-20261123.yml]
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Read active backend/frontend version and actual end-user O/U ledger 3 times
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const api='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+          async function cf(p){const r=await fetch(api+p,{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},
+           signal:AbortSignal.timeout(30000)});const j=await r.json();assert(r.ok&&j.success,'CF '+p);return j.result}
+          for(const worker of ['ball46-prematch-only-test-20261120','ball46-premium-match-colors-test-20261120']){
+           const d=await cf('/scripts/'+worker+'/deployments?per_page=1');
+           console.log('B46_OU_UI_LIVE_VERSION '+JSON.stringify({worker,id:d.deployments?.[0]?.versions?.[0]?.version_id}));
+          }
+          const auth='Bearer '+crypto.createHmac('sha256',process.env.CLOUDFLARE_API_TOKEN).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const direct='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev/preview-data';
+          const through='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/__b46_prematch_data';
+          for(let attempt=1;attempt<=3;attempt++){
+           for(const [path,url] of [['direct-backend',direct],['existing-test-frontend',through]]){
+            const r=await fetch(url,{headers:path==='direct-backend'?{authorization:auth}: {},
+             cache:'no-store',signal:AbortSignal.timeout(25000)});
+            const j=await r.json().catch(()=>null);
+            const s={attempt,path,status:r.status,system:j?.system,
+             ouPricedOnly:j?.ouLedger?.pricedOnly??null,
+             ouRows:j?.ouLedger?.rows?.length??null,
+             ouSample:j?.ouLedger?.rows?.slice(0,2).map(x=>({
+              id:x.fixture_id,pick:x.pick,price:x.price,bookmaker:x.bookmaker,
+              home:x.home,away:x.away,model:x.model}))??[],
+             oneX2Count:j?.testLedger?.rows?.length??null,
+             error:j?.error??null};
+            console.log('B46_OU_UI_LIVE_PAYLOAD '+JSON.stringify(s));
+           }
+           if(attempt<3)await new Promise(r=>setTimeout(r,2200));
+          }
+          JS
