@@ -128,14 +128,14 @@ export function extractFullMarketOuOffers(entry,fixtureId,now,kickoff){
   if(Array.isArray(fixed)&&fixed.length<=60){
    const seen=new Set(),dup=new Set();
    for(const item of fixed){
-    if(!item||!validateLine(Number(item.line)))continue;
+    if(!item||item.line===null||item.line===undefined||item.line===''||!validateLine(Number(item.line)))continue;
     const line=Number(item.line);
     if(seen.has(line)){dup.add(line);continue}
     seen.add(line);
    }
    for(const item of fixed){
-    const line=Number(item?.line);
-    if(dup.has(line))continue;
+    const line=item?.line==null||item.line===''?NaN:Number(item.line);
+    if(!validateLine(line)||dup.has(line))continue;
     candidates.push(...stageQuotes(line,odds,item,'goal_line_fixed'));
    }
   }
@@ -143,7 +143,7 @@ export function extractFullMarketOuOffers(entry,fixtureId,now,kickoff){
   if(main&&typeof main==='object'&&!Array.isArray(main)){
    for(const stage of ['closing','opening']){
     const v=main[stage];
-    if(!v||!validateLine(Number(v.line))||!bothPriced(v))continue;
+    if(!v||v.line==null||v.line===''||!validateLine(Number(v.line))||!bothPriced(v))continue;
     candidates.push({line:Number(v.line),over:v.over,under:v.under,stage,market:'goal_line'});
    }
   }
@@ -307,6 +307,7 @@ export function recordOuValueShadow(db,selected,now){
     p.pickedAt!==now||p.kickoff<=now+OU_VALUE_V2_POLICY.minSecondsBeforeKickoff||
     !BOOKMAKERS.includes(p.bookmaker)||!n(p.sourceObservedAt)||
     now-p.sourceObservedAt>OU_VALUE_V2_POLICY.cacheMaxAgeMs/1000||
+    p.sourceObservedAt>now+10||
     p.sourceObservedAt>=p.kickoff-OU_VALUE_V2_POLICY.minSecondsBeforeKickoff||
     p.model!==OU_VALUE_V2_MODEL){rejected++;continue}
    db.exec("INSERT INTO b46_ou_value_v2_shadow_test(fixture_id,home_id,away_id,kickoff,picked_at,pick,line,price,bookmaker,source,source_observed_at,model,lambda_home,lambda_away,expected_goals,ev,home_history,away_history,history_confidence) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(fixture_id) DO NOTHING",
