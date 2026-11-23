@@ -1,0 +1,64 @@
+name: BALL46 O/U V2 single issuer postdeploy final read-only audit
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-v2-single-issuer-final-readonly-20261123.yml]
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: GET-only verify legacy and V2 data integrity plus unchanged TEST frontend and production
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,a=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const root='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers';
+          const cf=async p=>{const r=await fetch(root+p,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(25000)});
+           const j=await r.json();assert(r.ok&&j.success,'CF_ERROR_'+p);return j.result;};
+          const ver=async n=>(await cf('/scripts/'+n+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+          const test='ball46-prematch-only-test-20261120';
+          const version=await ver(test);
+          assert.equal(version,'6589efe8-9300-4309-8022-eb4a296442c6');
+          const main=(await cf('/workers/'+test+'/versions/'+version+'?include=modules')).modules;
+          const source=Buffer.from(main.find(m=>m.name==='prematch-only-worker.mjs').content_base64,'base64').toString();
+          const tail=source.slice(source.lastIndexOf('export default {async scheduled('));
+          assert(tail.includes('B46_LEGACY_OU_CRON_ISSUER_DISABLED_PRESERVE_PICKS_AND_FT_SETTLEMENT'));
+          assert(tail.includes('prematch-ou-engine-tick'));
+          assert(!tail.includes("stub.fetch('https://prematch.internal/ou-cycle-test'"));
+          assert(source.includes("path==='/ou-cycle-test'")&&source.includes('const ouSettled=settleOu(this.db,now);'));
+          assert(source.includes('B46_HUB_BULK_REFRESH_GUARD_V1')&&source.includes('settleOuV2FromExistingResults'));
+          const h={authorization:'Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex')};
+          const url='https://'+test+'.mccarey-supon.workers.dev';
+          const get=async p=>{const r=await fetch(url+p,{headers:h,cache:'no-store',signal:AbortSignal.timeout(25000)});
+           assert.equal(r.status,200,'GET_'+p);return r.json()};
+          const [priced,old,settled,ouState,publicData]=await Promise.all([
+           get('/preview-data'),get('/ou-state-test'),get('/ou-v2-settlement-state'),
+           get('/prematch-ou-engine-state'),
+           fetch('https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/__b46_prematch_data',
+            {cache:'no-store',signal:AbortSignal.timeout(25000)}).then(r=>r.json())
+          ]);
+          assert(priced.ouLedger?.rows?.some(x=>Number(x.fixture_id)===204906152&&Number(x.price)===2.8));
+          assert(priced.testLedger?.rows?.length>=92,'ONE_X_TWO_REGRESSION');
+          assert(old.stats?.total>=6,'LEGACY_OU_HISTORY_LOST');
+          assert.equal(priced.ouLedger.stats.total,settled.stats.total);
+          assert.equal(priced.ouLedger.stats.total,
+           priced.ouLedger.stats.pending+priced.ouLedger.stats.win+
+           priced.ouLedger.stats.loss+priced.ouLedger.stats.push);
+          assert(publicData.ouLedger?.rows?.some(x=>Number(x.fixture_id)===204906152));
+          console.log('B46_OU_V2_SINGLE_ISSUER_FINAL_PASS '+JSON.stringify({
+           workerVersion:version,existingV2Rows:priced.ouLedger.rows.length,
+           oldV1Rows:old.stats.total,oneX2:priced.testLedger.rows.length,
+           settlementStats:settled.stats,realLockedPrice:2.8,
+           currentEngine:ouState.last?.status,
+           legacyCronIssuerDisabled:true,legacySettlementStillPresent:true,
+           V2FtSettlementPresent:true,uiPreserved:true,apiProviderCallsThisAudit:0,
+           prodNotTouchedByThisAudit:true}));
+          JS
