@@ -24,8 +24,9 @@ try{
    const up={move:q.getAttribute('data-b46-odds-move'),animation:getComputedStyle(q).animationName,color:getComputedStyle(n).color};
    n.setAttribute('data-nomad-odds-raw','1.75');n.textContent='1.75';await wait(250);
    const down={move:q.getAttribute('data-b46-odds-move'),animation:getComputedStyle(q).animationName,color:getComputedStyle(n).color};
-   const stats=window.__b46OddsCrossDeviceStats||null;box.remove();return {initial,up,down,stats};
+   const stats=window.__b46OddsCrossDeviceStats||null;const rect={q:q.getBoundingClientRect().toJSON(),n:n.getBoundingClientRect().toJSON()};const theme=document.documentElement.getAttribute('data-theme');const reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;box.remove();return {initial,up,down,stats,rect,theme,reduced};
   });
+  console.log('CROSSDEVICE_DEBUG '+JSON.stringify({mode,...result}));
   assert.equal(result.initial,null,'INITIAL_FAKE_ANIMATION_'+mode);
   if(!reduce){
    assert.equal(result.up.move,'up','MISSING_UP_'+mode);
