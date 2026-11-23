@@ -72,7 +72,7 @@ export function projectPricedOuV2Ui({shadowRows,identities,now,window,dayForTime
   basis:'PRICED_V2_PENDING_NO_FT_SETTLEMENT',
   model:'LONDON_06_SHARED_WITH_LIVE',
   source:'O_U_V2_PRICE_LOCKED_TEST_UI',providerCalls:0};
- return {ouLedger,ouDailyBook,ouDailySeries,
+ return {ouLedger,ouDailyBook,ouDailySeries:dailySeries,
   excludedModelOnlyV1:true,frontendDesignUnchanged:true,
   providerCalls:0,productionWrites:0};
 }
