@@ -1,0 +1,58 @@
+name: BALL46 O/U after bulk TEST postdeploy READONLY
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-after-bulk-postdeploy-readonly-20261123.yml]
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify TEST cron order, HUB freshness guard, state and existing UI without POST ticks or provider calls
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          async function cf(path){const r=await fetch(root+path,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(20000)});
+           const j=await r.json();assert(r.ok&&j.success,'CF_READ_'+path);return j.result}
+          const name='ball46-prematch-only-test-20261120';
+          const id=(await cf('/scripts/'+name+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+          assert.equal(id,'294988dd-fdb1-4cca-8add-dd3632f3be74','TEST_VERSION_CHANGED');
+          const v=await cf('/workers/'+name+'/versions/'+id+'?include=modules');
+          const main=Buffer.from(v.modules.find(x=>x.name==='prematch-only-worker.mjs').content_base64,'base64').toString();
+          const stub=main.lastIndexOf("const stub=env.STORE.get(env.STORE.idFromName('prematch-only-v1'));");
+          const history=main.lastIndexOf("console.log('BTTS_HISTORY_API_DISABLED_PROJECT_CLOSED')");
+          const legacy=main.lastIndexOf("console.log('PREMATCH_OU_REPLACES_V2_OLD_CRON')");
+          const ou=main.lastIndexOf("ctx.waitUntil(stub.fetch('https://prematch.internal/prematch-ou-engine-tick'");
+          assert(stub>=0&&history>stub&&ou>history&&legacy>ou,'BULK_FIRST_ORDER_WRONG');
+          assert(main.includes('B46_HUB_BULK_REFRESH_GUARD_V1'),'FRESH_GUARD_MISSING');
+          assert(main.includes("b46BulkMs<=b46PreviousBulk"),'BULK_DEDUP_MISSING');
+          assert(main.includes("enablePaidQuoteFallback:true"),'PRICING_FALLBACK_CHANGED');
+          assert(main.includes("event.cron!=='*/15 * * * *'"),'CRON_WRONG');
+          const schedules=await cf('/scripts/'+name+'/schedules');
+          const owner=crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const b='https://'+name+'.mccarey-supon.workers.dev';
+          async function get(path){const r=await fetch(b+path,{headers:{authorization:'Bearer '+owner},cache:'no-store',signal:AbortSignal.timeout(25000)});
+           assert.equal(r.status,200,'GET_FAILED_'+path);return r.json();}
+          const [state,preview,hub]=await Promise.all([get('/prematch-ou-engine-state'),get('/preview-data'),
+           fetch('https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/health',{cache:'no-store',signal:AbortSignal.timeout(18000)}).then(r=>r.json())]);
+          assert.equal(state.engine,'B46_PREMATCH_OU_ENGINE_V1_TEST');
+          assert(preview.ouLedger?.rows?.some(x=>Number(x.fixture_id)===204906152&&Number(x.price)===2.8),'LOCKED_U25_SAMPLE_LOST');
+          assert((preview.testLedger?.rows??[]).length>=91,'1X2_REGRESSED');
+          assert.equal(hub.refreshMs,10000,'BULK_REFRESH_POLICY_CHANGED');
+          console.log('B46_OU_AFTER_BULK_POSTDEPLOY_PASS '+JSON.stringify({
+           testVersion:id,cron:schedules?.schedules??schedules?.result??schedules,
+           order:'HUB_BULK_MISSION_THEN_OU',freshBulkMaxAgeSeconds:120,
+           sampleOuFixture:204906152,sampleOuPrice:2.8,ouRows:preview.ouLedger.rows.length,
+           oneX2Rows:preview.testLedger.rows.length,latestEngineState:state.last?.status??null,
+           hubBulkConfiguredMs:hub.refreshMs,hubAgeMs:hub.ageMs,
+           paidCallsFromVerification:0,productionWrites:0}));
+          JS
