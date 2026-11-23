@@ -1,0 +1,24 @@
+name: BALL46 price-locked O/U in EXISTING PreMatch TEST UI deployment
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-priced-ou-existing-ui-client-deploy-test-20261123.yml]
+permissions: {contents: read}
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 11
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Validate surgical client patch and Backend price ledger contract
+        run: |
+          node --check qa/prematch-history-20261120/patch-priced-ou-existing-ui-client-20261123.mjs
+          node --check qa/prematch-history-20261120/deploy-priced-ou-existing-ui-client-test-20261123.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/patch-priced-ou-into-existing-prematch-ui.test.mjs
+      - name: 'Deploy ONLY EXISTING PreMatch TEST frontend O/U tab and bookmaker text'
+        run: node qa/prematch-history-20261120/deploy-priced-ou-existing-ui-client-test-20261123.mjs
