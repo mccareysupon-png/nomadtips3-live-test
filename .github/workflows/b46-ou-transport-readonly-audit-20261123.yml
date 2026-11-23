@@ -1,0 +1,70 @@
+name: BALL46 O/U HUB Full Market V2 price transport READ ONLY 20261123
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-transport-readonly-audit-20261123.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Read currently deployed HUB, FULL MARKET and PREMATCH TEST source and GET existing health endpoints only
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          async function cf(path){
+           const r=await fetch(root+path,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(45000)});
+           const j=await r.json();assert(r.ok&&j.success,'CF_READ_FAILED_'+path+'_'+r.status);return j.result;
+          }
+          const names=['nomadtips3-5usd-hub-343','nomadtips3-full-market-343-ball46','ball46-prematch-only-test-20261120'];
+          const matches={
+           'nomadtips3-5usd-hub-343':/odds_full|include=odds|goal_line|providerjson|providerodds|\/snapshot|\/__private\/provider|forwardProvider|fullmarket|bookmaker|\/v1\/fixtures|bulk/i,
+           'nomadtips3-full-market-343-ball46':/\/board-cache|\/fixture-odds|\/health|fullOdds|bookmaker|fetchAt|fetchedAt|cache|scheduled|\/v1\/fixtures|forwardProvider|goal_line|provider|fixtureIds|\/bulk/i,
+           'ball46-prematch-only-test-20261120':/\/ou-value-v2-run|\/ou-value-v2-state|\/board-cache|FULL_MARKET|botFixtures|screenOuValueV2|captureAndIssueOu|\/ou-cycle-test/i
+          };
+          for(const name of names){
+           const deploy=await cf('/scripts/'+name+'/deployments?per_page=1');
+           const version=deploy.deployments?.[0]?.versions?.[0]?.version_id;
+           assert(version,'VERSION_NOT_FOUND_'+name);
+           const deployed=await cf('/workers/'+name+'/versions/'+version+'?include=modules');
+           console.log('B46_ROUTING_WORKER '+JSON.stringify({name,version,main:deployed.main_module,
+             modules:deployed.modules.length,
+             bindings:(await cf('/scripts/'+name+'/settings')).bindings.map(x=>({
+              name:x.name,type:x.type,service:x.service??null}))}));
+           for(const m of deployed.modules){
+            if(m.name.includes('.wasm')||!m.content_base64)continue;
+            const code=Buffer.from(m.content_base64,'base64').toString('utf8');
+            const lines=code.split('\n');
+            const hit=lines.flatMap((line,index)=>matches[name].test(line)?[{n:index+1,t:line.slice(0,350)}]:[]);
+            const isImportant=name==='nomadtips3-full-market-343-ball46'||
+             (/hub-upcoming|stored-prematch|prematch-only-worker|provider|main|index/i.test(m.name)&&hit.length);
+            if(isImportant&&hit.length)console.log('B46_ROUTING_SOURCE '+JSON.stringify({
+              worker:name,module:m.name,length:lines.length,hit:hit.slice(0,125)}).slice(0,24000));
+           }
+          }
+          const owner=crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const host='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          for(const path of ['/ou-value-v2-state','/ou-pending-price-completion-state','/ou-price-pickup-state']){
+           const r=await fetch(host+path,{headers:{authorization:'Bearer '+owner},signal:AbortSignal.timeout(15000)});
+           const j=await r.json().catch(()=>null);
+           console.log('B46_ROUTING_OWNER '+JSON.stringify({path,status:r.status,
+            data:path.includes('value-v2')?{
+              mode:j?.mode,last:j?.last&&{
+               feedRows:j.last.feedRows,checked:j.last.checked,modeled:j.last.modeled,
+               cached:j.last.cached,pricedFixtures:j.last.pricedFixtures,
+               offers:j.last.offers,qualified:j.last.qualified,
+               selected:j.last.selected?.length},shadowCount:j?.selections?.length}:
+             path.includes('pending')?{waiting:j?.waiting?.length,attached:j?.attached?.length}:
+              {used:j?.providerCallsToday,remaining:j?.remainingToday,lifetime:j?.lifetimeRequests}}));
+          }
+          console.log('B46_ROUTING_NO_PAID_REQUESTS_AND_NO_WRITES');
+          JS
