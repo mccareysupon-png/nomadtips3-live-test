@@ -16,9 +16,9 @@ async function smoke() {
   assert(health.ok, `health HTTP ${health.status}`);
   const info = await health.json();
   assert.equal(info.scope, 'ISOLATED_TEST_ONLY');
-  assert.equal(info.revision, 'single-controller-v2');
+  assert.equal(info.revision, 'single-controller-v3');
   assert.equal(info.noApiCallsAdded, true);
-  assert.match(info.script, /__b46OddsCrossDeviceStats/);
+  assert(info.script === crossDeviceOddsScript, 'browser source must survive Worker bundling verbatim');
   assert.equal(info.styles, crossDeviceOddsStyles);
   const page = await fetch(new URL('/?view=live', target), { headers });
   assert(page.ok, `page HTTP ${page.status}`);
@@ -29,9 +29,10 @@ async function smoke() {
   assert(!body.includes('id="b46-odds-flash-runtime-production"'));
   assert(!body.includes('id="b46-odds-flash-production"'));
   console.log('Preview serves exactly one odds movement controller');
+  return info;
 }
 
-async function runCase(browser, name, settings) {
+async function runCase(browser, name, settings, assets) {
   const ctx = await browser.newContext(settings.device);
   try {
     const page = await ctx.newPage();
@@ -40,9 +41,9 @@ async function runCase(browser, name, settings) {
     page.on('pageerror', error => errors.push(error.message));
     await page.setContent(`<!doctype html><html data-theme="${settings.theme}"><head>
       <meta name="viewport" content="width=device-width, initial-scale=1">
-      <style>${crossDeviceOddsStyles}
+      <style>${assets.styles}
 .market-price-row{display:inline-flex;align-items:center;gap:8px}</style>
-      <script>${crossDeviceOddsScript}</script></head><body>
+      <script>${assets.script}</script></head><body>
       <article class="match-row" data-match-id="QA" data-b46-kind="live">
         <div class="market-cell market-cell-ou" title="Bet365 · LIVE">
           <div class="market-price-row${settings.native ? '' : ' b46-v3-quote'}" data-side="O">
@@ -99,7 +100,11 @@ async function runCase(browser, name, settings) {
         node.replaceWith(fresh);
       });
       await page.waitForFunction(() =>
-        window.qaPulseEvents.some(event => event.type === 'animationstart' && event.elapsedTime >= 1));
+        window.qaPulseEvents.some(event => event.type === 'animationstart' && event.elapsedTime > 0),
+      null, { timeout: 3500 });
+      const resumedAt = await page.evaluate(() =>
+        window.qaPulseEvents.find(event => event.type === 'animationstart' && event.elapsedTime > 0).elapsedTime);
+      assert(resumedAt >= 0.8, name + ' must resume around the first cycle');
     }
 
     await page.waitForFunction(() => !document.querySelector('[data-b46-odds-move]'), null, { timeout: 11000 });
@@ -151,17 +156,19 @@ if (process.argv.includes('--smoke')) {
   const chrome = await chromium.launch(options);
   const safari = process.argv.includes('--webkit') ? await webkit.launch() : null;
   try {
-    if (!process.argv.includes('--offline')) await smoke();
-    await runCase(chrome, 'Chromium desktop dark', { theme: 'dark' });
-    await runCase(chrome, 'Chromium desktop light', { theme: 'light', replace: true });
-    await runCase(chrome, 'Chromium Android dark', { theme: 'dark', native: true, device: devices['Pixel 7'] });
-    await runCase(chrome, 'Chromium Android light', { theme: 'light', native: true, device: devices['Pixel 7'] });
+    const assets = process.argv.includes('--offline')
+      ? { styles: crossDeviceOddsStyles, script: crossDeviceOddsScript }
+      : await smoke();
+    await runCase(chrome, 'Chromium desktop dark', { theme: 'dark' }, assets);
+    await runCase(chrome, 'Chromium desktop light', { theme: 'light', replace: true }, assets);
+    await runCase(chrome, 'Chromium Android dark', { theme: 'dark', native: true, device: devices['Pixel 7'] }, assets);
+    await runCase(chrome, 'Chromium Android light', { theme: 'light', native: true, device: devices['Pixel 7'] }, assets);
     await runCase(chrome, 'Chromium Android reduced motion', {
       theme: 'light', native: true, reduce: true, device: devices['Pixel 7']
-    });
+    }, assets);
     if (safari) {
-      await runCase(safari, 'WebKit iPhone light', { theme: 'light', native: true, device: devices['iPhone 13'] });
-      await runCase(safari, 'WebKit iPhone dark', { theme: 'dark', native: true, device: devices['iPhone 13'] });
+      await runCase(safari, 'WebKit iPhone light', { theme: 'light', native: true, device: devices['iPhone 13'] }, assets);
+      await runCase(safari, 'WebKit iPhone dark', { theme: 'dark', native: true, device: devices['iPhone 13'] }, assets);
     }
   } finally {
     await chrome.close();

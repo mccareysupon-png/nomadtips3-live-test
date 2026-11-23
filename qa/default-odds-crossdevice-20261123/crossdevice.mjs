@@ -61,11 +61,13 @@ ${quote}::after {
 }
 `;
 
-function installOddsMovement(animationName, marker) {
+// Keep the browser script as source text so the Worker bundler cannot add
+// references to Worker-only helpers to the code sent to visitors.
+export const crossDeviceOddsScript = String.raw`(function installOddsMovement(animationName, marker) {
   if (window.__b46OddsCrossDeviceStats) return;
   const QUOTE = '.b46-v3-quote,.market-quote,.market-price-row';
   const ROW = '.match-row[data-match-id]';
-  const SELECTOR = `${ROW} .market-cell strong[data-nomad-odds-raw]`;
+  const SELECTOR = ROW + ' .market-cell strong[data-nomad-odds-raw]';
   const DURATION_MS = 6000;
   const MAX_QUOTE_AGE_MS = 180000;
   const memory = new Map();
@@ -219,7 +221,7 @@ function installOddsMovement(animationName, marker) {
         if (target?.closest('.market-cell')) return true;
         if (record.type === 'attributes') return target?.matches(ROW);
         return [...record.addedNodes].some(node =>
-          node.nodeType === 1 && (node.matches(`${ROW}, .market-cell`) || node.querySelector(SELECTOR)));
+          node.nodeType === 1 && (node.matches(ROW + ', .market-cell') || node.querySelector(SELECTOR)));
       })) schedule();
     });
     observer.observe(document.body, {
@@ -230,7 +232,4 @@ function installOddsMovement(animationName, marker) {
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, {once: true});
   else boot();
-}
-
-export const crossDeviceOddsScript =
-  `(${installOddsMovement.toString()})(${JSON.stringify(ANIMATION)},${JSON.stringify(marker)});`;
+})` + `(${JSON.stringify(ANIMATION)},${JSON.stringify(marker)});`;

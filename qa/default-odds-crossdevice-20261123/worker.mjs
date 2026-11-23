@@ -5,7 +5,7 @@ const pages=new Set(['/','/index','/index.html']);
 export default {async fetch(req,env){
  const u=new URL(req.url);
  if(req.method!=='GET'&&req.method!=='HEAD')return new Response('READ_ONLY_TEST',{status:405});
- if(u.pathname==='/__crossdevice_health')return Response.json({scope:'ISOLATED_TEST_ONLY',feature:'DEFAULT_ODDS_V3_CROSS_DEVICE',revision:'single-controller-v2',styles:crossDeviceOddsStyles,script:crossDeviceOddsScript,noApiCallsAdded:true},{headers:{'cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});
+ if(u.pathname==='/__crossdevice_health')return Response.json({scope:'ISOLATED_TEST_ONLY',feature:'DEFAULT_ODDS_V3_CROSS_DEVICE',revision:'single-controller-v3',styles:crossDeviceOddsStyles,script:crossDeviceOddsScript,noApiCallsAdded:true},{headers:{'cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});
  const target=new URL(u.pathname+u.search,'https://ball46.com');
  const headers=new Headers();for(const h of ['accept','accept-language','user-agent','sec-ch-ua-mobile']){const v=req.headers.get(h);if(v)headers.set(h,v)}
  const source=await env.B46_PRODUCTION_READ.fetch(new Request(target,{method:req.method,headers,redirect:'manual'}));
