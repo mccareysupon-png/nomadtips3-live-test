@@ -1,0 +1,73 @@
+name: BALL46 current TEST UI existing PreMatch O/U live data wiring inspection
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-prematch-ou-existing-ui-current-inspection-20261123.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: READ current pre-match TEST UI source routes, bindings and PUBLIC view data only
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const api='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const cf=async p=>{const r=await fetch(api+p,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(50000)});
+           const j=await r.json();assert(r.ok&&j.success,'CF_READ_FAILED_'+p+'_'+r.status);return j.result};
+          const names=['ball46-premium-match-colors-test-20261120','ball46-prematch-only-test-20261120',
+           'ball46-production','nomadtips3-engine-343'];
+          const versions={};for(const name of names){
+           const d=await cf('/scripts/'+name+'/deployments?per_page=1');
+           versions[name]=d.deployments?.[0]?.versions?.[0]?.version_id;
+          }
+          console.log('B46_UI_AUDIT_VERSIONS '+JSON.stringify(versions));
+          const front=names[0],v=await cf('/workers/'+front+'/versions/'+versions[front]+'?include=modules');
+          console.log('B46_UI_AUDIT_BINDINGS '+JSON.stringify(
+           (await cf('/scripts/'+front+'/settings')).bindings.map(x=>({
+            name:x.name,type:x.type,service:x.service??null,script_name:x.script_name??null
+           }))));
+          const w=Buffer.from(v.modules.find(m=>m.name===v.main_module).content_base64,'base64').toString('utf8');
+          const matches=[...w.matchAll(/var prematchClientScript = ("(?:\\.|[^"\\])*");/g)];
+          console.log('B46_UI_AUDIT_SOURCE '+JSON.stringify({len:w.length,main:v.main_module,
+           modules:v.modules.map(x=>x.name),clientDeclarations:matches.length,
+           markerCount:(w.match(/__b46_prematch_data/g)||[]).length,
+           marketSlots:(w.match(/Over\/Under|OU_2P5|ouLedger|ouDailySeries/g)||[]).length}));
+          function segments(s,terms,before=350,after=1400,cap=7){
+           const out=[];
+           for(const term of terms){let start=0,found=0;
+            while(found<cap){const idx=s.indexOf(term,start);if(idx<0)break;
+             out.push({term,index:idx,source:s.slice(Math.max(0,idx-before),Math.min(s.length,idx+after))});
+             found++;start=idx+term.length;}
+           }return out;
+          }
+          const snippets=segments(w,['__b46_prematch_data','PREMATCH_STORE','/preview-data',
+           'ouLedger','function prematchMarketLabel'],400,1700,4);
+          console.log('B46_UI_AUDIT_SERVER_SNIPPETS '+JSON.stringify(snippets).slice(0,26000));
+          assert.equal(matches.length,1,'CLIENT_CANNOT_BE_PATCHED_SAFELY');
+          const client=JSON.parse(matches[0][1]);
+          console.log('B46_UI_AUDIT_CLIENT_SNIPPETS '+JSON.stringify(segments(client,[
+           'function groupPreMatchIssuedRows','function prematchMarketLabel',
+           'mode===\\x27ou\\x27','renderEmptyOuScreen',
+           'let mode=','async function load','function draw(){',
+           'marketDailyBooks=j.marketDailyBooks','const bothRows='
+          ],330,1250,2)).slice(0,30000));
+          const origin='https://'+front+'.mccarey-supon.workers.dev';
+          const r=await fetch(origin+'/__b46_prematch_data',{cache:'no-store',signal:AbortSignal.timeout(20000)});
+          const d=await r.json();const keys=Object.keys(d);
+          console.log('B46_UI_AUDIT_DATA '+JSON.stringify({http:r.status,keys,
+           testLedger:d.testLedger&&{mode:d.testLedger.mode,total:d.testLedger.rows?.length,stats:d.testLedger.stats},
+           ouLedger:d.ouLedger&&{mode:d.ouLedger.mode,total:d.ouLedger.rows?.length,stats:d.ouLedger.stats,sample:d.ouLedger.rows?.slice(0,1)},
+           bttsLedger:d.bttsLedger&&{mode:d.bttsLedger.mode,total:d.bttsLedger.rows?.length},
+           allLedger:d.allLedger&&{mode:d.allLedger.mode,total:d.allLedger.rows?.length},
+           sampleRow:d.testLedger?.rows?.slice(0,1),
+           testUrl:origin+'/?b46pm=ou'}).slice(0,22000));
+          console.log('B46_UI_AUDIT_READONLY_NO_PROVIDER_CALLS');
+          JS
