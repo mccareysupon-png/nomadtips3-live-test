@@ -16,8 +16,9 @@ try{
    }
    return {quotes:out.slice(0,100),all:out.length,view:document.body.dataset.workspaceView,theme:document.documentElement.dataset.theme,testScripts:!!window.__b46NativeMobileOddsStats,desktop:window.__b46OddsMovementStats?{...window.__b46OddsMovementStats}:null,cross:window.__b46OddsCrossDeviceStats?{...window.__b46OddsCrossDeviceStats}:null,mobile:window.__b46NativeMobileOddsStats?{...window.__b46NativeMobileOddsStats}:null};
   });
+  await p.waitForFunction(()=>document.querySelectorAll('.match-row[data-b46-kind="live"] .market-cell[title*="LIVE"] strong[data-nomad-odds-raw]').length>=3,null,{timeout:40000}).catch(()=>{});
   const first=await sample();
-  await p.waitForTimeout(15000);
+  await p.waitForTimeout(18000);
   const second=await sample();
   const before=new Map(first.quotes.map(x=>[x.fixture+'|'+x.book+'|'+x.side+'|'+x.line,x.price+'|'+x.shown]));
   const changes=second.quotes.filter(x=>before.has(x.fixture+'|'+x.book+'|'+x.side+'|'+x.line)&&before.get(x.fixture+'|'+x.book+'|'+x.side+'|'+x.line)!==x.price+'|'+x.shown);
