@@ -114,7 +114,7 @@ export function settleOuV2FromExistingResults(db,{now,snapshot=null}={}){
     Number(result.awayId)!==Number(p.away_id)||
     !positive(result.kickoff)||result.kickoff<=p.picked_at||
     result.observed<result.kickoff){noVerifiedFt++;continue;}
-   const units=profitForOuResult(result.hg+result.ag,Number(p.line),String(p.pick),Number(p.price));
+   const units=Math.round(profitForOuResult(result.hg+result.ag,Number(p.line),String(p.pick),Number(p.price))*1e8)/1e8;
    const status=kindFor(units,Number(p.price));
    db.exec("INSERT OR IGNORE INTO b46_ou_v2_settlement_test(fixture_id,status,kind,hg,ag,units,settled_at,result_observed_at,result_source) VALUES(?,?,?,?,?,?,?,?,?)",
     p.fixture_id,status.status,status.kind,result.hg,result.ag,units,now,result.observed,result.source);
