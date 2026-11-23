@@ -9,7 +9,7 @@ const price=x=>typeof x==='number'&&Number.isFinite(x)&&x>1&&x<=1000;
 const line=x=>typeof x==='number'&&Number.isFinite(x)&&x>0&&Math.round(x*4)===x*4;
 const validTs=x=>Number.isSafeInteger(x)&&x>946684800&&x<4102444800;
 export const OUV1_PRICE_POLICY=Object.freeze({
- targetLine:2.5,bookmaker:'bet365',maxLines:25,minBeforeKickoffSec:900,
+ targetLine:2.5,bookmaker:'bet365',maxLines:25,minBeforeKickoffSec:300,
  upstreamCalls:0,source:'5USD_FULL_FIXTURE_ODDS_ONLY',modelUnchanged:true
 });
 const fail=(state,extra={})=>({state,priceOver:null,priceUnder:null,selectedPrice:null,...extra});
