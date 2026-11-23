@@ -1,0 +1,77 @@
+name: BALL46 O/U read only direct Full Market cache hit diagnostics 20261123
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-fullmarket-cache-presence-readonly-20261123.yml]
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Read-only Full Market board-cache (never fixture-odds or prewarm)
+        run: |
+          node --input-type=module <<'JS'
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          const owner=crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const base='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          async function get(path){
+           const r=await fetch(base+path,{headers:{authorization:'Bearer '+owner},
+            cache:'no-store',signal:AbortSignal.timeout(15000)});
+           return {status:r.status,value:await r.json().catch(()=>null)};
+          }
+          const [pending,preview]=await Promise.all([
+           get('/ou-pending-price-completion-state'),get('/preview-data')]);
+          const ids=[...new Set([
+           ...(pending.value?.waiting??[]).map(x=>String(x.fixtureId)),
+           ...(preview.value?.ouLedger?.rows??[]).map(x=>String(x.fixture_id))
+          ])].filter(x=>/^[1-9]\d{0,15}$/.test(x)).slice(0,50);
+          console.log('B46_READONLY_AUDIT_FIXTURE_IDS '+JSON.stringify({
+           pending:pending.value?.waiting?.map(x=>({id:x.fixtureId,kickoff:x.kickoff}))??[],
+           ids,previewStatus:preview.status}));
+          // Public Full Market gateway is optional; if disabled, do NOT deploy or force.
+          const host='https://nomadtips3-full-market-343-ball46.mccarey-supon.workers.dev';
+          for(const [path,init] of [
+           ['/health',{method:'GET'}],
+           ['/board-cache',{method:'POST',headers:{'content-type':'application/json'},
+            body:JSON.stringify({fixtureIds:ids})}]
+          ]){
+           try{
+            const r=await fetch(host+path,{...init,signal:AbortSignal.timeout(13000)});
+            const j=await r.json().catch(()=>null);
+            const entries=j?.entries??{};
+            const summarized=Object.entries(entries).slice(0,50).map(([id,x])=>{
+             const d=x?.fullOdds?.data??x?.fullOdds??{};
+             const bm=Array.isArray(d.bookmakers)?d.bookmakers:[];
+             return {id,stale:x?.stale,ageMs:x?.ageMs,books:x?.bookmakerCount,
+              shape:Object.keys(d).slice(0,20),rootFixture:d.fixture_id??null,
+              withGoalLine:bm.filter(b=>b?.odds?.goal_line!=null).length,
+              withFixed:bm.filter(b=>b?.odds?.goal_line_fixed!=null).length,
+              withSidePair:bm.filter(b=>{
+               const o=b?.odds??{};
+               return Boolean(o.goal_line?.closing?.over&&o.goal_line?.closing?.under||
+                o.goal_line?.opening?.over&&o.goal_line?.opening?.under||
+                Array.isArray(o.goal_line_fixed)&&o.goal_line_fixed.some(x=>
+                 x?.closing?.over&&x?.closing?.under||x?.opening?.over&&x?.opening?.under));
+              }).length};
+            });
+            console.log('B46_READONLY_PUBLIC_CACHE '+JSON.stringify({
+              path,status:r.status,ok:j?.ok??null,mode:j?.mode??null,
+              hitCount:j?.hits??null,staleHits:j?.staleHits??null,
+              externalRequestsAdded:j?.externalRequestsAdded??null,
+              entries:summarized,
+              fullMarketSource:j?.source??null,
+              health: path==='/health'?{bookmakerCount:j?.bookmakerCount,
+               mode:j?.mode,prewarmMeta:j?.prewarmMeta,providerMeta:j?.providerMeta&&
+                {at:j.providerMeta.at,lastStatus:j.providerMeta.lastStatus}}:null
+            }).slice(0,14000));
+           }catch(e){console.log('B46_READONLY_PUBLIC_CACHE '+JSON.stringify({
+            path,error:String(e.message).slice(0,110),providerCalls:0}));}
+          }
+          console.log('B46_CACHE_ONLY_NO_PROVIDER_CALLS');
+          JS
