@@ -62,7 +62,7 @@ test('Asian 2.25 and 2.75 split half stakes, push, half win and half loss exactl
  assert.deepEqual(splitAsianLine(2.75),[2.5,3]);
  assert.deepEqual(splitAsianLine(3),[3]);
  assert.equal(profitForOuResult(2,2.25,'OVER',1.9),-.5);
- assert.equal(profitForOuResult(2,2.25,'UNDER',1.9),.45);
+ assert(Math.abs(profitForOuResult(2,2.25,'UNDER',1.9)-.45)<1e-12);
  assert.equal(profitForOuResult(3,2.75,'OVER',2.05),.525);
  assert.equal(profitForOuResult(3,2.75,'UNDER',1.9),-.5);
  assert.equal(profitForOuResult(3,3,'OVER',1.9),0);
