@@ -20,3 +20,5 @@ jobs:
           node --experimental-sqlite --test qa/prematch-history-20261120/ou-instant-full-market-issue-v1.test.mjs
           node --experimental-sqlite --test qa/prematch-history-20261120/ou-pending-price-completion-v1.test.mjs
           node --test qa/prematch-history-20261120/ou-math-v1.test.mjs
+
+# Rerun after strict quote-line guards and tolerance-safe Asian half-payout assertions
