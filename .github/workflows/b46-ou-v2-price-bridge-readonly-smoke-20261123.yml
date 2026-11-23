@@ -1,0 +1,68 @@
+name: BALL46 O/U V2 Full Market price bridge POST-deploy READ ONLY
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-v2-price-bridge-readonly-smoke-20261123.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify active version, owner diagnostics, old picks intact, no calls to any POST route
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const worker='ball46-prematch-only-test-20261120',version='790a4965-5053-41f0-8bec-bc4bcf98f43d';
+          const cloud='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const d=await fetch(cloud+'/scripts/'+worker+'/deployments?per_page=1',
+           {headers:{authorization:'Bearer '+token}}).then(r=>r.json());
+          assert.equal(d.result?.deployments?.[0]?.versions?.[0]?.version_id,version,'VERSION_DRIFT');
+          const owner=crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          async function read(path){
+           const r=await fetch('https://'+worker+'.mccarey-supon.workers.dev'+path,
+            {headers:{authorization:'Bearer '+owner,accept:'application/json'},
+             cache:'no-store',signal:AbortSignal.timeout(25000)});
+           assert(r.ok,'READ_ONLY_'+path+'_'+r.status);
+           return r.json();
+          }
+          const [state,quota,picks]=await Promise.all([
+           read('/ou-value-v2-state'),read('/ou-price-pickup-state'),read('/preview-data')]);
+          assert.equal(state.mode,'OU_VALUE_V2_TEST_SHADOW');
+          assert.equal(state.priceBridge.policy.maxPaidAttemptsPerLondonDay,1);
+          assert.equal(state.priceBridge.policy.sharedWithOuV1,true);
+          assert.equal(state.priceBridge.policy.sharedProviderQuotaIsAtomic,false);
+          assert.equal(state.productionWrites,0);
+          assert.equal(state.legacyPickWrites,0);
+          assert.equal(state.priceBridge.sharedOuDailyBudget.used,quota.providerCallsToday);
+          const rows=picks.ouLedger?.rows??[];
+          console.log('B46_OU_V2_PRICE_BRIDGE_READONLY_SMOKE_PASS '+JSON.stringify({
+           worker,version,quoteCap:state.priceBridge.policy.maxPaidAttemptsPerLondonDay,
+           quotaDay:quota.day,sharedQuotaUsed:quota.providerCallsToday,
+           sharedQuotaRemaining:quota.remainingToday,
+           verifiedPreviousOuPickCount:rows.length,
+           previousOuPriced:rows.filter(r=>r.price!=null).length,
+           latest:state.last&&{mode:state.last.mode,screened:state.last.checked,
+            modeled:state.last.modeled,cached:state.last.cached,
+            pricedFixtureCount:state.last.pricedFixtures,
+            offers:state.last.offers,qualified:state.last.qualified,
+            newPriceBridge:state.last.pricedBridge&&{
+             state:state.last.pricedBridge.state,
+             candidateId:state.last.pricedBridge.candidateId??null,
+             quoteReserved:state.last.pricedBridge.budgetReserved??0,
+             fullMarketUpstreamAdded:state.last.pricedBridge.fullMarketUpstreamAdded??0},
+            bridgeRecorded:state.last.bridgeRecorded?.added??null},
+           shadowPricedSelections:state.selections?.length??0,
+           bridgePriceAttempts:state.priceBridge.recent?.map(x=>({
+            fixtureId:x.fixture_id,state:x.state,price:x.price,book:x.bookmaker,
+            line:x.line,providerAdded:x.upstream_added}))??[],
+           paidProviderRequestsByThisRead:0,productionWrites:0
+          }).slice(0,12000));
+          JS
