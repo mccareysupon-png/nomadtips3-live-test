@@ -1,0 +1,58 @@
+name: BALL46 Full Market O/U real source vs Pre-Match READONLY trace
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-full-market-ou-source-trace-readonly-20261123.yml]
+permissions: {contents: read}
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Search active production, test UI, HUB for Full Market O/U rendering and provider feed; zero API calls
+        run: |
+          node --input-type=module <<'JS'
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,a=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const root='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers';
+          async function cf(p){const r=await fetch(root+p,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(45000)});const j=await r.json();if(!j.success)throw Error('CF_READ_'+p);return j.result}
+          const workers=['ball46-production','ball46-premium-match-colors-test-20261120','nomadtips3-5usd-hub-343'];
+          const search=/full\s*market|fullMarket|full-market|rich.odds|goal_line|over.?under|market.?odds|asian.?total|api\/odds|bookmaker/i;
+          for(const name of workers){
+           const v=(await cf('/scripts/'+name+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+           const raw=await cf('/workers/'+name+'/versions/'+v+'?include=modules');
+           console.log('FM_WORKER '+JSON.stringify({name,version:v,modules:raw.modules.length,moduleNames:raw.modules.map(m=>m.name).slice(0,40)}));
+           const sorted=[];
+           for(const m of raw.modules){
+            if(!m.content_base64)continue;
+            const s=Buffer.from(m.content_base64,'base64').toString('utf8');
+            const hits=[...s.matchAll(new RegExp(search.source,search.flags+'g'))];
+            if(!hits.length)continue;
+            const categories={fullMarket:0,rich:0,goalLine:0,overUnder:0,bookmaker:0};
+            for(const hit of hits){let v=hit[0].toLowerCase();if(v.includes('full'))categories.fullMarket++;else if(v.includes('rich'))categories.rich++;else if(v.includes('goal'))categories.goalLine++;else if(v.includes('under'))categories.overUnder++;else categories.bookmaker++;}
+            sorted.push({module:m.name,chars:s.length,hits:hits.length,categories});
+           }
+           console.log('FM_MODULE_MATCHES '+JSON.stringify({worker:name,found:sorted.sort((a,b)=>b.hits-a.hits).slice(0,30)}).slice(0,16500));
+           for(const m of raw.modules){
+            if(!m.content_base64)continue;
+            const s=Buffer.from(m.content_base64,'base64').toString('utf8');
+            const hits=[...s.matchAll(/Full\s*Market|FULL\s*MARKET|fullMarket|full-market|rich-odds|goal_line|over.?under/gi)];
+            if(!hits.length)continue;
+            const excerpts=[];
+            for(const hit of hits){
+             const str=s.slice(Math.max(0,hit.index-210),Math.min(s.length,hit.index+370)).replace(/\s+/g,' ').slice(0,600);
+             const low=str.toLowerCase();
+             if(low.includes('authorization')||low.includes('token')||low.includes('api_key'))continue;
+             if(excerpts.some(x=>x.fragment===str))continue;
+             excerpts.push({match:hit[0],offset:hit.index,fragment:str});
+             if(excerpts.length>=27)break;
+            }
+            if(excerpts.length)console.log('FM_SOURCE_CONTEXT '+JSON.stringify({worker:name,module:m.name,totalMatches:hits.length,excerpts}).slice(0,24000));
+           }
+          }
+          JS
