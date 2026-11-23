@@ -1,6 +1,7 @@
 const ANIMATION = 'b46-odds-card-pulse-6x';
 const marker = 'data-b46-odds-move';
 const quote = `html body .match-row[data-match-id] .market-cell :is(#b46-odds-specificity, [${marker}])`;
+const mobileRow = 'html body[data-workspace-view="signal"] .match-row[data-b46-kind="live"][aria-expanded="true"]';
 
 export const crossDeviceOddsStyles = `
 @keyframes ${ANIMATION} {
@@ -55,6 +56,28 @@ ${quote}::after {
   background: var(--b46-move-ink) !important;
   clip-path: var(--b46-move-arrow) !important;
   z-index: 2 !important;
+}
+@media (max-width: 760px) {
+  ${mobileRow} {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+  ${mobileRow} > :is(.teams-cell, .score-cell, .signal-inline-stack) {
+    grid-column: 1 / -1;
+  }
+  ${mobileRow} > :is(#b46-odds-specificity, .market-cell-1x2, .market-cell-ah, .market-cell-ou):is([title$=" · LIVE" i], [title$=" · NOW" i]) {
+    display: flex !important;
+    flex-direction: column;
+    grid-column: auto !important;
+    align-self: stretch;
+    min-width: 0;
+    overflow: visible;
+  }
+  ${mobileRow} > .market-cell small {
+    display: block;
+  }
+  ${mobileRow} > .market-cell :is(.market-quote, .market-price-row, .b46-v3-quote) {
+    overflow: visible;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   ${quote} { animation: none !important; }
@@ -111,7 +134,7 @@ export const crossDeviceOddsScript = String.raw`(function installOddsMovement(an
 
     // A refreshed row may replace the quote node mid-animation. Continue from the
     // original animation clock instead of replaying the first pulse.
-    const elapsed = move.startedAt === null ? 0 : Math.max(0, now - move.startedAt);
+    const elapsed = Math.max(0, now - (move.startedAt ?? move.createdAt));
     if (elapsed >= DURATION_MS) return;
     element.style.setProperty('--b46-odds-delay', -elapsed + 'ms');
     // Flush the unmarked style so a new change in the same direction can restart.
@@ -226,7 +249,7 @@ export const crossDeviceOddsScript = String.raw`(function installOddsMovement(an
     });
     observer.observe(document.body, {
       subtree: true, childList: true, characterData: true, attributes: true,
-      attributeFilter: ['data-nomad-odds-raw', 'data-b46-kind', 'title'],
+      attributeFilter: ['data-nomad-odds-raw', 'data-b46-kind', 'title', 'aria-expanded'],
     });
   }
 

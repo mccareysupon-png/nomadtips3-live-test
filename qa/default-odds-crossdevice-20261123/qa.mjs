@@ -16,7 +16,7 @@ async function smoke() {
   assert(health.ok, `health HTTP ${health.status}`);
   const info = await health.json();
   assert.equal(info.scope, 'ISOLATED_TEST_ONLY');
-  assert.equal(info.revision, 'single-controller-v3');
+  assert.equal(info.revision, 'single-controller-v4');
   assert.equal(info.noApiCallsAdded, true);
   assert(info.script === crossDeviceOddsScript, 'browser source must survive Worker bundling verbatim');
   assert.equal(info.styles, crossDeviceOddsStyles);
@@ -41,10 +41,13 @@ async function runCase(browser, name, settings, assets) {
     page.on('pageerror', error => errors.push(error.message));
     await page.setContent(`<!doctype html><html data-theme="${settings.theme}"><head>
       <meta name="viewport" content="width=device-width, initial-scale=1">
+      <style>@media (max-width: 760px) {
+        html body[data-workspace-view="signal"] .match-row .market-cell { display: none !important; }
+      }</style>
       <style>${assets.styles}
 .market-price-row{display:inline-flex;align-items:center;gap:8px}</style>
-      <script>${assets.script}</script></head><body>
-      <article class="match-row" data-match-id="QA" data-b46-kind="live">
+      <script>${assets.script}</script></head><body data-workspace-view="signal">
+      <article class="match-row" data-match-id="QA" data-b46-kind="live" aria-expanded="false" style="display:grid">
         <div class="market-cell market-cell-ou" title="Bet365 · LIVE">
           <div class="market-price-row${settings.native ? '' : ' b46-v3-quote'}" data-side="O">
             <i>O</i><em>2.50</em><strong data-nomad-odds-raw="1.80">1.8</strong>
@@ -55,6 +58,12 @@ async function runCase(browser, name, settings, assets) {
     const quote = page.locator('.market-price-row');
     const marker = 'data-b46-odds-move';
     assert.equal(await quote.getAttribute(marker), null, name + ' initial quote');
+    if (settings.device) {
+      assert.equal(await quote.isVisible(), false, name + ' collapsed mobile quote');
+      await page.locator('.match-row').evaluate(row => row.setAttribute('aria-expanded', 'true'));
+      assert.equal(await quote.isVisible(), true, name + ' expanded mobile quote');
+      assert.equal(await quote.getAttribute(marker), null, name + ' unchanged quote on open');
+    }
     const setPrice = (raw, display) => page.locator('.market-price-row strong').evaluate((node, price) => {
       node.dataset.nomadOddsRaw = price.raw;
       node.textContent = price.display;
