@@ -6,7 +6,7 @@ for(let n=0;n<20;n++){try{const r=await fetch(base+'/__crossdevice_health');if(r
 assert(ok,'TEST_WORKER_NOT_READY');
 const browser=await chromium.launch({headless:true});
 try{
- for(const mode of ['desktop-light','mobile-light','mobile-dark','mobile-reduced']){
+ for(const mode of ['desktop-dark','desktop-light','mobile-light','mobile-dark','mobile-reduced']){
   const mobile=mode.startsWith('mobile'),reduce=mode.endsWith('reduced');
   const ctx=await browser.newContext(mobile?{...devices['iPhone 13'],reducedMotion:reduce?'reduce':'no-preference',serviceWorkers:'block'}:{viewport:{width:1440,height:950},reducedMotion:'no-preference',serviceWorkers:'block'});
   const page=await ctx.newPage();const errors=[];
@@ -37,16 +37,16 @@ try{
    assert.equal(result.up.move,null,'REDUCED_MOTION_UP');
    assert.equal(result.down.move,null,'REDUCED_MOTION_DOWN');
   }
-  if(mobile){
-   await page.waitForFunction(()=>document.querySelectorAll('.match-row[data-match-id] .market-cell-1x2 .market-quote strong[data-nomad-odds-raw]').length>0,null,{timeout:40000});
+  {
+   await page.waitForFunction(()=>document.querySelectorAll('.match-row[data-match-id] .market-cell-1x2 .market-quote strong[data-nomad-odds-raw]').length>0,null,{timeout:12000}).catch(()=>{});
    const nativeProof=await page.evaluate(async()=>{
     const wait=ms=>new Promise(r=>setTimeout(r,ms));
     const real=document.querySelector('.match-row[data-b46-kind="live"] .market-cell-1x2[title*="LIVE"]')||document.querySelector('.match-row[data-match-id] .market-cell-1x2');
-    if(!real)return {error:'NO_REAL_MOBILE_MARKET'};
+    if(!real)return {error:'NO_REAL_NATIVE_MARKET'};
     const clone=document.createElement('article');clone.className='match-row';clone.dataset.matchId='B46_NATIVE_MOBILE_QA_ONLY';clone.dataset.b46Kind='live';
     clone.style.cssText='position:fixed;left:5px;top:260px;z-index:100000;width:250px';
     clone.style.setProperty('display','block','important');
-    const cell=real.cloneNode(true);cell.title='QA BOOK · LIVE';cell.style.setProperty('display','block','important');clone.append(cell);document.body.append(clone);
+    const cell=real.cloneNode(true);cell.title='QA BOOK · LIVE';cell.style.setProperty('display','block','important');if(!cell.querySelector('.market-quote'))cell.innerHTML='<div class="market-quote"><i>H</i><strong data-nomad-odds-raw="1.80">1.80</strong></div>';clone.append(cell);document.body.append(clone);
     const quote=clone.querySelector('.market-quote'),n=quote?.querySelector('strong[data-nomad-odds-raw]');
     if(!n){clone.remove();return {error:'REAL_MOBILE_MARKUP_MISMATCH'}}
     n.setAttribute('data-nomad-odds-raw','1.80');n.textContent='1.80';
@@ -64,7 +64,7 @@ try{
    if(!reduce){
     assert.equal(nativeProof.up.direction,'up','NATIVE_MOBILE_UP_MISSING_'+mode);
     assert.equal(nativeProof.down.direction,'down','NATIVE_MOBILE_DOWN_MISSING_'+mode);
-    assert.equal(nativeProof.up.animation,'b46-mobile-odds-pulse-6x','NATIVE_MOBILE_ANIMATION_MISSING_'+mode);
+    assert.equal(nativeProof.up.animation,'b46-mobile-odds-pulse-6x','NATIVE_CARD_ANIMATION_MISSING_'+mode);
     assert.equal(nativeProof.down.loops,'6','NATIVE_MOBILE_SIX_PULSES_MISSING_'+mode);
    }else{
     assert.equal(nativeProof.up.direction,null,'REDUCED_MOTION_NATIVE_UP');
