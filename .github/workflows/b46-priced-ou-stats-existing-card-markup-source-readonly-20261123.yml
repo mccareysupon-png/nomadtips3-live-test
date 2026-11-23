@@ -1,0 +1,45 @@
+name: BALL46 PreMatch priced O/U TEST stats original card markup source read only
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-priced-ou-stats-existing-card-markup-source-readonly-20261123.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Identify only already existing O/U statistics card renderer strings
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const api='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+          const h={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          async function cf(p){const r=await fetch(api+p,{headers:h,signal:AbortSignal.timeout(45000)});
+           const j=await r.json();assert(r.ok&&j.success,'CF_'+p);return j.result}
+          const front='ball46-premium-match-colors-test-20261120';
+          const d=await cf('/scripts/'+front+'/deployments?per_page=1');
+          const id=d.deployments[0].versions[0].version_id;
+          const v=await cf('/workers/'+front+'/versions/'+id+'?include=modules');
+          const main=Buffer.from(v.modules[0].content_base64,'base64').toString('utf8');
+          const m=main.match(/var prematchClientScript = ("(?:\\.|[^"\\])*");/);
+          assert(m);const s=JSON.parse(m[1]);
+          console.log('B46_OU_STATS_CARD_ACTIVE '+id);
+          for(const word of ['function matchRow(', 'function premiumMatchRow(', 'function statRow(',
+           'function matchCard(', 'function matchDetail(', 'function b46pmMatch', 'item.pick',
+           'item.bookmaker', 'function draw(){', 'const visible=[...rows]']){
+           let i=0,n=0;
+           while(n<12){
+            const j=s.indexOf(word,i);if(j<0)break;
+            console.log('B46_OU_STATS_CARD_SOURCE '+JSON.stringify({
+             word,index:j,part:s.slice(Math.max(0,j-260),Math.min(s.length,j+1000))
+            }).slice(0,1700));
+            i=j+word.length;n++;
+           }
+          }
+          JS
