@@ -63,11 +63,11 @@ test('Asian 2.25 and 2.75 split half stakes, push, half win and half loss exactl
  assert.deepEqual(splitAsianLine(3),[3]);
  assert.equal(profitForOuResult(2,2.25,'OVER',1.9),-.5);
  assert(Math.abs(profitForOuResult(2,2.25,'UNDER',1.9)-.45)<1e-12);
- assert.equal(profitForOuResult(3,2.75,'OVER',2.05),.525);
+ assert(Math.abs(profitForOuResult(3,2.75,'OVER',2.05)-.525)<1e-12);
  assert.equal(profitForOuResult(3,2.75,'UNDER',1.9),-.5);
  assert.equal(profitForOuResult(3,3,'OVER',1.9),0);
  assert.equal(profitForOuResult(3,3,'UNDER',1.9),0);
- assert.equal(profitForOuResult(4,3.5,'OVER',1.9),.9);
+ assert(Math.abs(profitForOuResult(4,3.5,'OVER',1.9)-.9)<1e-12);
 });
 test('all TEN earlier hypothetical situations, exact Asian EV, price >1.50 and EV >=5%',()=>{
  const cases=[
