@@ -55,8 +55,8 @@ replace(
  "   await this.ctx.storage.put('b46PreMatchOuEngineCursor',result.cursorOut);",
  'STAT_SNAPSHOT_ON_ISSUE');
 replace(
- "   const answer={...result,at:now,hubSnapshotAt:",
- "   const answer={...result,at:now,v2Settlement:b46Settlement,v2StatsSync:b46V2StatsSync,hubSnapshotAt:",
+ "   const answer={...result,at:now,",
+ "   const answer={...result,at:now,v2Settlement:b46Settlement,v2StatsSync:b46V2StatsSync,",
  'ENGINE_STATUS');
 replace(
  "  evaluate:evaluateAsianOu\n });",
