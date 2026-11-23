@@ -1,0 +1,115 @@
+name: BALL46 REAL Full Market O/U quotes for 3 upcoming or waiting matches NOW
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-fullmarket-three-real-upcoming-prices-20261123.yml]
+permissions: {contents: read}
+jobs:
+  retrieve:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: READ original BALL46 Full Market app prices for exactly three currently upcoming matches
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const base='https://ball46.com';
+          const timeout=AbortSignal.timeout(18000);
+          const boardResponse=await fetch(base+'/api/engine/board',{headers:{accept:'application/json'},
+            signal:timeout,cache:'no-store'});
+          assert(boardResponse.ok,'BOARD_HTTP_'+boardResponse.status);
+          const board=await boardResponse.json();
+          assert(board.ok===true&&Array.isArray(board.fixtures),'NO_BOARD_FIXTURES');
+          const now=Date.now();
+          const kickoffMs=f=>{
+           const s=f.kickoffUtc??f.kickoffAt??f.kickoff_ts;
+           if(typeof s==='number')return s>1e12?s:s*1000;
+           return Date.parse(String(s));
+          };
+          const elig=board.fixtures.filter(f=>{
+           const s=String(f.boardState??f.status??'').toLowerCase();
+           return ['scheduled','waiting','upcoming','not_started'].includes(s)&&
+            Number.isFinite(kickoffMs(f))&&kickoffMs(f)>now+600000&&
+            /^[1-9]\d{0,15}$/.test(String(f.fixtureId??f.id));
+          }).sort((a,b)=>kickoffMs(a)-kickoffMs(b));
+          const selected=elig.filter(f=>!!f.providerOdds?.odds?.goal_line).slice(0,3);
+          if(selected.length<3)for(const f of elig){
+           if(selected.some(p=>(p.fixtureId??p.id)===(f.fixtureId??f.id)))continue;
+           selected.push(f);if(selected.length===3)break;
+          }
+          assert.equal(selected.length,3,'NOT_ENOUGH_UPCOMING_FIXTURES');
+          console.log('B46_REAL_THREE_FIXTURES '+JSON.stringify({observedAt:new Date(now).toISOString(),
+           boardHubAgeMs:board.hubAgeMs??null,boardStale:board.stale??null,
+           availableUpcoming:elig.length,
+           selected:selected.map(f=>({id:f.fixtureId??f.id,home:f.home?.name??f.teams?.home?.name,
+            away:f.away?.name??f.teams?.away?.name,kickoff:f.kickoffUtc??f.kickoffAt??f.kickoff_ts,
+            status:f.status,boardState:f.boardState,
+            bulkGoalLine:f.providerOdds?.odds?.goal_line??null,
+            bulk1x2:f.providerOdds?.odds?.['1x2']?.closing??null}))}).slice(0,14000));
+          const healthRes=await fetch(base+'/api/full-market/health',
+           {headers:{accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(12000)});
+          const health=await healthRes.json().catch(()=>null);
+          console.log('B46_REAL_FULLMARKET_HEALTH '+JSON.stringify({http:healthRes.status,
+           ok:health?.ok,remainingLocalBudget:health?.remainingLocalBudget,
+           maxFullMarketCallsPerMinute:health?.maxFullMarketCallsPerMinute,
+           blockedUntil:health?.blockedUntil,retryAfterSec:health?.retryAfterSec,
+           mode:health?.mode}));
+          if(!healthRes.ok||health?.ok!==true||Number(health.remainingLocalBudget)<3||
+           Number(health.retryAfterSec??0)>0)throw Error('FULL_MARKET_QUOTA_NOT_SAFE_FOR_3');
+          for(const f of selected){
+           const id=String(f.fixtureId??f.id);
+           const url=base+'/api/full-market/fixture-odds?fixtureId='+encodeURIComponent(id);
+           let r,body;
+           try{
+            r=await fetch(url,{headers:{accept:'application/json'},cache:'no-store',
+             signal:AbortSignal.timeout(22000)});
+            body=await r.json().catch(()=>null);
+           }catch(e){
+            console.log('B46_REAL_PRICE_RESULT '+JSON.stringify({id,error:String(e).slice(0,100)}));
+            continue;
+           }
+           const data=body?.fullOdds?.data??body?.fullOdds??{};
+           const books=Array.isArray(data.bookmakers)?data.bookmakers:[];
+           const goals=books.flatMap(book=>{
+            const o=book?.odds??{};
+            const name=book.slug??book.name??book.bookmaker?.slug??book.bookmaker?.name??'UNKNOWN';
+            const out=[];
+            const main=o.goal_line;
+            for(const stage of ['opening','closing','inplay']){
+             const q=main?.[stage];
+             if(q!=null)out.push({book:name,market:'goal_line',stage,quote:q});
+            }
+            const fixed=Array.isArray(o.goal_line_fixed)?o.goal_line_fixed:[];
+            for(const line of fixed.slice(0,30))for(const stage of ['opening','closing','inplay']){
+             const q=line?.[stage];
+             if(q!=null)out.push({book:name,market:'goal_line_fixed',line:line.line,stage,quote:q});
+            }
+            return out;
+           });
+           const verified=goals.filter(x=>x.stage!=='inplay'&&typeof x.quote==='object'&&
+            typeof x.quote?.over==='number'&&x.quote.over>1&&
+            typeof x.quote?.under==='number'&&x.quote.under>1);
+           const booksWith1x2=books.filter(x=>x?.odds?.['1x2']!=null).map(x=>({
+            bookmaker:x.slug??x.name,closing:x.odds['1x2']?.closing??null
+           }));
+           const report={id,http:r.status,ok:body?.ok,source:body?.source,
+            cached:body?.cached,stale:body?.stale,
+            fetchedAt:body?.fetchedAt,ageMs:body?.ageMs,
+            requestedBookmakers:body?.requestedBookmakers?.length??null,
+            upstreamRequests:body?.externalRequestsAdded??null,
+            rootKeys:Object.keys(data).slice(0,24),bookCount:books.length,
+            booked:books.map(x=>x.slug??x.name).slice(0,30),
+            allOuMarkets:goals.length,validOuQuotes:verified.length,
+            validOuPriceSamples:verified.slice(0,32),
+            allOuSamples:goals.slice(0,25),
+            sample1x2:booksWith1x2.slice(0,6),
+            error:body?.error??null};
+           console.log('B46_REAL_PRICE_RESULT '+JSON.stringify(report).slice(0,23000));
+           if(r.status===429||body?.retryAfterSec>0){
+            console.log('B46_REAL_PRICE_STOP_QUOTA_BACKOFF');break;
+           }
+          }
+          console.log('B46_REAL_FULLMARKET_THREE_COMPLETE_NO_DEPLOY');
+          JS
