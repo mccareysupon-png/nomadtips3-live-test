@@ -47,11 +47,46 @@ test('do not use HUB goal_line numeric LINE as odds price',()=>{
    goal_line:{opening:2.5,closing:2.75,inplay:3}
  }),opt).state,'PRICED');
 });
-test('null closing fixed 2.5 is withdrawn and never fall back to inplay or moving line',()=>{
+test('when fixed 2.5 closing is withdrawn, accept its recorded opening with explicit historical label',()=>{
  const out=parseOuPriceFromExistingPayload(response({goal_line_fixed:[{line:2.5,
    opening:{over:1.8,under:2.0},closing:null,inplay:{over:1.4,under:2.7}}],
    goal_line:{closing:{line:2.5,over:1.7,under:2.0}}}),opt);
+ assert.equal(out.state,'PRICED');
+ assert.equal(out.stage,'opening');
+ assert.equal(out.openingIsHistorical,true);
+ assert.equal(out.source,'BET365_GOAL_LINE_FIXED_OPENING');
+ assert.equal(out.selectedPrice,2.0);
+});
+test('never revive withdrawn fixed 2.5 when neither closing nor opening has both real prices',()=>{
+ const out=parseOuPriceFromExistingPayload(response({goal_line_fixed:[{line:2.5,
+   opening:null,closing:null,inplay:{over:1.4,under:2.7}}]}),opt);
  assert.equal(out.state,'PRICE_WITHDRAWN');
+});
+test('main line 2.5 opening works even if the closing moved to 2.75',()=>{
+ const out=parseOuPriceFromExistingPayload(response({goal_line:{
+   opening:{line:2.5,over:1.82,under:1.98},
+   closing:{line:2.75,over:1.94,under:1.86},
+   inplay:{line:3.0,over:2.12,under:1.75}
+ }}),{...opt,pick:'OVER_2.5'});
+ assert.equal(out.state,'PRICED');
+ assert.equal(out.stage,'opening');
+ assert.equal(out.source,'BET365_MAIN_GOAL_LINE_OPENING');
+ assert.equal(out.priceOver,1.82);
+ assert.equal(out.priceUnder,1.98);
+});
+test('closing at same fixed 2.5 takes priority over opening',()=>{
+ const out=parseOuPriceFromExistingPayload(response({goal_line_fixed:[{line:2.5,
+   opening:{over:1.8,under:2.0},closing:{over:1.9,under:1.9}}]}),opt);
+ assert.equal(out.state,'PRICED');
+ assert.equal(out.stage,'closing');
+ assert.equal(out.openingIsHistorical,false);
+ assert.equal(out.selectedPrice,1.9);
+});
+test('never use inplay alone as if it were opening or closing',()=>{
+ const out=parseOuPriceFromExistingPayload(response({goal_line_fixed:[{line:2.5,
+   opening:null,closing:null,inplay:{over:1.4,under:2.7}}],
+   goal_line:{inplay:{line:2.5,over:1.45,under:2.62}}}),opt);
+ assert.notEqual(out.state,'PRICED');
 });
 test('no 2.5 ladder quote and no matching main line is not offered',()=>{
  const out=parseOuPriceFromExistingPayload(response({goal_line_fixed:[],
