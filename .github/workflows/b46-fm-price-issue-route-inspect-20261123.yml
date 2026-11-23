@@ -1,0 +1,29 @@
+name: BALL46 TEST FM quote route contract inspect READONLY
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-fm-price-issue-route-inspect-20261123.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Read only exact Full Market quote API contract
+        run: |
+          node --input-type=module <<'JS'
+          const root='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+          const h={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},name='nomadtips3-full-market-343-ball46';
+          const v=await fetch(root+'/scripts/'+name+'/deployments?per_page=1',{headers:h}).then(r=>r.json());
+          const id=v.result.deployments[0].versions[0].version_id;
+          const a=await fetch(root+'/workers/'+name+'/versions/'+id+'?include=modules',{headers:h}).then(r=>r.json());
+          const s=Buffer.from(a.result.modules.find(m=>m.name==='index.js').content_base64,'base64').toString();
+          for(const token of ['async loadDeduped(', 'async load(', 'if (route === "/fixture-odds")', 'buildBody(fixtureId','async cached(fixtureId)']){
+           const i=s.indexOf(token);if(i>=0)console.log('PRICE_ROUTE_CONTRACT '+JSON.stringify({token,src:s.slice(i,i+2400)}).slice(0,6000));
+          }
+          JS
