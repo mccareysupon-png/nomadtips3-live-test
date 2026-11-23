@@ -1,0 +1,75 @@
+name: BALL46 existing TEST PreMatch O/U real Full Market priced-pick first smoke
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-prematch-ou-real-price-first-live-smoke-20261123.yml]
+permissions: {contents: read}
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: One authenticated live TEST tick with REAL HUB upcoming and original Full Market, 1 quote maximum
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const owner=crypto.createHmac('sha256',process.env.CLOUDFLARE_API_TOKEN).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const base='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          const call=async(path,method='GET')=>{
+           const r=await fetch(base+path,{method,headers:{authorization:'Bearer '+owner,accept:'application/json'},
+            cache:'no-store',signal:AbortSignal.timeout(90000)});
+           const j=await r.json().catch(()=>({error:'INVALID_JSON'}));
+           assert(r.ok,'HTTP_'+path+'_'+r.status+'_'+JSON.stringify(j).slice(0,180));
+           return j;
+          };
+          const before=await call('/prematch-ou-engine-state');
+          assert.equal(before.engine,'B46_PREMATCH_OU_ENGINE_V1_TEST');
+          assert.equal(before.policy.maxSharedOuRequestsPerLondonDay,4);
+          assert.equal(before.policy.maxFullMarketRequestsPerTick,1);
+          assert.equal(before.policy.needs1X2Odds,false);
+          console.log('B46_OU_REAL_BEFORE '+JSON.stringify({
+           quota:before.quota,last:before.last?.status,
+           lastPriceBridge:before.last?.priceBridge?.state??null,
+           lastPriced:before.last?.scan?.pricedFixtures??0,
+           lastLocked:before.last?.locked?.added??0,shadowCount:before.shadowCount}));
+          const tick=await call('/prematch-ou-engine-tick','POST');
+          console.log('B46_OU_REAL_TICK '+JSON.stringify({
+           status:tick.status,at:tick.at,
+           feed:tick.feed,scan:tick.scan,locked:tick.locked,
+           cursorIn:tick.cursorIn,cursorOut:tick.cursorOut,
+           priceBridge:tick.priceBridge,quota:tick.quota,
+           providerCalls:tick.providerCalls,
+           error:tick.error??null,
+           productionWrites:tick.productionWrites,liveEngineCalls:tick.liveEngineCalls
+          }).slice(0,14000));
+          assert(['SCREENED_PREMATCH','NO_PREMATCH_FIXTURES'].includes(tick.status),
+           'ENGINE_CYCLE_FAILED_'+tick.status);
+          assert.equal(tick.productionWrites,0);
+          assert.equal(tick.liveEngineCalls,0);
+          assert(tick.providerCalls<=1,'TOO_MANY_QUOTES_ONE_TICK');
+          const after=await call('/prematch-ou-engine-state');
+          assert.equal(after.last?.status,tick.status);
+          assert(after.quota.used-before.quota.used<=1,'COUNTED_QUOTA_EXCEEDED');
+          assert(after.quota.used<=4,'LONDON_QUOTA_EXCEEDED');
+          const audit=await call('/ou-value-v2-state');
+          console.log('B46_OU_REAL_AFTER '+JSON.stringify({
+           day:after.quota.day,
+           beforeUsed:before.quota.used,afterUsed:after.quota.used,
+           currentRemaining:after.quota.remaining,
+           recentPriceAudit:(audit.priceBridge?.recent??[]).slice(0,4),
+           shadowCountBefore:before.shadowCount,shadowCountAfter:after.shadowCount,
+           verifiedPricedFixtures:tick.scan?.pricedFixtures??0,
+           offeredMarkets:tick.scan?.prices??0,
+           valueQualified:tick.scan?.valueQualified??0,
+           newLocked:tick.locked?.added??0,
+           bridgeState:tick.priceBridge?.state??null,
+           source:'REAL_HUB_SNAPSHOT_EXISTING_FULL_MARKET_SERVICE',
+           hasProductionWrites:false,liveEngineCalls:0
+          }).slice(0,16000));
+          console.log('B46_OU_REAL_FIRST_SMOKE_PASS');
+          JS
