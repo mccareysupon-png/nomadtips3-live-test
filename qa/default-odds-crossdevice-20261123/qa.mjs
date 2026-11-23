@@ -1,78 +1,169 @@
 import assert from 'node:assert/strict';
-import {chromium,devices} from 'playwright';
-const base='https://ball46-default-odds-crossdevice-test-20261123.mccarey-supon.workers.dev';
-let ok=false;
-for(let n=0;n<20;n++){try{const r=await fetch(base+'/__crossdevice_health');if(r.ok){const d=await r.json();assert.equal(d.scope,'ISOLATED_TEST_ONLY');assert.equal(d.noApiCallsAdded,true);assert(!d.styles.includes('min-width:1024px'));assert(!d.styles.includes('html:root[data-theme="dark"]'));ok=true;break}}catch{}await new Promise(r=>setTimeout(r,1400))}
-assert(ok,'TEST_WORKER_NOT_READY');
-const browser=await chromium.launch({headless:true});
-try{
- for(const mode of ['desktop-dark','desktop-light','mobile-light','mobile-dark','mobile-reduced']){
-  const mobile=mode.startsWith('mobile'),reduce=mode.endsWith('reduced');
-  const ctx=await browser.newContext(mobile?{...devices['iPhone 13'],reducedMotion:reduce?'reduce':'no-preference',serviceWorkers:'block'}:{viewport:{width:1440,height:950},reducedMotion:'no-preference',serviceWorkers:'block'});
-  const page=await ctx.newPage();const errors=[];
-  page.on('pageerror',e=>errors.push(String(e)));
-  await page.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),mode.includes('light')?'light':'dark');
-  const resp=await page.goto(base+'/?view=live&qaCrossDevice='+mode,{waitUntil:'domcontentloaded',timeout:75000});assert(resp?.ok(),'PAGE_NOT_OK');
-  await page.waitForFunction(()=>window.__b46OddsCrossDeviceStats?.ready===true,{timeout:45000}).catch(()=>{});
-  const result=await page.evaluate(async ()=>{
-   const wait=n=>new Promise(r=>setTimeout(r,n));
-   const box=document.createElement('div');box.className='match-row';box.setAttribute('data-match-id','B46_CROSS_DEVICE_LOCAL_FIXTURE');box.style.cssText='position:fixed;left:2px;top:200px;width:220px;min-height:60px;z-index:99999';
-   box.innerHTML='<div class="market-cell market-cell-1x2" title="QA"><div class="b46-v3-quote"><strong data-b46-align="1x2-H" data-nomad-odds-raw="1.80">1.80</strong></div></div>';
-   document.body.append(box);box.style.setProperty('display','block','important');box.style.setProperty('visibility','visible','important');const cell=box.querySelector('.market-cell');cell.style.setProperty('display','block','important');const q=box.querySelector('.b46-v3-quote'),n=q.querySelector('strong');q.style.setProperty('display','inline-block','important');q.style.setProperty('visibility','visible','important');n.style.setProperty('display','inline-block','important');
-   await wait(350);const initial=q.getAttribute('data-b46-odds-move');
-   n.setAttribute('data-nomad-odds-raw','1.90');n.textContent='1.90';await wait(250);
-   const up={move:q.getAttribute('data-b46-odds-move'),animation:getComputedStyle(q).animationName,color:getComputedStyle(n).color};
-   n.setAttribute('data-nomad-odds-raw','1.75');n.textContent='1.75';await wait(250);
-   const down={move:q.getAttribute('data-b46-odds-move'),animation:getComputedStyle(q).animationName,color:getComputedStyle(n).color};
-   const stats=window.__b46OddsCrossDeviceStats||null;const rect={q:q.getBoundingClientRect().toJSON(),n:n.getBoundingClientRect().toJSON()};const native={rows:document.querySelectorAll('.match-row[data-match-id]').length,quotes:document.querySelectorAll('.match-row[data-match-id] .market-cell .b46-v3-quote strong[data-nomad-odds-raw]').length,marketCells:document.querySelectorAll('.market-cell').length,sample:document.querySelector('.match-row[data-match-id] .market-cell')?.outerHTML.slice(0,1900),row:document.querySelector('.match-row[data-match-id]')?.outerHTML.slice(0,2800)};const theme=document.documentElement.getAttribute('data-theme');const reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;box.remove();return {initial,up,down,stats,rect,theme,reduced,native};
-  });
-  console.log('CROSSDEVICE_DEBUG '+JSON.stringify({mode,...result}));
-  assert.equal(result.initial,null,'INITIAL_FAKE_ANIMATION_'+mode);
-  if(!reduce){
-   assert.equal(result.up.move,'up','MISSING_UP_'+mode);
-   assert.equal(result.down.move,'down','MISSING_DOWN_'+mode);
-   assert.equal(result.up.animation,'b46-odds-card-pulse-6x','UP_ANIMATION_'+mode);
-   assert.equal(result.down.animation,'b46-odds-card-pulse-6x','DOWN_ANIMATION_'+mode);
-  }else{
-   assert.equal(result.up.move,null,'REDUCED_MOTION_UP');
-   assert.equal(result.down.move,null,'REDUCED_MOTION_DOWN');
+import { chromium, devices, webkit } from 'playwright';
+import { crossDeviceOddsScript, crossDeviceOddsStyles } from './crossdevice.mjs';
+
+const PREVIEW = 'https://ball46-default-odds-crossdevice-test-20261123.mccarey-supon.workers.dev';
+const SCRIPT_ID = 'b46-cross-device-odds-v3-test-js';
+const ANIMATION = 'b46-odds-card-pulse-6x';
+const options = process.env.B46_CHROMIUM_EXECUTABLE
+  ? { executablePath: process.env.B46_CHROMIUM_EXECUTABLE, args: ['--no-sandbox'] }
+  : {};
+
+async function smoke() {
+  const target = new URL(PREVIEW);
+  const headers = { 'cache-control': 'no-cache' };
+  const health = await fetch(new URL('/__crossdevice_health', target), { headers });
+  assert(health.ok, `health HTTP ${health.status}`);
+  const info = await health.json();
+  assert.equal(info.scope, 'ISOLATED_TEST_ONLY');
+  assert.equal(info.revision, 'single-controller-v2');
+  assert.equal(info.noApiCallsAdded, true);
+  assert.equal(info.script, crossDeviceOddsScript);
+  assert.equal(info.styles, crossDeviceOddsStyles);
+  const page = await fetch(new URL('/?view=live', target), { headers });
+  assert(page.ok, `page HTTP ${page.status}`);
+  assert.equal(page.headers.get('x-b46-release-scope'), 'DEFAULT_ODDS_CROSS_DEVICE_TEST_ONLY');
+  const body = await page.text();
+  assert.equal(body.split(`id="${SCRIPT_ID}"`).length, 2);
+  assert(!body.includes('id="b46-odds-flash-runtime-production"'));
+  assert(!body.includes('id="b46-odds-flash-production"'));
+  console.log('Preview serves exactly one odds movement controller');
+}
+
+async function runCase(browser, name, settings) {
+  const ctx = await browser.newContext(settings.device);
+  try {
+    const page = await ctx.newPage();
+    await page.emulateMedia({ reducedMotion: settings.reduce ? 'reduce' : 'no-preference' });
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setContent(`<!doctype html><html data-theme="${settings.theme}"><head>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <style>${crossDeviceOddsStyles}
+.market-price-row{display:inline-flex;align-items:center;gap:8px}</style>
+      <script>${crossDeviceOddsScript}</script></head><body>
+      <article class="match-row" data-match-id="QA" data-b46-kind="live">
+        <div class="market-cell market-cell-ou" title="Bet365 · LIVE">
+          <div class="market-price-row${settings.native ? '' : ' b46-v3-quote'}" data-side="O">
+            <i>O</i><em>2.50</em><strong data-nomad-odds-raw="1.80">1.8</strong>
+          </div>
+        </div>
+      </article></body></html>`);
+    await page.waitForFunction(() => window.__b46OddsCrossDeviceStats?.ready);
+    const quote = page.locator('.market-price-row');
+    const marker = 'data-b46-odds-move';
+    assert.equal(await quote.getAttribute(marker), null, name + ' initial quote');
+    const setPrice = (raw, display) => page.locator('.market-price-row strong').evaluate((node, price) => {
+      node.dataset.nomadOddsRaw = price.raw;
+      node.textContent = price.display;
+    }, { raw, display });
+    await page.evaluate(animation => {
+      window.qaPulseEvents = [];
+      for (const event of ['animationstart', 'animationiteration', 'animationend']) {
+        document.addEventListener(event, ({ type, elapsedTime, animationName }) => {
+          if (animationName === animation) window.qaPulseEvents.push({ type, elapsedTime });
+        });
+      }
+    }, ANIMATION);
+    await setPrice('1.90', '1.9');
+    await page.waitForFunction(() => document.querySelector('[data-b46-odds-move="up"]'));
+    const up = await quote.evaluate(node => {
+      const element = getComputedStyle(node);
+      const arrow = getComputedStyle(node, '::after');
+      return {
+        animation: element.animationName, iterations: element.animationIterationCount,
+        duration: element.animationDuration, width: arrow.width, height: arrow.height,
+        clip: arrow.clipPath, fill: getComputedStyle(node, '::before').backgroundColor
+      };
+    });
+    assert.equal(up.width, '5px', name);
+    assert.equal(up.height, '5px', name);
+    assert.match(up.clip, /polygon\(50%/, name);
+    assert.equal(up.fill, 'rgba(42, 163, 103, 0.2)', name);
+
+    if (settings.reduce) {
+      assert.equal(up.animation, 'none', name);
+    } else {
+      assert.equal(up.animation, ANIMATION, name);
+      assert.equal(up.iterations, '6', name);
+      assert.equal(up.duration, '1s', name);
+    }
+
+    if (settings.replace) {
+      await page.waitForFunction(() => window.qaPulseEvents.some(event => event.type === 'animationiteration'));
+      await page.locator('.market-price-row').evaluate(node => {
+        const fresh = node.cloneNode(true);
+        fresh.removeAttribute('data-b46-odds-move');
+        fresh.removeAttribute('style');
+        node.replaceWith(fresh);
+      });
+      await page.waitForFunction(() =>
+        window.qaPulseEvents.some(event => event.type === 'animationstart' && event.elapsedTime >= 1));
+    }
+
+    await page.waitForFunction(() => !document.querySelector('[data-b46-odds-move]'), null, { timeout: 11000 });
+    const events = await page.evaluate(() => window.qaPulseEvents);
+    if (settings.reduce) {
+      assert.equal(events.length, 0, name);
+    } else {
+      const ends = events.filter(event => event.type === 'animationend');
+      assert.deepEqual(ends.map(event => event.elapsedTime), [6], name);
+      if (!settings.replace) {
+        const cycles = events.filter(event => event.type === 'animationiteration');
+        assert.deepEqual(cycles.map(event => event.elapsedTime), [1, 2, 3, 4, 5], name);
+      }
+    }
+
+    await setPrice('1.75', '1.75');
+    await page.waitForFunction(() => document.querySelector('[data-b46-odds-move="down"]'));
+    const down = await quote.evaluate(node => ({
+      clip: getComputedStyle(node, '::after').clipPath,
+      fill: getComputedStyle(node, '::before').backgroundColor
+    }));
+    assert.match(down.clip, /polygon\(0px 0px/, name);
+    assert.equal(down.fill, 'rgba(178, 65, 74, 0.19)', name);
+
+    // New lines, unavailable quotes and close-to-live switches establish a baseline.
+    await quote.evaluate(node => {
+      node.querySelector('em').textContent = '2.75';
+      const numeral = node.querySelector('strong');
+      numeral.dataset.nomadOddsRaw = '1.92';
+      numeral.textContent = '1.92';
+    });
+    await page.waitForFunction(() => !document.querySelector('[data-b46-odds-move]'));
+    const before = await page.evaluate(() => window.__b46OddsCrossDeviceStats.flashes);
+    await page.locator('.market-cell').evaluate(node => { node.title = 'Bet365 · CLOSE'; });
+    await setPrice('1.86', '1.86');
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert.equal(await quote.getAttribute(marker), null, name);
+    assert.equal(await page.evaluate(() => window.__b46OddsCrossDeviceStats.flashes), before, name);
+    assert.deepEqual(errors, [], name);
+    console.log(name + ' passed');
+  } finally {
+    await ctx.close();
   }
-  {
-   await page.waitForFunction(()=>document.querySelectorAll('.match-row[data-match-id] .market-cell-1x2 .market-quote strong[data-nomad-odds-raw]').length>0,null,{timeout:12000}).catch(()=>{});
-   const nativeProof=await page.evaluate(async()=>{
-    const wait=ms=>new Promise(r=>setTimeout(r,ms));
-    const real=document.querySelector('.match-row[data-b46-kind="live"] .market-cell-1x2[title*="LIVE"]')||document.querySelector('.match-row[data-match-id] .market-cell-1x2');
-    if(!real)return {error:'NO_REAL_NATIVE_MARKET'};
-    const clone=document.createElement('article');clone.className='match-row';clone.dataset.matchId='B46_NATIVE_MOBILE_QA_ONLY';clone.dataset.b46Kind='live';
-    clone.style.cssText='position:fixed;left:5px;top:260px;z-index:100000;width:250px';
-    clone.style.setProperty('display','block','important');
-    const cell=real.cloneNode(true);cell.title='QA BOOK · LIVE';cell.style.setProperty('display','block','important');if(!cell.querySelector('.market-quote'))cell.innerHTML='<div class="market-quote"><i>H</i><strong data-nomad-odds-raw="1.80">1.80</strong></div>';clone.append(cell);document.body.append(clone);
-    const quote=clone.querySelector('.market-quote'),n=quote?.querySelector('strong[data-nomad-odds-raw]');
-    if(!n){clone.remove();return {error:'REAL_MOBILE_MARKUP_MISMATCH'}}
-    n.setAttribute('data-nomad-odds-raw','1.80');n.textContent='1.80';
-    await wait(400);
-    const initial=quote.getAttribute('data-b46-mobile-odds-move');
-    n.setAttribute('data-nomad-odds-raw','1.90');n.textContent='1.90';await wait(280);
-    const up={direction:quote.getAttribute('data-b46-mobile-odds-move'),animation:getComputedStyle(quote).animationName,loops:getComputedStyle(quote).animationIterationCount,color:getComputedStyle(n).color};
-    n.setAttribute('data-nomad-odds-raw','1.70');n.textContent='1.70';await wait(280);
-    const down={direction:quote.getAttribute('data-b46-mobile-odds-move'),animation:getComputedStyle(quote).animationName,loops:getComputedStyle(quote).animationIterationCount,color:getComputedStyle(n).color};
-    const stats={...window.__b46NativeMobileOddsStats};clone.remove();return {initial,up,down,stats};
-   });
-   console.log('B46_NATIVE_MOBILE_MARKUP_PROOF '+JSON.stringify({mode,...nativeProof}));
-   assert(!nativeProof.error,'REAL_MOBILE_DOM_NOT_SUPPORTED_'+nativeProof.error);
-   assert.equal(nativeProof.initial,null,'NATIVE_INITIAL_PHANTOM_'+mode);
-   if(!reduce){
-    assert.equal(nativeProof.up.direction,'up','NATIVE_MOBILE_UP_MISSING_'+mode);
-    assert.equal(nativeProof.down.direction,'down','NATIVE_MOBILE_DOWN_MISSING_'+mode);
-    assert(['b46-mobile-odds-pulse-6x','b46-odds-card-pulse-6x'].includes(nativeProof.up.animation),'NATIVE_CARD_ANIMATION_MISSING_'+mode);
-    assert.equal(nativeProof.down.loops,'6','NATIVE_MOBILE_SIX_PULSES_MISSING_'+mode);
-   }else{
-    assert.equal(nativeProof.up.direction,null,'REDUCED_MOTION_NATIVE_UP');
-    assert.equal(nativeProof.down.direction,null,'REDUCED_MOTION_NATIVE_DOWN');
-   }
+}
+
+if (process.argv.includes('--smoke')) {
+  await smoke();
+} else {
+  const chrome = await chromium.launch(options);
+  const safari = process.argv.includes('--webkit') ? await webkit.launch() : null;
+  try {
+    if (!process.argv.includes('--offline')) await smoke();
+    await runCase(chrome, 'Chromium desktop dark', { theme: 'dark' });
+    await runCase(chrome, 'Chromium desktop light', { theme: 'light', replace: true });
+    await runCase(chrome, 'Chromium Android dark', { theme: 'dark', native: true, device: devices['Pixel 7'] });
+    await runCase(chrome, 'Chromium Android light', { theme: 'light', native: true, device: devices['Pixel 7'] });
+    await runCase(chrome, 'Chromium Android reduced motion', {
+      theme: 'light', native: true, reduce: true, device: devices['Pixel 7']
+    });
+    if (safari) {
+      await runCase(safari, 'WebKit iPhone light', { theme: 'light', native: true, device: devices['iPhone 13'] });
+      await runCase(safari, 'WebKit iPhone dark', { theme: 'dark', native: true, device: devices['iPhone 13'] });
+    }
+  } finally {
+    await chrome.close();
+    await safari?.close();
   }
-  assert.deepEqual(errors,[],'PAGE_ERRORS_'+mode);
-  console.log('B46_DEFAULT_ODDS_CROSS_DEVICE_PASS '+JSON.stringify({mode,up:result.up.move,down:result.down.move,flashes:result.stats?.flashes??0}));
-  await ctx.close();
- }
-}finally{await browser.close()}
+}
