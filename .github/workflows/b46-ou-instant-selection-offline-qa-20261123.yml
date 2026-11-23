@@ -1,0 +1,21 @@
+name: BALL46 O/U TEST instant price capture at model selection OFFLINE
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-instant-selection-offline-qa-20261123.yml]
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify immutable O/U pick and price lock in one transaction, no paid upstream
+        run: |
+          node --check qa/prematch-history-20261120/ou-instant-full-market-issue-v1-test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-instant-full-market-issue-v1.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-price-pickup-v1.test.mjs
+          node --test qa/prematch-history-20261120/ou-verified-price-ingest-v1.test.mjs
+          echo 'B46_OU_ISSUE_AT_SELECTION_TEST_PASS 0 paid requests'
