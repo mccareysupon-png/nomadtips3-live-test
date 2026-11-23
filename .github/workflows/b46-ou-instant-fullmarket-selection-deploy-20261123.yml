@@ -27,3 +27,5 @@ jobs:
           node --experimental-sqlite --test qa/prematch-history-20261120/ou-price-pickup-v1.test.mjs
       - name: Guarded deploy ONLY isolated TEST worker Full Market binding and selection capture
         run: node qa/prematch-history-20261120/deploy-ou-instant-fullmarket-selection-test-20261123.mjs
+
+# guarded TEST deploy rerun with price parser synced to 5-minute screen window
