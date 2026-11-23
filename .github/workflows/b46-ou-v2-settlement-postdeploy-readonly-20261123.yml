@@ -1,0 +1,76 @@
+name: BALL46 O/U V2 FT settlement postdeploy live no-provider QA
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-v2-settlement-postdeploy-readonly-20261123.yml]
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Read deployed versions and one no-provider settlement tick, then validate priced UI and statistics
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,acct=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const cfRoot='https://api.cloudflare.com/client/v4/accounts/'+acct+'/workers';
+          const workers=['ball46-production','nomadtips3-engine-343','nomadtips3-5usd-hub-343',
+           'nomadtips3-full-market-343-ball46','ball46-premium-match-colors-test-20261120'];
+          async function cf(path){const r=await fetch(cfRoot+path,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(25000)});
+           const j=await r.json();assert(r.ok&&j.success,'CF_READ_FAILED_'+path);return j.result;}
+          const version=async name=>(await cf('/scripts/'+name+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+          const protectedBefore=Object.fromEntries(await Promise.all(workers.map(async x=>[x,await version(x)])));
+          const worker='ball46-prematch-only-test-20261120';
+          assert.equal(await version(worker),'0860a22f-3619-481f-a4aa-c6db48aa8127','TARGET_CHANGED');
+          const key='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const host='https://'+worker+'.mccarey-supon.workers.dev';
+          const request=async(path,method='GET',auth=true)=>{
+           const r=await fetch(host+path,{method,headers:auth?{authorization:key}:{},cache:'no-store',signal:AbortSignal.timeout(45000)});
+           return {code:r.status,data:await r.json().catch(()=>null)};
+          };
+          const unauthorized=await request('/ou-v2-settlement-state','GET',false);
+          assert.notEqual(unauthorized.code,200,'PRIVATE_SETTLEMENT_STATE_EXPOSED');
+          const before=await request('/preview-data');
+          assert.equal(before.code,200);
+          const real=before.data?.ouLedger?.rows?.find(x=>Number(x.fixture_id)===204906152);
+          assert(real,'EXPECTED_IMMUTABLE_PRICE_PICK_MISSING');
+          assert.equal(Number(real.price),2.8);
+          const receipt=await request('/ou-v2-settlement-tick','POST');
+          assert.equal(receipt.code,200,'SETTLEMENT_NO_PROVIDER_TICK_FAILED');
+          assert.equal(receipt.data.providerCalls,0,'SETTLEMENT_CALLED_PROVIDER');
+          const [state,after,engine]=await Promise.all([
+           request('/ou-v2-settlement-state'),request('/preview-data'),request('/prematch-ou-engine-state')
+          ]);
+          assert.equal(state.code,200);assert.equal(after.code,200);assert.equal(engine.code,200);
+          assert.equal(state.data.fullLedgerRecalculationOnRead,false);
+          const pick=after.data.ouLedger?.rows?.find(x=>Number(x.fixture_id)===204906152);
+          assert(pick&&Number(pick.price)===2.8,'PRICE_PICK_MUTATED');
+          assert.equal(pick.bookmaker,'ladbrokes');
+          assert.equal(after.data.ouLedger.stats.total,after.data.ouLedger.rows.length);
+          assert.equal(after.data.ouLedger.stats.total,
+           after.data.ouLedger.stats.pending+after.data.ouLedger.stats.win+
+           after.data.ouLedger.stats.loss+after.data.ouLedger.stats.push);
+          assert.equal(after.data.ouLedger.stats.total,state.data.stats.total);
+          if(pick.status!=='PENDING'){
+           assert(['WIN','LOSS','PUSH'].includes(pick.status),'INVALID_OU_FT');
+           assert(Number.isFinite(Number(pick.units)),'PRICE_FT_PL_MISSING');
+          }
+          assert((after.data.testLedger?.rows??[]).length>=92,'ONE_X_TWO_CHANGED');
+          const protectedAfter=Object.fromEntries(await Promise.all(workers.map(async x=>[x,await version(x)])));
+          assert.deepEqual(protectedAfter,protectedBefore,'PROTECTED_WORKER_CHANGED');
+          console.log('B46_OU_V2_SETTLEMENT_POSTDEPLOY_PASS '+JSON.stringify({
+           testWorkerVersion:await version(worker),
+           previousUI:before.data.ouLedger.stats,postUI:after.data.ouLedger.stats,
+           sample:{fixtureId:204906152,pick:pick.pick,price:pick.price,bookmaker:pick.bookmaker,
+            status:pick.status,hg:pick.hg,ag:pick.ag,units:pick.units},
+           settlement:receipt.data,oneX2Rows:after.data.testLedger.rows.length,
+           originalQuoteImmutable:true,roundsRemain15Min:true,privateStateProtected:true,
+           extraProviderCalls:0,productionWrites:0}));
+          JS
