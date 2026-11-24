@@ -79,8 +79,10 @@ const publicAnchor="if(req.method==='GET'&&p==='/preview')";
 const page="if(req.method==='GET'&&p==='/ou-streak-test')return new Response(streakReversalTestHtml,{headers:{'content-type':'text/html;charset=utf-8','cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});";
 const data="if(req.method==='GET'&&p==='/ou-streak-test-data')return env.STORE.get(env.STORE.idFromName('prematch-only-v1')).fetch('https://prematch.internal/ou-streak-reversal-state-test');";
 modules[main]=once(modules[main],publicAnchor,page+data+publicAnchor);
-const cron="const b=await stub.fetch('https://prematch.internal/btts-cycle-test',{method:'POST'});console.log('BTTS_TEST_ONLY_CYCLE '+b.status)";
-const addCron=";try{const streak=await stub.fetch('https://prematch.internal/ou-streak-reversal-tick-test',{method:'POST'});console.log('B46_OU_STREAK_TEST_CYCLE '+streak.status)}catch(error){console.log('B46_OU_STREAK_TEST_ERROR '+String(error.message).slice(0,100))}";
+// Schedule the new isolated rule without relying on the old BTTS cron string,
+// whose implementation may legitimately differ between TEST revisions.
+const cron="async scheduled(event,env){";
+const addCron="try{if(event.cron==='*/15 * * * *'){const stub=env.STORE.get(env.STORE.idFromName('prematch-only-v1'));const streak=await stub.fetch('https://prematch.internal/ou-streak-reversal-tick-test',{method:'POST'});console.log('B46_OU_STREAK_TEST_CYCLE '+streak.status)}}catch(error){console.log('B46_OU_STREAK_TEST_ERROR '+String(error.message).slice(0,100))};";
 modules[main]=once(modules[main],cron,cron+addCron);
 assert.equal(Object.keys(modules).length,Object.keys(previous).length+2);
 for(const [name,body] of Object.entries(previous))
