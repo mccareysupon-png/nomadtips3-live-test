@@ -1,0 +1,22 @@
+name: BALL46 TEST live history audit two Over then Under 2.5
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-two-over-under25-live-audit-20261124.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-prematch-only-test-20261120
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node --experimental-sqlite --test qa/prematch-history-20261120/ou-two-over-then-under25.test.mjs
+      - run: node qa/prematch-history-20261120/deploy-ou-two-over-then-under25-audit-test.mjs
