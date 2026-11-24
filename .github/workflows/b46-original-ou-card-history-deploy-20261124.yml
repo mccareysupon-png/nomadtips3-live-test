@@ -1,0 +1,27 @@
+name: BALL46 TEST bind original O-U card history to existing research snapshots 20261124
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-original-ou-card-history-deploy-20261124.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-prematch-frontend-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Offline UI adapter and source guards
+        run: |
+          node --check qa/prematch-history-20261120/patch-ou-original-history-cards-linked-test-20261124.mjs
+          node --test qa/prematch-history-20261120/patch-ou-original-history-cards-linked-test-20261124.test.mjs
+      - name: Deploy only TEST frontend and verify production and backends untouched
+        run: node qa/prematch-history-20261120/deploy-ou-original-history-cards-linked-test-20261124.mjs
