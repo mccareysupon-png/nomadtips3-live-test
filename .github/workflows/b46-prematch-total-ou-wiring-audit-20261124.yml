@@ -42,7 +42,7 @@ jobs:
             'const registry=readPreMarketStatsRegistry','allRaw=combinedPrematchLedgers',
             'allLedger:allLedgerNow','marketDailyBooks:dailyMarkets',
             'bttsDailySeries:registry.dailySeries','const pricedV2Ui=',
-            'path===\\'/prematch-stats-registry-test\\'',
+            "prematch-stats-registry-test",
             'const dailyMarkets=','statsRegistry:{','statsRegistry='],4)
           }).slice(0,29000));
           let client=null;
