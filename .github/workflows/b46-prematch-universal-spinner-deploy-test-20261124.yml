@@ -1,0 +1,27 @@
+name: BALL46 TEST universal PreMatch first-paint spinner 20261124
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-prematch-universal-spinner-deploy-test-20261124.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-prematch-frontend-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Test first paint spinner, route coverage, failure retry and scroll regression
+        run: |
+          node --check qa/prematch-history-20261120/patch-prematch-universal-spinner-test-20261124.mjs
+          node --test qa/prematch-history-20261120/patch-prematch-universal-spinner.test.mjs
+      - name: Deploy only original BALL46 PreMatch TEST frontend and confirm all five routes
+        run: node qa/prematch-history-20261120/deploy-prematch-universal-spinner-test-20261124.mjs
