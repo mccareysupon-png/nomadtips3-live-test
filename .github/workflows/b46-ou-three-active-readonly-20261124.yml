@@ -1,0 +1,56 @@
+name: BALL46 O/U 3 FT read-only deployed version diagnostic 20261124
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-three-active-readonly-20261124.yml]
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Check source version vs actual DO O/U policy, HCR, closed truck and ledger without provider calls
+        run: |
+          node --input-type=module <<'JS'
+          import crypto from 'node:crypto';
+          const t=process.env.CLOUDFLARE_API_TOKEN,a=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const root='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers';
+          const cf=async p=>{const r=await fetch(root+p,{headers:{authorization:'Bearer '+t},signal:AbortSignal.timeout(23000)});
+           const j=await r.json();if(!r.ok||!j.success)throw Error('CF_'+p+'_'+r.status);return j.result};
+          const name='ball46-prematch-only-test-20261120';
+          const id=(await cf('/scripts/'+name+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+          const v=await cf('/workers/'+name+'/versions/'+id+'?include=modules');
+          const src=Object.fromEntries(v.modules.map(m=>[m.name,Buffer.from(m.content_base64,'base64').toString()]));
+          console.log('B46_OU_THREE_CF_SOURCE '+JSON.stringify({version:id,modules:v.modules.length,
+           ou3:src['ou-value-screener-v2-test.mjs']?.includes('minCombinedHistory:6,minHistoryPerTeam:3'),
+           hcr3:src['history-cargo-registry.mjs']?.includes('targetHistoryPerTeam:3'),
+           mainPolicyWiring:src['prematch-only-worker.mjs']?.includes('PREMATCH_OU_ENGINE_V1_POLICY')
+          }));
+          const headers={authorization:'Bearer '+crypto.createHmac('sha256',t).update('BALL46_PREMATCH_ONLY_V1').digest('hex')};
+          const host='https://'+name+'.mccarey-supon.workers.dev';
+          const paths=['/history-cargo-registry?detail=0','/prematch-ou-engine-state',
+           '/btts-bulk-v2-state','/preview-data'];
+          for(const p of paths){
+           const r=await fetch(host+p,{headers,cache:'no-store',signal:AbortSignal.timeout(45000)});
+           const x=await r.json().catch(()=>null);
+           console.log('B46_OU_THREE_ACTIVE '+JSON.stringify({path:p,http:r.status,
+            code:x?.code,error:x?.error,
+            target:x?.supplyPlanning?.targetHistoryPerTeam,
+            historySource:x?.supplyPlanning?.historySource,
+            upcoming:x?.supplyPlanning?.upcomingFixtures,
+            ready:x?.supplyPlanning?.readyFixtures,
+            missing:x?.supplyPlanning?.deduplicatedTeamMatchGaps,
+            enginePolicy:x?.policy&&{minCombinedHistory:x.policy.minCombinedHistory,minHistoryPerTeam:x.policy.minHistoryPerTeam},
+            transportMode:x?.config?.mode,ouRows:x?.ouLedger?.rows?.length,
+            ouStats:x?.ouLedger?.stats,
+            // main Worker policy is separate from O/U model policy in its imported module
+            keys:Object.keys(x??{})
+           }).slice(0,7000));
+          }
+          console.log('B46_OU_THREE_DIAG_READONLY_ZERO_PAID_CALLS');
+          JS
