@@ -159,7 +159,10 @@ try{
  // Cloudflare Durable Object may keep serving the previous deployed module briefly.
  // Do not mistake asynchronous propagation for failed aggregation and roll back too early.
  let direct=null,reg=null,propagationError=null;
- for(let i=0;i<60;i++){
+ // DO isolate can remain pinned to prior code while GETs keep it hot.
+ // Allow idle time between checks so the new revision can be activated.
+ for(let i=0;i<5;i++){
+  await new Promise(resolve=>setTimeout(resolve,i===0?65000:45000));
   try{
    reg=await get(backendHost+'/prematch-stats-registry-test?days=90',owner);
    if(reg?.markets?.['O/U']){
@@ -167,12 +170,17 @@ try{
     if(direct?.allLedger?.ouIncluded===true&&
       direct?.allLedger?.stats?.total===reg.markets.TOTAL.total&&
       direct?.allLedger?.rows?.some(r=>Number(r.fixture_id)===204906152&&r.market==='O/U')){
+      console.log('B46_PREMATCH_TOTAL_OU_PROPAGATED '+JSON.stringify({probe:i+1,
+       registryCode:reg.code,all:direct.allLedger.stats,ou:reg.markets['O/U']}));
       break;
     }
    }
   }catch(err){propagationError=String(err?.message??err).slice(0,180)}
+  console.log('B46_PREMATCH_TOTAL_OU_PROPAGATION_PROBE '+JSON.stringify({probe:i+1,
+   registryCode:reg?.code,marketKeys:Object.keys(reg?.markets??{}),
+   ouIncluded:direct?.allLedger?.ouIncluded??false,
+   total:direct?.allLedger?.stats?.total,err:propagationError}));
   direct=null;
-  await new Promise(resolve=>setTimeout(resolve,1700));
  }
  assert(direct&&reg?.markets?.['O/U'],
   'PREMATCH_TOTAL_OU_DURABLE_OBJECT_PROPAGATION_TIMEOUT_'+(propagationError??'NO_COMBINED_MARKET'));
