@@ -18,6 +18,7 @@ jobs:
         run: |
           node --input-type=module <<'JS'
           import crypto from 'node:crypto';
+          import assert from 'node:assert/strict';
           const t=process.env.CLOUDFLARE_API_TOKEN,a=process.env.CLOUDFLARE_ACCOUNT_ID;
           const root='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers';
           const cf=async p=>{const r=await fetch(root+p,{headers:{authorization:'Bearer '+t},signal:AbortSignal.timeout(23000)});
@@ -35,9 +36,16 @@ jobs:
           const host='https://'+name+'.mccarey-supon.workers.dev';
           const paths=['/history-cargo-registry?detail=0','/prematch-ou-engine-state',
            '/btts-bulk-v2-state','/preview-data'];
+          const acceptance={hcr:null,transport:null,ledger:null};
+          assert(src['ou-value-screener-v2-test.mjs']?.includes('minCombinedHistory:6,minHistoryPerTeam:3'));
+          assert(src['ou-value-screener-v2-test.mjs']?.includes('home.length<OU_VALUE_V2_POLICY.minHistoryPerTeam'));
+          assert(src['ou-value-screener-v2-test.mjs']?.includes('away.length<OU_VALUE_V2_POLICY.minHistoryPerTeam'));
           for(const p of paths){
            const r=await fetch(host+p,{headers,cache:'no-store',signal:AbortSignal.timeout(45000)});
            const x=await r.json().catch(()=>null);
+           if(p.startsWith('/history-cargo-registry'))acceptance.hcr={code:r.status,report:x};
+           if(p==='/btts-bulk-v2-state')acceptance.transport={code:r.status,report:x};
+           if(p==='/preview-data')acceptance.ledger={code:r.status,report:x};
            console.log('B46_OU_THREE_ACTIVE '+JSON.stringify({path:p,http:r.status,
             code:x?.code,error:x?.error,
             target:x?.supplyPlanning?.targetHistoryPerTeam,
@@ -52,5 +60,22 @@ jobs:
             keys:Object.keys(x??{})
            }).slice(0,7000));
           }
+          assert.equal(acceptance.hcr?.code,200);
+          assert.equal(acceptance.hcr.report.supplyPlanning.targetHistoryPerTeam,3);
+          assert.equal(acceptance.hcr.report.supplyPlanning.historySource,'DEDUPED_1X2_AND_BTTS_FINISHED_FT_ASOF');
+          assert.deepEqual(acceptance.hcr.report.supplyPlanning.fixtureTargetStatuses,['scheduled','upcoming','waiting']);
+          assert.equal(acceptance.transport?.report?.config?.mode,'CLOSED');
+          assert.equal(acceptance.transport?.report?.transport?.providerCalls,0);
+          assert.equal(acceptance.ledger?.code,200);
+          const pick=acceptance.ledger.report.ouLedger.rows.find(x=>Number(x.fixture_id)===204906152);
+          assert(pick&&pick.status==='LOSS'&&pick.units===-1&&Number(pick.price)===2.8);
+          console.log('B46_OU_HISTORY_THREE_TARGETED_TEST_ACCEPTANCE_PASS '+JSON.stringify({
+           version:id,minimumFtEachTeam:3,
+           upcomingWaitingFixtures:acceptance.hcr.report.supplyPlanning.upcomingFixtures,
+           completeForThree:acceptance.hcr.report.supplyPlanning.readyFixtures,
+           missingTeamHistoryMatches:acceptance.hcr.report.supplyPlanning.deduplicatedTeamMatchGaps,
+           crossArchiveDedup:true,ultraTruck:'CLOSED',
+           originalLockedPredictionPreserved:true,additionalPaidCalls:0,productionWrites:0
+          }));
           console.log('B46_OU_THREE_DIAG_READONLY_ZERO_PAID_CALLS');
           JS
