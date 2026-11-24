@@ -161,6 +161,12 @@ try{
  parse(source,{ecmaVersion:'latest',sourceType:'module'});
  const [d,c]=await Promise.all([publicAsset('/index.html',DIRECT),publicAsset('/index.html',ORIGIN)]);
  assert(d.status===200&&c.status===200,'PRODUCTION_INDEX_NOT_REACHABLE');
+ const ix=v.modules.find(x=>x.name==='assets/index.html');
+ const moduleHtml=ix?.content_base64?Buffer.from(ix.content_base64,'base64'):null;
+ const a=d.body.toString('utf8'),b=c.body.toString('utf8');
+ let diff=0;while(diff<Math.min(a.length,b.length)&&a[diff]===b[diff])diff++;
+ report.sourceComparison={direct:{status:d.status,size:a.length,sha:sha(d.body)},custom:{status:c.status,size:b.length,sha:sha(c.body)},module:moduleHtml?{size:moduleHtml.length,sha:sha(moduleHtml)}:null,firstMismatch:diff,aroundDirect:a.slice(Math.max(0,diff-170),diff+280),aroundCustom:b.slice(Math.max(0,diff-170),diff+280)};save();
+ console.log('B46_FOOTER_SOURCE_COMPARISON '+JSON.stringify(report.sourceComparison));
  assert.equal(sha(d.body),sha(c.body),'CUSTOM_DIRECT_INDEX_DIFFER');
  const currentHtml=d.body.toString('utf8');
  const nextHtml=patch(currentHtml);
