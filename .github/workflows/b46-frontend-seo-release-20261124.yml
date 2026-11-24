@@ -1,0 +1,34 @@
+name: BALL46 Frontend SEO Production 20261124
+on:
+  push:
+    branches: [release/ball46-frontend-seo-20261124]
+    paths:
+      - '.github/workflows/b46-frontend-seo-release-20261124.yml'
+      - 'qa/ball46-seo-20261124/**'
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      B46_SEO_MODE: inspect
+      B46_SEO_BASE_VERSION: a75a2a3e-bc0c-49c7-b707-9e25efcbac56
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Lock and record active Worker, source and rollback
+        run: node qa/ball46-seo-20261124/release/inspect.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: b46-frontend-seo-proof-${{ github.run_id }}
+          path: ${{ runner.temp }}/ball46-seo-*.json
+          if-no-files-found: warn
