@@ -1,0 +1,22 @@
+name: BALL46 V3 today's O/U Stage2 price EV single TEST tick 20261124
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-v3-stage2-tick-oneoff-20261124.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-prematch-only-test-20261120
+  cancel-in-progress: false
+jobs:
+  stage2:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify only one guarded TEST price tick and report 3FT-to-odds-to-EV path
+        run: node qa/prematch-history-20261120/b46-ou-v3-stage2-tick-oneoff-20261124.mjs
