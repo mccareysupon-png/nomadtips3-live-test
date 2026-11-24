@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { setTimeout as pause } from 'node:timers/promises';
 import { FLOW_ASSET, prepareMobileFlowAsset } from './mobile-flow-copy.mjs';
 import { mobileMatchDrawerScript } from './mobile-match-drawer.mjs';
+import { checkDesktopFeatured, desktopStyleId } from './desktop-featured-qa.mjs';
 
 const { chromium, devices } = await import(process.env.B46_PLAYWRIGHT_MODULE ?? 'playwright');
 const host = process.env.B46_PREVIEW ?? 'https://ball46-mobile-expanded-theme-test-20261124.mccarey-supon.workers.dev';
@@ -19,24 +21,34 @@ const colors = {
 if (artifacts) await mkdir(artifacts, { recursive: true });
 
 async function proofOfScope() {
-  const [health, page, production, rejected] = await Promise.all([
+  const [health, production, rejected, expectedStyle, expectedDesktop] = await Promise.all([
     fetch(host + '/__mobile_expanded_theme_health'),
-    fetch(host + '/?view=live'),
     fetch('https://ball46.com/?view=live', { headers: { 'accept-language': 'th-TH,th;q=0.9,en;q=0.5' } }),
     fetch(host + '/__mobile_expanded_theme_health', { method: 'POST' }),
+    readFile(new URL('./mobile-details.css', import.meta.url), 'utf8'),
+    readFile(new URL('./desktop-featured-details.css', import.meta.url), 'utf8'),
   ]);
   assert.equal(rejected.status, 405);
   assert.equal((await health.json()).scope, 'ISOLATED_TEST_ONLY');
+  const styleTag = (id, css) => '<style id="' + id + '">' + css + '</style>';
+  let page, testHtml;
+  for (let attempt = 0; attempt < 15; attempt++) {
+    page = await fetch(host + '/?view=live', { cache: 'no-store' });
+    testHtml = await page.text();
+    if (testHtml.includes(styleTag(styleId, expectedStyle)) && testHtml.includes(styleTag(desktopStyleId, expectedDesktop))) break;
+    await pause(2_000);
+  }
   assert.equal(page.headers.get('x-b46-preview'), styleId);
   assert.match(page.headers.get('x-robots-tag'), /noindex/);
   assert.equal(production.headers.get('x-b46-preview'), null);
-  const [testHtml, liveHtml, expectedStyle] = await Promise.all([page.text(), production.text(),
-    readFile(new URL('./mobile-details.css', import.meta.url), 'utf8')]);
+  const liveHtml = await production.text();
   assert.match(liveHtml, /<html[^>]*\blang="en"/);
   assert(liveHtml.includes('hreflang="x-default" href="https://www.ball46.com/"'));
   assert.equal(testHtml.split('id="' + styleId + '"').length, 2);
+  assert.equal(testHtml.split('id="' + desktopStyleId + '"').length, 2);
   assert.equal(testHtml.split('id="b46-mobile-match-drawer"').length, 2);
-  assert(testHtml.includes('<style id="' + styleId + '">' + expectedStyle + '</style>'));
+  assert(testHtml.includes(styleTag(styleId, expectedStyle)));
+  assert(testHtml.includes(styleTag(desktopStyleId, expectedDesktop)));
   assert(testHtml.includes('<script id="b46-mobile-match-drawer">' + mobileMatchDrawerScript + '</script>'));
   const liveFlowScript = [...liveHtml.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)]
     .map(([, src]) => new URL(src, 'https://ball46.com/'))
@@ -397,14 +409,26 @@ async function testMobile(browser, theme, device) {
   }
 }
 
-async function testDesktop(browser) {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+async function testDesktop(browser, theme, width) {
+  const page = await browser.newPage({ viewport: { width, height: 900 } });
+  await page.addInitScript(value => localStorage.setItem('nomad343_dashboard_theme_v1', value), theme);
+  await page.route('**/*', route => ['GET', 'HEAD'].includes(route.request().method()) ? route.continue() : route.abort());
+  for (const [name, payload] of replay) {
+    await page.route(url => url.pathname === '/api/engine/' + name, route => route.fulfill({ json: payload }));
+  }
   try {
     await page.goto(host + '/?view=live', { waitUntil: 'domcontentloaded', timeout: 45_000 });
     await page.waitForFunction(() => window.__b46OddsCrossDeviceStats?.ready);
     assert.equal(await page.evaluate(() =>
       getComputedStyle(document.documentElement).getPropertyValue('--b46-detail-sheet').trim()), '');
-    return { viewport: 1440, mobileStylesInactive: true, oddsRuntimeReady: true };
+    const featured = await checkDesktopFeatured(page, theme);
+    if (artifacts) {
+      const rail = page.locator('.live-stage-grid > .right-rail > .featured-card[data-featured]');
+      for (const [selector, name] of [['.feature-stats', 'match-comparison'], ['.feature-events', 'recent-events']]) {
+        await rail.locator(selector).screenshot({ path: join(artifacts, 'pc-' + theme + '-' + name + '.png'), animations: 'disabled' });
+      }
+    }
+    return { viewport: width, mobileStylesInactive: true, oddsRuntimeReady: true, featured };
   } finally {
     await page.close();
   }
@@ -479,7 +503,8 @@ const browser = await chromium.launch({
   args: ['--disable-features=OverlayScrollbar'],
 });
 try {
-  const report = { preview: host, pc: await testDesktop(browser), mobile: [], classicScrollbar: [] };
+  const report = { preview: host, pc: [], mobile: [], classicScrollbar: [] };
+  report.pc.push(await testDesktop(browser, 'dark', 1280), await testDesktop(browser, 'light', 1440));
   for (const theme of ['dark', 'light']) {
     report.classicScrollbar.push(await testLogoWithClassicScrollbar(browser, theme));
     report.mobile.push(await testMobile(browser, theme, devices['Pixel 7']));

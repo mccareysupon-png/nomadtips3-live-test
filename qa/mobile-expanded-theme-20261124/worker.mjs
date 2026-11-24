@@ -1,9 +1,11 @@
 import styles from './mobile-details.css';
+import desktopStyles from './desktop-featured-details.css';
 import { prepareMobileFlowAsset, FLOW_ASSET } from './mobile-flow-copy.mjs';
 import { mobileMatchDrawerScript } from './mobile-match-drawer.mjs';
 
 const SITE = 'https://ball46.com';
 const ID = 'b46-mobile-expanded-theme-20261124';
+const DESKTOP_ID = 'b46-desktop-featured-details-20261124';
 const pages = new Set(['/', '/index', '/index.html', '/signal.html', '/statistics.html']);
 const noIndex = 'noindex, nofollow';
 
@@ -54,11 +56,12 @@ export default {
       for (const name of ['content-encoding', 'content-length', 'etag', 'last-modified']) outgoing.delete(name);
       outgoing.set('cache-control', 'no-store');
       outgoing.set('x-b46-preview', ID);
-      return new HTMLRewriter().on('style#' + ID + ', script#b46-mobile-match-drawer', {
+      return new HTMLRewriter().on('style#' + ID + ', style#' + DESKTOP_ID + ', script#b46-mobile-match-drawer', {
         element(node) { node.remove(); },
       }).on('head', {
         element(head) {
           head.append('<style id="' + ID + '">' + styles + '</style>' +
+            '<style id="' + DESKTOP_ID + '">' + desktopStyles + '</style>' +
             '<script id="b46-mobile-match-drawer">' + mobileMatchDrawerScript + '</script>', { html: true });
         },
       }).transform(new Response(source.body, { status: source.status, headers: outgoing }));
