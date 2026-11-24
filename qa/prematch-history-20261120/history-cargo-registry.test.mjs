@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {init,totals} from './history.mjs';
+import {initBttsHistory} from './btts-history-private.mjs';
 import {initHistoryRounds,importHistoryRoundFromCache,historyRoundState} from './history-five-rounds.mjs';
 import {historyCargoReport,writeHistoryCargoManifest} from './history-cargo-registry.mjs';
 const sec=x=>Math.floor(Date.parse(x)/1000);
@@ -14,7 +15,7 @@ function database(){
   sqlite.exec('BEGIN');try{const out=fn();sqlite.exec('COMMIT');return out}
   catch(e){sqlite.exec('ROLLBACK');throw e}
  }};
- init(db);initHistoryRounds(db);
+ init(db);initBttsHistory(db);initHistoryRounds(db);
  return db;
 }
 const now=sec('2026-11-23T06:00:30Z');
@@ -60,20 +61,21 @@ test('reject invalid manifest and preserve original existing manifest',()=>{
  assert.throws(()=>writeHistoryCargoManifest(db,{businessDay:'2026-11-23',roundNo:1,now,selected:[{id:1}],imported:1}),/DUPLICATE_MANIFEST/);
  assert.equal(historyCargoReport(db,now,{day:'2026-11-23'}).rounds[0].imported,2);
 });
-test('ten-game supply planner uses existing rows only, no provider network and no publication',()=>{
+test('3-game supply planner uses Upcoming and Waiting teams and no provider calls',()=>{
  const db=database();importHistoryRoundFromCache(db,snapshot(5),now,{roundNo:1});
  const upcoming=[
   {id:'800011',status:'scheduled',kickoff_ts:now+3600,teams:{home:{id:1,name:'Alpha'},away:{id:2,name:'Beta'}}},
-  {id:'800022',status:'scheduled',kickoff_ts:now+7200,teams:{home:{id:999,name:'Missing history'},away:{id:1000,name:'No archive'}}},
+  {id:'800022',status:'waiting',kickoff_ts:now+7200,teams:{home:{id:999,name:'Missing history'},away:{id:1000,name:'No archive'}}},
   {id:'800033',status:'scheduled',kickoff_ts:now-7200,teams:{home:{id:1},away:{id:2}}}
  ];
  const doc=historyCargoReport(db,now,{day:'2026-11-23',includeItems:false,upcoming});
- assert.equal(doc.supplyPlanning.targetHistoryPerTeam,10);
+ assert.equal(doc.supplyPlanning.targetHistoryPerTeam,3);
+ assert.equal(doc.supplyPlanning.historySource,'DEDUPED_1X2_AND_BTTS_FINISHED_FT_ASOF');
  assert.equal(doc.supplyPlanning.upcomingFixtures,2);
  assert.equal(doc.supplyPlanning.readyFixtures,0);
  assert.equal(doc.supplyPlanning.incompleteFixtures,2);
  assert.equal(doc.supplyPlanning.highestPriority[0].fixtureId,800022);
- assert.equal(doc.supplyPlanning.highestPriority[0].totalTeamMatchGaps,20);
+ assert.equal(doc.supplyPlanning.highestPriority[0].totalTeamMatchGaps,6);
  assert.equal(doc.supplyPlanning.uniqueTeams,4);
  assert.equal(doc.supplyPlanning.uniqueTeamsNeedingHistory,4);
  assert(doc.supplyPlanning.deduplicatedTeamMatchGaps<doc.supplyPlanning.aggregateTeamMatchGaps+1);
@@ -88,4 +90,24 @@ test('fail-closed corrupted manifest state and reject malformed day filters',()=
  const d=historyCargoReport(db,now,{day:'2026-11-23'});
  assert.equal(d.rounds[0].manifestStatus,'REVIEW_REQUIRED');
  assert.throws(()=>historyCargoReport(db,now,{day:'2026-99-99'}),/HCR_INVALID_REPORT_QUERY/);
+});
+
+test('HCR counts existing private finished history from target teams and deduplicates',()=>{
+ const db=database();
+ const kickoff=now+3600;
+ for(let i=0;i<3;i++){
+  const fixtureId=920001+i,ts=now-100000+i*3600;
+  db.exec('INSERT INTO btts_history_private_test(fixture_id,league_id,kickoff,home_id,away_id,hg,ag,observed,season) VALUES(?,?,?,?,?,?,?,?,?)',
+   fixtureId,121,ts,555,1000+i,1+i%2,0,now-1000,'2026');
+ }
+ const upcoming=[{id:950001,status:'upcoming',kickoff_ts:kickoff,
+  teams:{home:{id:555,name:'Three FT'},away:{id:888,name:'No FT'}}}];
+ const report=historyCargoReport(db,now,{upcoming,includeItems:false});
+ assert.equal(report.supplyPlanning.upcomingFixtures,1);
+ assert.equal(report.supplyPlanning.readyFixtures,0);
+ assert.equal(report.supplyPlanning.highestPriority[0].home.historyMatches,3);
+ assert.equal(report.supplyPlanning.highestPriority[0].home.missingTo3,0);
+ assert.equal(report.supplyPlanning.highestPriority[0].away.missingTo3,3);
+ assert.equal(report.supplyPlanning.deduplicatedTeamMatchGaps,3);
+ assert.equal(report.registry.providerCalls,0);
 });
