@@ -1,0 +1,17 @@
+name = "ball46-performance-summary-test-20261124"
+main = "worker.mjs"
+compatibility_date = "2026-11-24"
+workers_dev = true
+preview_urls = false
+
+[[services]]
+binding = "B46_PRODUCTION_READ"
+service = "ball46-production"
+
+[[durable_objects.bindings]]
+name = "PERFORMANCE_SUMMARY"
+class_name = "PerformanceSummary"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["PerformanceSummary"]
