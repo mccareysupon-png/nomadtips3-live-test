@@ -1,0 +1,51 @@
+name: BALL46 read-only inspect live TEST private history importer response 20261124
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-history-import-contract-diagnostic-20261124.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Inspect exact deployed import route and zero-row validate with no provider call or FT mutation
+        run: |
+          node --input-type=module <<'JS'
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const cf=async p=>{const r=await fetch(root+p,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(20000)});
+           const j=await r.json();if(!r.ok||!j.success)throw Error('CF_FAILED_'+p);return j.result};
+          const name='ball46-prematch-only-test-20261120';
+          const id=(await cf('/scripts/'+name+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+          const v=await cf('/workers/'+name+'/versions/'+id+'?include=modules');
+          const main=Buffer.from(v.modules.find(m=>m.name===v.main_module).content_base64,'base64').toString();
+          const start=main.indexOf("if(path==='/btts-history-import-test'");
+          console.log('B46_CONTRACT_DEPLOYED '+JSON.stringify({id,main:v.main_module,find:start,
+           importer:start>=0?main.slice(start,start+1200):null}));
+          const auth='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const host='https://'+name+'.mccarey-supon.workers.dev';
+          async function req(path,data){
+           const r=await fetch(host+path,{method:data?'POST':'GET',
+            headers:{authorization:auth,...(data?{'content-type':'application/json'}:{})},
+            ...(data?{body:JSON.stringify(data)}:{}),signal:AbortSignal.timeout(22000)});
+           const txt=await r.text();return {code:r.status,data:JSON.parse(txt)}
+          }
+          const before=await req('/btts-history-private-test');
+          // An empty page is valid per private import contract and does not
+          // insert any finished match, edit any Ledger, or call 5USD.
+          const reply=await req('/btts-history-import-test',{source:'ULTRA_FINISHED_LEAGUE_SEASON',
+           leagueId:379,season:'2026',observed:Math.floor(Date.now()/1000),rows:[]});
+          const after=await req('/btts-history-private-test');
+          console.log('B46_CONTRACT_ZERO_IMPORT '+JSON.stringify({
+           before:before.data.archive,resp:reply,after:after.data.archive,
+           unchanged:JSON.stringify(before.data.archive)===JSON.stringify(after.data.archive),
+           noPaidRequests:true
+          }));
+          JS
