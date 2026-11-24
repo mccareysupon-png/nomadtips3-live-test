@@ -1,0 +1,27 @@
+name: BALL46 Adaptive 42 formula 30D90D native PreMatch TEST UI deploy
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-adaptive-30d90d-native-ui-deploy-v3-20261124.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-premium-match-colors-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 13
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Offline chart source and original isolated panel regression
+        run: |
+          node --check qa/prematch-history-20261120/b46-adaptive-native-chart-v3-test.mjs
+          node --check qa/prematch-history-20261120/b46-adaptive-30d90d-native-ui-deploy-v3-20261124.mjs
+          node --test qa/prematch-history-20261120/b46-adaptive-native-chart-v3.test.mjs
+      - name: Deploy only original PreMatch TEST frontend preserving other pages
+        run: node qa/prematch-history-20261120/b46-adaptive-30d90d-native-ui-deploy-v3-20261124.mjs
