@@ -2,7 +2,7 @@ name: BALL46 TEST bind original O-U card history to existing research snapshots 
 on:
   push:
     branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
-    paths: [.github/workflows/b46-original-ou-card-history-deploy-20261124.yml]
+    paths: [.github/workflows/b46-original-ou-card-history-deploy-20261124.yml, qa/prematch-history-20261120/patch-ou-original-history-cards-linked-test-20261124.test.mjs]
 permissions: {contents: read}
 concurrency:
   group: ball46-prematch-frontend-test-20261120
