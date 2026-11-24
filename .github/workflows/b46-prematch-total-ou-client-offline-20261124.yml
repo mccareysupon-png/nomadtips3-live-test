@@ -1,0 +1,21 @@
+name: BALL46 PREMATCH TOTAL OU frontend pure patch QA 20261124
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths:
+      - qa/prematch-history-20261120/patch-prematch-total-ou-client-test.mjs
+      - qa/prematch-history-20261120/patch-prematch-total-ou-client.test.mjs
+      - .github/workflows/b46-prematch-total-ou-client-offline-20261124.yml
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          node --check qa/prematch-history-20261120/patch-prematch-total-ou-client-test.mjs
+          node --test qa/prematch-history-20261120/patch-prematch-total-ou-client.test.mjs
+          echo B46_PREMATCH_TOTAL_OU_CLIENT_OFFLINE_PASS
