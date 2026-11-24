@@ -2,7 +2,7 @@ name: BALL46 TEST universal PreMatch first-paint spinner 20261124
 on:
   push:
     branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
-    paths: [.github/workflows/b46-prematch-universal-spinner-deploy-test-20261124.yml]
+    paths: [.github/workflows/b46-prematch-universal-spinner-deploy-test-20261124.yml, qa/prematch-history-20261120/patch-prematch-universal-spinner.test.mjs]
 permissions: {contents: read}
 concurrency:
   group: ball46-prematch-frontend-test-20261120
