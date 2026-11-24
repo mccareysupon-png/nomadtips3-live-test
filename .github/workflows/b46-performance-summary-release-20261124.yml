@@ -36,6 +36,13 @@ jobs:
         run: |
           npm install --no-save --no-audit --no-fund playwright@1.55.0
           npx playwright install chromium --only-shell
+          npx --yes wrangler@4.50.0 tail ball46-performance-summary --format json > "$RUNNER_TEMP/performance-tail.jsonl" 2>&1 &
+          tail_pid=$!
+          function tail_result() {
+            kill "$tail_pid" 2>/dev/null || true
+            rg -o 'Performance summary refresh skipped:[^"]*|Statistics HTTP [0-9]{3}|Statistics revision changed during pagination|exceededMemory|exceededCpu' "$RUNNER_TEMP/performance-tail.jsonl" | tail -16 || true
+          }
+          trap tail_result EXIT
           node qa/performance-summary-20261124/release/deploy.mjs
       - uses: actions/upload-artifact@v4
         if: always()
