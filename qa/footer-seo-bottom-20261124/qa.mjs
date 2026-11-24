@@ -12,7 +12,7 @@ try{
   assert(response?.ok(),'PAGE_HTTP');
   await p.waitForFunction(()=>window.__b46FooterSeoBottomStats?.moved===true,null,{timeout:40000});
   const result=await p.evaluate(()=>{
-    const f=document.getElementById('b46-site-footer-v1'),guide=document.querySelector('.b46-seo-guide[data-b46-seo-guide]'),inner=f?.querySelector('.b46f-inner');
+    const f=document.getElementById('b46-site-footer-v1'),guide=document.querySelector('.b46-seo-guide[data-b46-seo-guide="home"]'),inner=f?.querySelector('.b46f-inner');
     const links=[...guide.querySelectorAll('nav[aria-label="Languages"] a')];
     const resources=[...guide.querySelectorAll('nav[aria-label="Football resources"] a')];
     return {guideCount:document.querySelectorAll('.b46-seo-guide[data-b46-seo-guide]').length,
