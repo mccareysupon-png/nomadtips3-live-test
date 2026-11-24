@@ -1,0 +1,19 @@
+name: BALL46 isolated O-U both-way streak separate Ledger QA 20261124
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-streak-reversal-v1-offline-test-20261124.yml]
+permissions: {contents: read}
+jobs:
+  regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Independent two-way streak and snapshot regression
+        run: |
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-streak-reversal-v1.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-two-over-then-under25.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-value-screener-v2.test.mjs
