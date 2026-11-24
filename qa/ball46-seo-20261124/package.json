@@ -1,0 +1,16 @@
+{
+  "name": "ball46-frontend-seo-preview",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "fixtures": "node build-fixtures.mjs",
+    "preview": "node preview.mjs",
+    "test": "node --test seo.test.mjs",
+    "test:browser": "node browser-qa.mjs"
+  },
+  "devDependencies": {
+    "html-rewriter-wasm": "0.4.1",
+    "playwright": "1.55.0"
+  }
+}
