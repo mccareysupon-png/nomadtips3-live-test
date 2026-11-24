@@ -87,9 +87,9 @@ backendCode=replaceOnce(backendCode,
  "const registry=combinePrematchTotalSnapshots(readPreMarketStatsRegistry(this.db,now),readOuV2SettlementState(this.db,now));",
  'COMBINE_THREE_MARKETS');
 backendCode=replaceOnce(backendCode,
- "settlementState:readOuV2SettlementState(this.db,now)\n  });",
- "   settlementState:readOuV2SettlementState(this.db,now)\n  });\n"+
- "  const allCombinedWithOu=appendPricedOuToPrematchAll(allLedgerNow,pricedV2Ui.ouLedger.rows,registry.markets.TOTAL);",
+ "const displayMonitor=enrichLeagueNamesOnMonitor(",
+ "const allCombinedWithOu=appendPricedOuToPrematchAll(allLedgerNow,pricedV2Ui.ouLedger.rows,registry.markets.TOTAL);\n"+
+ " const displayMonitor=enrichLeagueNamesOnMonitor(",
  'APPEND_IMMUTABLE_PRICED_PICKS');
 backendCode=replaceOnce(backendCode,
  "allLedger:allLedgerNow,ouLedger:pricedV2Ui.ouLedger",
