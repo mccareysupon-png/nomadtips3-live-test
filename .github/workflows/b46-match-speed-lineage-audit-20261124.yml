@@ -1,0 +1,23 @@
+name: BALL46 Production Match Speed Lineage Read Only
+on:
+  push:
+    branches: [audit/b46-match-speed-release-lineage-20261124]
+    paths:
+      - '.github/workflows/b46-match-speed-lineage-audit-20261124.yml'
+      - 'qa/ball46-match-speed-lineage-20261124/**'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read Cloudflare deployment history and compare source hashes
+        run: node qa/ball46-match-speed-lineage-20261124/audit.mjs
