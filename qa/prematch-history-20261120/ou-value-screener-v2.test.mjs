@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {initBttsHistory} from './btts-history-private.mjs';
+import {initOuTargetHistoryFT} from './ou-target-history-ft-v1-test.mjs';
 import {goalDistribution,topExactScores,splitAsianLine,profitForOuResult,
  evaluateAsianOu,extractFullMarketOuOffers,chooseBestOuValue,
  buildOuValueModels,screenOuValueV2,recordOuValueShadow,readOuValueShadow,
@@ -20,7 +21,7 @@ function database(){
   try{const value=fn();raw.exec('COMMIT');return value}
   catch(err){raw.exec('ROLLBACK');throw err}
  },close(){raw.close()}};
- initBttsHistory(db);
+ initBttsHistory(db);initOuTargetHistoryFT(db);
  db.exec("CREATE TABLE result_version(fixture_id INTEGER NOT NULL,league_id INTEGER NOT NULL,kickoff INTEGER NOT NULL,home_id INTEGER NOT NULL,away_id INTEGER NOT NULL,hg INTEGER NOT NULL,ag INTEGER NOT NULL,observed INTEGER NOT NULL,status TEXT NOT NULL)");
  for(let i=0;i<8;i++){
   const fixtureId=9000+i,home=i%2?501:502,away=1000+i;

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {init,totals} from './history.mjs';
 import {initBttsHistory} from './btts-history-private.mjs';
+import {initOuTargetHistoryFT} from './ou-target-history-ft-v1-test.mjs';
 import {initHistoryRounds,importHistoryRoundFromCache,historyRoundState} from './history-five-rounds.mjs';
 import {historyCargoReport,writeHistoryCargoManifest} from './history-cargo-registry.mjs';
 const sec=x=>Math.floor(Date.parse(x)/1000);
@@ -15,7 +16,7 @@ function database(){
   sqlite.exec('BEGIN');try{const out=fn();sqlite.exec('COMMIT');return out}
   catch(e){sqlite.exec('ROLLBACK');throw e}
  }};
- init(db);initBttsHistory(db);initHistoryRounds(db);
+ init(db);initBttsHistory(db);initOuTargetHistoryFT(db);initHistoryRounds(db);
  return db;
 }
 const now=sec('2026-11-23T06:00:30Z');
@@ -70,7 +71,7 @@ test('3-game supply planner uses Upcoming and Waiting teams and no provider call
  ];
  const doc=historyCargoReport(db,now,{day:'2026-11-23',includeItems:false,upcoming});
  assert.equal(doc.supplyPlanning.targetHistoryPerTeam,3);
- assert.equal(doc.supplyPlanning.historySource,'DEDUPED_1X2_AND_BTTS_FINISHED_FT_ASOF');
+ assert.equal(doc.supplyPlanning.historySource,'DEDUPED_OU_ONLY_PLUS_1X2_BTTS_FINISHED_FT_ASOF');
  assert.equal(doc.supplyPlanning.upcomingFixtures,2);
  assert.equal(doc.supplyPlanning.readyFixtures,0);
  assert.equal(doc.supplyPlanning.incompleteFixtures,2);

@@ -4,7 +4,7 @@
 // AND 1-unit settlement EV >= +0.05 -> select one best priced side per fixture.
 // Shadow/TEST ledger only. No predictions in legacy/production; no 5USD calls.
 // Poisson shrinkage is a statistical model, NOT an AI-trained guarantee.
-import {bttsLastMatches} from './btts-history-private.mjs';
+import {ouTargetLastMatches,ouTargetLeagueAsOf} from './ou-target-history-ft-v1-test.mjs';
 import {estimateOu25,OU_POLICY} from './ou-math-v1-test.mjs';
 const get=(db,q,...args)=>Array.from(db.exec(q,...args));
 const validId=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
@@ -168,8 +168,7 @@ function leaguePriorAsOf(db,leagueId,kickoff,asOf,cache){
  if(cache.has(key))return cache.get(key);
  let history=[];
  if(validId(leagueId)){
-  history=get(db,"SELECT r.hg,r.ag FROM result_version r WHERE r.league_id=? AND r.status='finished' AND r.kickoff<? AND r.observed<=? AND r.observed=(SELECT MAX(v.observed) FROM result_version v WHERE v.fixture_id=r.fixture_id AND v.observed<=?) ORDER BY r.kickoff DESC LIMIT 120",
-   Number(leagueId),kickoff,asOf,asOf);
+  history=ouTargetLeagueAsOf(db,Number(leagueId),kickoff,asOf,120);
  }
  let home=1.38*20,away=1.15*20,total=20;
  for(const g of history)if(n(g.hg)&&n(g.ag)&&g.hg>=0&&g.ag>=0){
@@ -191,8 +190,8 @@ export function buildOuValueModels(db,fixtures,now,{maxFixtures=350}={}){
    kickoff<=now+OU_VALUE_V2_POLICY.minSecondsBeforeKickoff||
    kickoff>now+OU_VALUE_V2_POLICY.maxLookaheadSec){counts.invalid++;continue}
   seen.add(id);counts.checked++;
-  const home=bttsLastMatches(db,homeId,kickoff,now,OU_VALUE_V2_POLICY.maxHistoryPerTeam);
-  const away=bttsLastMatches(db,awayId,kickoff,now,OU_VALUE_V2_POLICY.maxHistoryPerTeam);
+  const home=ouTargetLastMatches(db,homeId,kickoff,now,OU_VALUE_V2_POLICY.maxHistoryPerTeam);
+  const away=ouTargetLastMatches(db,awayId,kickoff,now,OU_VALUE_V2_POLICY.maxHistoryPerTeam);
   if(home.length<OU_VALUE_V2_POLICY.minHistoryPerTeam||
      away.length<OU_VALUE_V2_POLICY.minHistoryPerTeam){
    counts.insufficientHistory++;continue;

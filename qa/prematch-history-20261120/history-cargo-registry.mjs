@@ -1,5 +1,5 @@
 // BALL46 History Cargo Registry (HCR V1) - TEST ONLY.
-import {bttsLastMatches} from './btts-history-private.mjs';
+import {ouTargetLastMatches,ouTargetHistoryCoverage} from './ou-target-history-ft-v1-test.mjs';
 // Exactly one lightweight JSON array of newly imported fixture IDs per history
 // round. Every detail is resolved from the canonical SQLite result_version on
 // an authenticated administrative GET, never copied during data intake.
@@ -66,7 +66,7 @@ export function historyCargoReport(db,now,{day=null,includeItems=true,upcoming=[
    const kickoff=f.kickoff_ts;
    const sides=['home','away'].map(side=>{
      const team=f.teams?.[side]||{},teamId=Number(team.id);
-     const available=positive(teamId)?bttsLastMatches(db,teamId,kickoff,now,10).length:0;
+     const available=positive(teamId)?ouTargetLastMatches(db,teamId,kickoff,now,10).length:0;
      return {side,teamId,teamName:String(team.name||teamId),historyMatches:available,
       missingTo3:Math.max(0,3-available),missingTo10:Math.max(0,10-available)};
    });
@@ -115,8 +115,8 @@ export function historyCargoReport(db,now,{day=null,includeItems=true,upcoming=[
  const report={registry:{name:HCR_NAME,code:HCR_CODE,mode:'TEST_ONLY',source:'NORMAL_HUB_CACHED_FINISHED',providerCalls:0,viewerImpact:'NONE'},checkedAtUTC:new Date(now*1000).toISOString(),
   scope:{businessDay:day,rounds:records.length,trackedRounds:verified,legacyUntrackedRounds:legacy,reviewRounds:review,missingArchiveEntries:missingArchive},
   rounds:records,
-  inventory:{finishedFixtures:archived.length,leagues:leagueCount.size,topLeagues:[...leagueCount].sort((a,b)=>b[1]-a[1]).slice(0,15).map(([leagueId,finishedFixtures])=>({leagueId,finishedFixtures}))},
-  supplyPlanning:{targetHistoryPerTeam:3,historySource:'DEDUPED_1X2_AND_BTTS_FINISHED_FT_ASOF',
+  inventory:{finishedFixtures:archived.length,ouDedicatedFT:ouTargetHistoryCoverage(db).ft,leagues:leagueCount.size,topLeagues:[...leagueCount].sort((a,b)=>b[1]-a[1]).slice(0,15).map(([leagueId,finishedFixtures])=>({leagueId,finishedFixtures}))},
+  supplyPlanning:{targetHistoryPerTeam:3,historySource:'DEDUPED_OU_ONLY_PLUS_1X2_BTTS_FINISHED_FT_ASOF',
     fixtureTargetStatuses:['scheduled','upcoming','waiting'],
     upcomingFixtures:coverage.length,readyFixtures:coverage.filter(f=>f.completeFor3).length,
     incompleteFixtures:coverage.filter(f=>!f.completeFor3).length,
