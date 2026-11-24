@@ -11,7 +11,7 @@ let ledger=null,mode='';
     if(mode==='predictions'||mode==='ou-predictions'||mode==='ou'||ledger)draw();
   }
   async function load(){
-    try{}catch(e){if(!ledger)console.warn('Pre-Match test data:',String(e))}
+    try{\n    }catch(e){if(!ledger)console.warn('Pre-Match test data:',String(e))}
     finally{
         draw();
         if(mode==='predictions')loadPerformanceGraph(false);
