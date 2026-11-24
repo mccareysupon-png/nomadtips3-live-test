@@ -55,7 +55,9 @@ test('H2H combines reverse orientations across source tables, deduplicates, reje
  assert.deepEqual(ouTargetH2HMatches(d,111,222,NOW+3600,NOW).map(x=>[x.fixtureId,x.homeGoals,x.awayGoals]),
   [[9102,1,3],[9101,2,0]]);
  assert.equal(ouTargetH2HMatches(d,111,333,NOW+3600,NOW).length,0);
- assert.equal(ouTargetH2HMatches(d,111,222,NOW-25000,NOW-26000).length,1);
+ // Although the FT predates the hypothetical cutoff, it was only observed
+ // during today's import; never leak late-arriving history into a past model.
+ assert.equal(ouTargetH2HMatches(d,111,222,NOW-25000,NOW-26000).length,0);
  assert.throws(()=>importOuTargetHistoryFT(d,[future],NOW,{leagueId:12}),/INVALID_FT_OR_TARGET/);
  d.close();
 });
