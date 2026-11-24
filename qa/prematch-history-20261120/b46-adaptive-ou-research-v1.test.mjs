@@ -166,3 +166,44 @@ test('no quote, expired odds, incorrect line or outside 1.40-10 => no price and 
   assert.equal(readAdaptiveStats(db,NOW).records.length,0);
  }finally{raw.close()}
 });
+
+test('FT via already cached HUB settles the independent research ledger without waiting for HCR cargo',()=>{
+ const {db,raw,add,fixture}=mk();
+ try{
+  add(101,501,2,2);add(102,501,3,1);
+  add(103,502,1,0);add(104,502,0,2);
+  const cand=screenAdaptiveResearch(db,[fixture()],NOW).candidates;
+  assert.equal(cand.length,4);
+  const issued=recordAdaptiveOu(db,cand.map(x=>({...x,
+   odds:x.selection==='OVER'?1.8:1.7,bookmaker:'bet365',
+   oddsSource:'FULL_MARKET_CACHE_GOAL_LINE_FIXED_CLOSING',
+   quoteObservedAt:NOW-10})),NOW);
+  assert.equal(issued.added,4);
+  const ft={fixtureId:7001,home:{id:501},away:{id:502},
+   status:'finished',boardState:'finished',statusCode:'full',
+   kickoffUtc:new Date(KO*1000).toISOString(),
+   goals:{home:2,away:1}};
+  const fresh={ok:true,cacheOnly:true,stale:false,
+   fetchedAt:(KO+200)*1000,fixtures:[ft]};
+  assert.equal(settleAdaptiveOu(db,KO+400,{snapshot:{...fresh,stale:true}}).settled,0);
+  assert.equal(settleAdaptiveOu(db,KO+400,{snapshot:{
+   ...fresh,fixtures:[{...ft,status:'live'}]}}).settled,0);
+  assert.equal(settleAdaptiveOu(db,KO+400,{snapshot:{
+   ...fresh,fixtures:[{...ft,away:{id:503}}]}}).settled,0);
+  assert.equal(settleAdaptiveOu(db,KO+400,{snapshot:{
+   ...fresh,fixtures:[{...ft,kickoffUtc:new Date((KO+60)*1000).toISOString()}]}}).settled,0);
+  const settled=settleAdaptiveOu(db,KO+400,{snapshot:fresh});
+  assert.equal(settled.settled,4);
+  assert.equal(settled.win,2);
+  assert.equal(settled.loss,2);
+  assert.equal(settled.providerCalls,0);
+  const stats=readAdaptiveStats(db,KO+400);
+  assert.equal(stats.records.length,4);
+  assert(stats.records.every(x=>x.result_source==='HUB_FINISHED_CACHED_VERIFIED'));
+  assert.equal(stats.formulas.find(x=>x.formula==='A02').winRate,50);
+  assert.equal(stats.formulas.find(x=>x.formula==='A02').profitLoss,-.3);
+  assert.equal(stats.formulas.find(x=>x.formula==='A02').roi,-15);
+  assert.equal(settleAdaptiveOu(db,KO+500,{snapshot:fresh}).settled,0);
+  assert.equal(raw.prepare("SELECT COUNT(*) n FROM sqlite_master WHERE type='table' AND name='b46_ou_v2_snapshot_test'").get().n,0);
+ }finally{raw.close()}
+});
