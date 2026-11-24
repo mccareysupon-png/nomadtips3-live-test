@@ -273,6 +273,16 @@
     font-variant-numeric: tabular-nums;
   }
 
+  html:root[data-theme][data-b46gn="1"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]
+  .feature-stats > .stat-row > b:first-child {
+    color: var(--b46-detail-ink-accent) !important;
+  }
+
+  html:root[data-theme][data-b46gn="1"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]
+  .feature-stats > .stat-row > b:last-child {
+    color: var(--b46-detail-away) !important;
+  }
+
   html[data-theme][data-b46gn="1"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]
   .feature-stats > .stat-row > .stat-track {
     background: var(--b46-detail-active) !important;

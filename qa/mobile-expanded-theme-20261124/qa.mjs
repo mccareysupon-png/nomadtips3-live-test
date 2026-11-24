@@ -136,7 +136,7 @@ async function checkFeaturedDetails(dialog, theme) {
       return { background: row.backgroundColor, text, fits: node.scrollWidth <= node.clientWidth + 1 };
     }));
     assert(rows.every(row => row.fits && row.background.startsWith('rgb(') &&
-      row.text.every(color => contrast(color, row.background) >= 4.5)));
+      row.text.every(color => contrast(color, row.background) >= 4.5)), theme + ' ' + file + ' text or spacing regressed');
     result[output] = rows.length;
     if (artifacts) await panel.screenshot({ path: join(artifacts, theme + '-' + file + '.png'), animations: 'disabled' });
   }
@@ -299,9 +299,12 @@ async function testMobile(browser, theme, device) {
     await page.goto(host + '/?view=statistics', { waitUntil: 'domcontentloaded', timeout: 45_000 });
     const detailsButton = page.locator('.b46m-detail-toggle:visible').first();
     await detailsButton.waitFor({ state: 'visible', timeout: 35_000 });
-    const history = detailsButton.locator('xpath=ancestor::article');
+    const extra = page.locator('.b46m-hcard[data-expanded="true"] .b46m-extra:visible').first();
     await detailsButton.click();
-    const extra = history.locator('.b46m-extra');
+    // Hydration can replace the first row while Playwright is clicking it.
+    if (!await extra.waitFor({ state: 'visible', timeout: 3_000 }).then(() => true, () => false)) {
+      await detailsButton.click();
+    }
     await extra.waitFor({ state: 'visible' });
     // Real-time history can repaint the card. Sample its styles in one render.
     const historyPaint = await page.waitForFunction(() => {
@@ -323,7 +326,7 @@ async function testMobile(browser, theme, device) {
     assert.equal(border, '0px');
     await assertFits(extra);
     await screenshot(page, theme + '-statistics-details');
-    await detailsButton.click();
+    await extra.locator('xpath=ancestor::article').locator('.b46m-detail-toggle').click();
     await extra.waitFor({ state: 'hidden' });
 
     // Optional read-only replay of the captured public Signal and board responses.
