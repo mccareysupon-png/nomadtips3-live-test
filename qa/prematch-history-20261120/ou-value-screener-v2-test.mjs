@@ -4,8 +4,9 @@
 // AND 1-unit settlement EV >= +0.05 -> select one best priced side per fixture.
 // Shadow/TEST ledger only. No predictions in legacy/production; no 5USD calls.
 // Poisson shrinkage is a statistical model, NOT an AI-trained guarantee.
-import {ouTargetLastMatches,ouTargetLeagueAsOf} from './ou-target-history-ft-v1-test.mjs';
-import {estimateOu25,OU_POLICY} from './ou-math-v1-test.mjs';
+import {ouTargetLastMatches,ouTargetLeagueAsOf,ouTargetH2HMatches} from './ou-target-history-ft-v1-test.mjs';
+import {estimateOuHistoryV3,OU_HISTORY_V3_ID,OU_HISTORY_V3_POLICY} from './ou-v3-history-math-test.mjs';
+import {OU_POLICY} from './ou-math-v1-test.mjs';
 const get=(db,q,...args)=>Array.from(db.exec(q,...args));
 const validId=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
 const n=x=>typeof x==='number'&&Number.isFinite(x);
@@ -14,7 +15,7 @@ const norm=x=>String(x??'').replace(/[\s_-]/g,'').toLowerCase();
 const BOOKMAKERS=Object.freeze(['bet365','pinnacle','williamhill','ladbrokes','vcbet',
  '1xbet','bwin','easybets','interwetten','betfair','snai','macauslot','betsson',
  'betathome','18bet','10bet','12bet','coral','crown']);
-export const OU_VALUE_V2_MODEL='ou-poisson-shrinkage-value-all-markets-v2-test';
+export const OU_VALUE_V2_MODEL=OU_HISTORY_V3_ID;
 export const OU_VALUE_V2_POLICY=Object.freeze({
  minimumPriceExclusive:1.50,minimumEV:0.05,
  allowMarkets:['goal_line_fixed','goal_line'],allowStage:['closing','opening'],
@@ -26,7 +27,8 @@ export const OU_VALUE_V2_POLICY=Object.freeze({
  cacheMaxAgeMs:120000,maxCacheBatch:70,
  topSelectionsPerFixture:1,providerCalls:0,productionWrites:0,
  legacyOuV1Unchanged:true,legacy1x2Unchanged:true,
- shadowOnly:true,revision:'V2_VALUE_20261123'
+ shadowOnly:true,revision:'V3_HISTORY_20261124',
+ historyModel:OU_HISTORY_V3_ID,historyPolicy:OU_HISTORY_V3_POLICY
 });
 export const validateLine=line=>n(line)&&line>=0&&line<=20&&
  Math.abs(line*4-Math.round(line*4))<1e-9;
@@ -199,7 +201,8 @@ export function buildOuValueModels(db,fixtures,now,{maxFixtures=350}={}){
   const prior=leaguePriorAsOf(db,f?.league?.id,kickoff,now,leagueCache);
   // Reuse tested team/venue/shrinkage lambdas but DO NOT filter by O/U 2.5
   // probability. Market line is supplied by bookmaker and can be ANY 0.25 step.
-  const estimate=estimateOu25(home,away,prior);
+  const h2h=ouTargetH2HMatches(db,homeId,awayId,kickoff,now);
+  const estimate=estimateOuHistoryV3(home,away,h2h,prior,now);
   if(!n(estimate.lambdaHome)||!n(estimate.lambdaAway))continue;
   counts.modeled++;
   models.push({fixtureId:id,homeId,awayId,
@@ -211,7 +214,10 @@ export function buildOuValueModels(db,fixtures,now,{maxFixtures=350}={}){
    expectedTotalGoals:estimate.expectedTotalGoals,model:OU_VALUE_V2_MODEL,
    homeHistory:home.length,awayHistory:away.length,
    leagueHistory:prior.leagueHistory,
-   historyConfidence:home.length>=5&&away.length>=5?'NORMAL':'LOW_SAMPLE'});
+   historyConfidence:home.length>=5&&away.length>=5?'NORMAL':'LOW_SAMPLE',
+   homeVenueMatches:estimate.homeVenueMatches,awayVenueMatches:estimate.awayVenueMatches,
+   h2hCount:estimate.h2hCount,h2hIndependentCount:estimate.h2hIndependentCount,
+   h2hWeight:estimate.h2hWeight,baseExpectedTotalGoals:estimate.baseExpectedTotalGoals});
  }
  return {models,counts};
 }
@@ -240,6 +246,9 @@ export function chooseBestOuValue(model,offers,now){
     lambdaHome:model.lambdaHome,lambdaAway:model.lambdaAway,
     homeHistory:model.homeHistory,awayHistory:model.awayHistory,
     leagueHistory:model.leagueHistory,historyConfidence:model.historyConfidence,
+    homeVenueMatches:model.homeVenueMatches,awayVenueMatches:model.awayVenueMatches,
+    h2hCount:model.h2hCount,h2hIndependentCount:model.h2hIndependentCount,
+    h2hWeight:model.h2hWeight,
     ev:score.ev,probabilityFullWin:score.win,probabilityPush:score.push,
     probabilityFullLoss:score.lose,probabilityHalfWin:score.halfWin,
     probabilityHalfLoss:score.halfLoss,probability:score.win+score.halfWin,

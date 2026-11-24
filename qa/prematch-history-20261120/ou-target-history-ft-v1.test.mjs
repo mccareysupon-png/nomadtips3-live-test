@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {initBttsHistory} from './btts-history-private.mjs';
 import {initOuTargetHistoryFT,importOuTargetHistoryFT,ouTargetLastMatches,
- ouTargetLeagueAsOf,ouTargetHistoryCoverage} from './ou-target-history-ft-v1-test.mjs';
+ ouTargetLeagueAsOf,ouTargetHistoryCoverage,ouTargetH2HMatches} from './ou-target-history-ft-v1-test.mjs';
 function db(){
  const sql=new DatabaseSync(':memory:');
  const d={exec:(q,...x)=>{const s=sql.prepare(q);return s.columns().length?s.all(...x):(s.run(...x),[])},
@@ -42,5 +42,20 @@ test('enforce verified FT, correct target, as-of, and no cross-market double cou
  assert.equal(ouTargetLastMatches(d,1,NOW+500,NOW,10).length,1);
  assert.equal(ouTargetLeagueAsOf(d,12,NOW+500,NOW).length,1);
  assert.equal(ouTargetLastMatches(d,1,NOW+100,NOW-200000,10).length,0);
+ d.close();
+});
+
+test('H2H combines reverse orientations across source tables, deduplicates, rejects future FT',()=>{
+ const d=db();
+ const first={...finished(9101,111,222,NOW-30000),goals:{home:2,away:0}};
+ const reverse={...finished(9102,222,111,NOW-20000),goals:{home:3,away:1}};
+ const future=finished(9103,111,222,NOW+30000);
+ assert.equal(importOuTargetHistoryFT(d,[first,reverse],NOW,{leagueId:12}).added,2);
+ d.exec("INSERT INTO result_version VALUES(?,?,?,?,?,?,?,?,?)",9102,12,NOW-20000,222,111,3,1,NOW-1000,'finished');
+ assert.deepEqual(ouTargetH2HMatches(d,111,222,NOW+3600,NOW).map(x=>[x.fixtureId,x.homeGoals,x.awayGoals]),
+  [[9102,1,3],[9101,2,0]]);
+ assert.equal(ouTargetH2HMatches(d,111,333,NOW+3600,NOW).length,0);
+ assert.equal(ouTargetH2HMatches(d,111,222,NOW-25000,NOW-26000).length,1);
+ assert.throws(()=>importOuTargetHistoryFT(d,[future],NOW,{leagueId:12}),/INVALID_FT_OR_TARGET/);
  d.close();
 });

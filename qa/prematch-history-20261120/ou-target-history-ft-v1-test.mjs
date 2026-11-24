@@ -88,3 +88,28 @@ export function ouTargetLeagueAsOf(db,league,kickoff,asOf,limit=120){
  return [...all.values()].sort((a,b)=>b.kickoff-a.kickoff||Number(b.fixture_id)-Number(a.fixture_id))
   .slice(0,limit).map(x=>({hg:x.hg,ag:x.ag}));
 }
+
+// Exact FT H2H union of the 1X2, legacy private and independent O/U archives.
+// Includes reverse home/away and all historic available matches; 0 is valid.
+// Distinct fixture ID; per-pick kickoff / observed-at enforce no lookahead.
+export function ouTargetH2HMatches(db,homeId,awayId,kickoff,asOf){
+ if(!okId(homeId)||!okId(awayId)||Number(homeId)===Number(awayId)||
+  !Number.isSafeInteger(kickoff)||!Number.isSafeInteger(asOf)||asOf>=kickoff)
+  throw Error('OU_H2H_INVALID_QUERY');
+ initOuTargetHistoryFT(db);
+ const params=[Number(homeId),Number(awayId),Number(awayId),Number(homeId),kickoff,asOf];
+ const shared=sql(db,"SELECT r.fixture_id,r.kickoff,r.home_id,r.away_id,r.hg,r.ag FROM result_version r WHERE ((r.home_id=? AND r.away_id=?) OR (r.home_id=? AND r.away_id=?)) AND r.kickoff<? AND r.observed<=? AND r.status='finished' AND r.observed=(SELECT MAX(v.observed) FROM result_version v WHERE v.fixture_id=r.fixture_id AND v.observed<=?)",...params,asOf);
+ const privateFT=sql(db,"SELECT fixture_id,kickoff,home_id,away_id,hg,ag FROM btts_history_private_test WHERE ((home_id=? AND away_id=?) OR (home_id=? AND away_id=?)) AND kickoff<? AND observed<=?",...params);
+ const target=sql(db,"SELECT fixture_id,kickoff,home_id,away_id,hg,ag FROM b46_ou_target_history_ft_v1 WHERE ((home_id=? AND away_id=?) OR (home_id=? AND away_id=?)) AND kickoff<? AND observed<=?",...params);
+ const merged=new Map();
+ for(const x of [...shared,...privateFT,...target]){
+  if(!Number.isSafeInteger(x.fixture_id)||!Number.isSafeInteger(x.kickoff)||
+    !Number.isSafeInteger(x.hg)||!Number.isSafeInteger(x.ag)||x.hg<0||x.ag<0)continue;
+  merged.set(String(x.fixture_id),{
+   fixtureId:x.fixture_id,kickoff:x.kickoff,
+   homeGoals:Number(x.home_id)===Number(homeId)?x.hg:x.ag,
+   awayGoals:Number(x.home_id)===Number(homeId)?x.ag:x.hg
+  });
+ }
+ return [...merged.values()].sort((a,b)=>b.kickoff-a.kickoff||b.fixtureId-a.fixtureId);
+}

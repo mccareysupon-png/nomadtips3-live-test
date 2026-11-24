@@ -154,6 +154,10 @@ test('full integrated history screen does not silently force 2.5 or probability 
   assert.equal(OU_VALUE_V2_POLICY.minHistoryPerTeam,3);
   assert.equal(OU_VALUE_V2_POLICY.minCombinedHistory,6);
   const m=preview.models[0];
+  assert.equal(m.h2hCount,0);
+  assert.equal(m.h2hWeight,0);
+  assert.equal(m.homeHistory,4);
+  assert.equal(m.awayHistory,4);
   assert(m.expectedTotalGoals>0);
   let seenPath=null;
   const r=await screenOuValueV2(d,{fixtures:fs,now,market:async(path,opt)=>{
