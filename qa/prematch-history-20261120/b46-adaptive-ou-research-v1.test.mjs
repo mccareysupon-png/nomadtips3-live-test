@@ -139,7 +139,7 @@ test('live real-style 2.5 quote + separate immutable per-formula ledger, snapsho
   assert.equal(settleAdaptiveOu(db,KO+800).settled,0);
   assert.equal(readAdaptiveStats(db,KO+800).formulas.find(x=>x.formula==='A02').settled,2);
   const isolated=raw.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'b46_adaptive_ou_research_v1_%'").all();
-  assert.equal(isolated.length,3);
+  assert.equal(isolated.length,5);
   assert.equal(raw.prepare("SELECT COUNT(*) n FROM sqlite_master WHERE type='table' AND name='b46_ou_v2_snapshot_test'").get().n,0);
  }finally{raw.close()}
 });
@@ -235,5 +235,102 @@ test('raw O/U 2.5 provider cache from 39 min ago is genuine historical research 
     '7002':{...payload,ageMs:7*3600000,fetchedAt:(NOW-7*3600)*1000,
      fullOdds:{data:{...payload.fullOdds.data,fixture_id:7002}}}}})});
   assert.equal(oldPrice.record.added,0);
+ }finally{raw.close()}
+});
+
+test('verified FT correction is journaled and reverses per-formula daily/lifetime snapshots, never original bookmaker odds',()=>{
+ const {db,raw,add,fixture}=mk();
+ try{
+  add(101,501,2,2);add(102,501,3,1);
+  add(103,502,1,0);add(104,502,0,2);
+  const rows=screenAdaptiveResearch(db,[fixture()],NOW).candidates;
+  assert.equal(rows.length,4);
+  assert.equal(recordAdaptiveOu(db,rows.map(x=>({...x,
+   odds:x.selection==='OVER'?1.8:1.7,
+   bookmaker:'Bet365',oddsSource:'RECORDED_PROVIDER_ODDS',
+   quoteObservedAt:NOW-10})),NOW).added,4);
+  const originallyChosen=readAdaptiveStats(db,NOW).records.map(x=>({
+   fixture:x.fixture_id,formula:x.formula_id,side:x.selection,odds:x.odds,
+   book:x.bookmaker,pickedAt:x.picked_at}));
+  db.exec('INSERT INTO result_version VALUES(?,?,?,?,?,?,?,?,?)',
+   7001,8,KO,501,502,1,1,KO+100,'finished');
+  const initial=settleAdaptiveOu(db,KO+300);
+  assert.equal(initial.settled,4);
+  assert.equal(initial.revision.corrections,0);
+  const prior=readAdaptiveStats(db,KO+300);
+  assert.equal(prior.eventJournal.events,4);
+  assert.equal(prior.eventJournal.revisions,0);
+  assert.equal(prior.eventJournal.log.length,4);
+  const a0=prior.formulas.find(x=>x.formula==='A02');
+  assert.equal(a0.profitLoss,-.3);
+  const originalDay=prior.businessDay;
+  const originalDaily=prior.daily.find(x=>x.formula_id==='A02'&&x.business_day===originalDay);
+  assert.equal(originalDaily.net_units,-.3);
+  db.exec('INSERT INTO result_version VALUES(?,?,?,?,?,?,?,?,?)',
+   7001,8,KO,501,502,3,1,KO+500,'finished');
+  // Correct result two London business days later. The prediction stays
+  // immutable and the settlement is accounted for on ORIGINAL settlement day.
+  const future=KO+2*86400;
+  const change=settleAdaptiveOu(db,future);
+  assert.equal(change.settled,0);
+  assert.equal(change.revision.checked,4);
+  assert.equal(change.revision.corrections,4);
+  assert.equal(change.revision.changedOutcomes,4);
+  const after=readAdaptiveStats(db,future);
+  assert.equal(after.eventJournal.events,4);
+  assert.equal(after.eventJournal.revisions,4);
+  assert.equal(after.eventJournal.log.length,8);
+  assert.equal(after.formulas.find(x=>x.formula==='A02').profitLoss,-.2);
+  assert.equal(after.formulas.find(x=>x.formula==='A02').winRate,50);
+  assert.equal(after.formulas.find(x=>x.formula==='A02').totalPredictions,2);
+  assert.equal(after.formulas.find(x=>x.formula==='A02').settled,2);
+  assert.equal(after.formulas.find(x=>x.formula==='A02').maximumDrawdown,1);
+  const originalDayAfter=after.daily.find(x=>x.formula_id==='A02'&&x.business_day===originalDay);
+  assert.equal(originalDayAfter.net_units,-.2);
+  assert.equal(originalDayAfter.settled,2);
+  const correctionDay=after.businessDay;
+  assert.notEqual(correctionDay,originalDay);
+  assert(!after.daily.some(x=>x.formula_id==='A02'&&x.business_day===correctionDay&&x.settled>0));
+  assert.deepEqual(after.records.map(x=>({fixture:x.fixture_id,
+   formula:x.formula_id,side:x.selection,odds:x.odds,book:x.bookmaker,
+   pickedAt:x.picked_at})),originallyChosen);
+  assert(after.records.every(x=>x.hg===3&&x.ag===1&&x.result_observed_at===KO+500));
+  assert.equal(settleAdaptiveOu(db,future+15).revision.corrections,0);
+  assert.equal(readAdaptiveStats(db,future+15).eventJournal.revisions,4);
+  const a90=after.series90.byFormula.A02;
+  const a30=after.series30.byFormula.A02;
+  assert.equal(a90.length,90);
+  assert.equal(a30.length,30);
+  assert.equal(after.series90.source,'PERSISTED_ADAPTIVE_DAILY_SNAPSHOT');
+  assert.equal(a90.at(-1).cumulativeUnits,-.2);
+  assert.equal(a30.at(-1).cumulativeUnits,-.2);
+  assert.equal(a90.at(-1).date,correctionDay);
+  assert.equal(after.series30.providerCalls,0);
+  assert.equal(after.series90.portfolioCombined,false);
+  assert.equal(raw.prepare("SELECT COUNT(*) n FROM sqlite_master WHERE type='table' AND name='b46_pre_market_snapshot_test'").get().n,0);
+ }finally{raw.close()}
+});
+test('score corrections within same OVER classification still create auditable revision but no double settlement',()=>{
+ const {db,raw,add,fixture}=mk();
+ try{
+  add(101,501,3,0);add(102,501,2,1);
+  const picked=screenAdaptiveResearch(db,[fixture()],NOW).candidates.filter(x=>x.formula==='A02');
+  assert.equal(picked.length,1);
+  assert.equal(recordAdaptiveOu(db,picked.map(x=>({...x,
+   odds:2.0,bookmaker:'Bet365',oddsSource:'PROVIDER',quoteObservedAt:NOW-10})),NOW).added,1);
+  db.exec('INSERT INTO result_version VALUES(?,?,?,?,?,?,?,?,?)',7001,8,KO,501,502,2,2,KO+100,'finished');
+  assert.equal(settleAdaptiveOu(db,KO+200).settled,1);
+  const one=readAdaptiveStats(db,KO+200).records[0];
+  assert.equal(one.status,'LOSS');
+  db.exec('INSERT INTO result_version VALUES(?,?,?,?,?,?,?,?,?)',7001,8,KO,501,502,3,1,KO+400,'finished');
+  const corrected=settleAdaptiveOu(db,KO+500);
+  assert.equal(corrected.revision.corrections,1);
+  assert.equal(corrected.revision.changedOutcomes,0);
+  const after=readAdaptiveStats(db,KO+500);
+  assert.equal(after.records[0].status,'LOSS');
+  assert.equal(after.eventJournal.revisions,1);
+  assert.equal(after.eventJournal.log.length,2);
+  assert.equal(after.formulas.find(x=>x.formula==='A02').profitLoss,-1);
+  assert.equal(after.formulas.find(x=>x.formula==='A02').settled,1);
  }finally{raw.close()}
 });
