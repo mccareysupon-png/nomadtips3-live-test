@@ -1,0 +1,123 @@
+name: BALL46 O/U TEST circulation end-to-end real-time READONLY 20261124
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-circulation-live-readonly-20261124.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify current cache ingestion, scheduler, model decisions, pricing, FT settlement and visible dashboard (no provider requests)
+        run: |
+          node --input-type=module <<'JS'
+          import crypto from 'node:crypto';
+          const key=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          if(!key||!account)throw Error('CLOUDFLARE_AUDIT_MISSING_CREDS');
+          const src='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          async function cf(path){
+           const r=await fetch(src+path,{headers:{authorization:'Bearer '+key},
+            signal:AbortSignal.timeout(25000)});
+           const j=await r.json();
+           if(!r.ok||!j.success)throw Error('CF_GET_'+path+'_'+r.status);
+           return j.result;
+          }
+          const test='ball46-prematch-only-test-20261120',host='https://'+test+'.mccarey-supon.workers.dev';
+          const version=(await cf('/scripts/'+test+'/deployments?per_page=1')).deployments?.[0]?.versions?.[0]?.version_id;
+          const module=(await cf('/workers/'+test+'/versions/'+version+'?include=modules'));
+          const main=Buffer.from(module.modules.find(x=>x.name===module.main_module).content_base64,'base64').toString();
+          const schedule=await cf('/scripts/'+test+'/schedules');
+          const sched=main.slice(main.lastIndexOf('export default {async scheduled('));
+          console.log('B46_CIRC_CRON '+JSON.stringify({
+           at:new Date().toISOString(),testVersion:version,
+           cron: schedule?.schedules?.map(x=>x.cron)??schedule?.result??schedule,
+           cronSource:sched.slice(0,3000),
+           hasBulkFirst:sched.indexOf('/daily-mission')<sched.indexOf('/prematch-ou-engine-tick'),
+           v2CronPresent:sched.includes('/prematch-ou-engine-tick'),
+           oldOuCronIssuerStillPresent:sched.includes("stub.fetch('https://prematch.internal/ou-cycle-test'"),
+           hasDedup:main.includes('B46_HUB_BULK_REFRESH_GUARD_V1'),
+           hasV2Settlement:main.includes('settleOuV2FromExistingResults'),
+           hasV2UIResult:main.includes("status:validSettled?settled.status:'PENDING'"),
+           exactProviderSource:main.includes("enablePaidQuoteFallback:true")
+          }).slice(0,7000));
+          const owner={authorization:'Bearer '+crypto.createHmac('sha256',key).update('BALL46_PREMATCH_ONLY_V1').digest('hex')};
+          async function g(url,headers={}){
+           try{
+            const r=await fetch(url,{method:'GET',headers,cache:'no-store',signal:AbortSignal.timeout(22000)});
+            return {http:r.status,value:await r.json().catch(()=>null)};
+           }catch(e){return {http:null,error:String(e?.message??e).slice(0,130)}}
+          }
+          const hubbase='https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev';
+          const [hh,hs,eng,settle,ui,mission,bridge,old,front,full]=await Promise.all([
+           g(hubbase+'/health'),
+           g(hubbase+'/snapshot'),
+           g(host+'/prematch-ou-engine-state',owner),
+           g(host+'/ou-v2-settlement-state',owner),
+           g(host+'/preview-data',owner),
+           g(host+'/daily-mission-state',owner),
+           g(host+'/ou-value-v2-state',owner),
+           g(host+'/ou-price-pickup-state',owner),
+           g('https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/__b46_prematch_data'),
+           g('https://nomadtips3-full-market-343-ball46.mccarey-supon.workers.dev/health')
+          ]);
+          const H=hh.value??{},S=hs.value??{},E=eng.value??{},T=settle.value??{},U=ui.value??{},
+           M=mission.value??{},B=bridge.value??{},O=old.value??{},F=front.value??{},P=full.value??{};
+          console.log('B46_CIRC_HUB '+JSON.stringify({http:hh.http,snapshotHttp:hs.http,
+           ok:H.ok,stale:H.stale,ageMs:H.ageMs,lastError:H.lastError,refreshMs:H.refreshMs,
+           providerRequestCount:H.providerRequestCount,requestBudget:H.providerRequestBudget,
+           fetchedAt:S.fetchedAt,snapshotAgeMs:S.ageMs,cacheOnly:S.cacheOnly,fixtureCount:S.fixtureCount,
+           todayFetchedAt:S.todayFetchedAt,liveFetchedAt:S.liveFetchedAt,
+           todayWindow:S.todayWindow,countCategories:S.counts,
+           pendingFixtures:(S.fixtures??[]).filter(x=>['scheduled','upcoming','waiting'].includes(String(x.status))).length,
+           finishedFixtures:(S.fixtures??[]).filter(x=>x.status==='finished'&&x.statusCode==='full').length,
+           providerCallsByProbe:0
+          }).slice(0,10500));
+          console.log('B46_CIRC_ENGINE '+JSON.stringify({http:eng.http,
+           last:E.last,policy:E.policy,quota:E.quota,cursor:E.cursor,shadowCount:E.shadowCount
+          }).slice(0,13000));
+          console.log('B46_CIRC_MISSION '+JSON.stringify({http:mission.http,
+           mission:M.mission,history:M.history,feed:M.feed,bot:M.bot
+          }).slice(0,9000));
+          console.log('B46_CIRC_FM '+JSON.stringify({http:full.http,ok:P.ok,
+           mode:P.mode,remainingLocalBudget:P.remainingLocalBudget,blockedUntil:P.blockedUntil,
+           retryAfterSec:P.retryAfterSec,providerMeta:P.providerMeta,prewarmMeta:P.prewarmMeta
+          }).slice(0,6000));
+          console.log('B46_CIRC_QUOTA '+JSON.stringify({http:old.http,providerCallsToday:O.providerCallsToday,
+           remainingToday:O.remainingToday,policy:O.policy,providerAttempts:B.priceBridge?.recent,
+           lastValueV2:B.last,bridgeState:B.priceBridge?.sharedOuDailyBudget
+          }).slice(0,11500));
+          console.log('B46_CIRC_FT '+JSON.stringify({http:settle.http,stats:T.stats,
+           settlements:T.settlements,dailyBook:T.dailyBook,dailySeries:T.dailySeries
+          }).slice(0,11500));
+          console.log('B46_CIRC_UI '+JSON.stringify({http:ui.http,frontHttp:front.http,
+           realRows:U.ouLedger?.rows?.map(x=>({id:x.fixture_id,kickoff:x.kickoff,price:x.price,
+            pick:x.pick,status:x.status,hg:x.hg,ag:x.ag,units:x.units,source:x.price_source,book:x.bookmaker})).slice(0,12),
+           stats:U.ouLedger?.stats,frontStats:F.ouLedger?.stats,
+           dataEqual:JSON.stringify(U.ouLedger?.rows??[])===JSON.stringify(F.ouLedger?.rows??[]),
+           oneX2Rows:U.testLedger?.rows?.length,legacyOUState:B.selections?.length
+          }).slice(0,10000));
+          const assertions={
+           hubReadable:hh.http===200&&H.ok===true,
+           cacheOnly:hs.http===200&&S.cacheOnly===true,
+           active15MinuteCron:(schedule?.schedules??[]).some(s=>s.cron==='*/15 * * * *'),
+           bulkBeforeOU:sched.indexOf('/daily-mission')>=0&&sched.indexOf('/daily-mission')<sched.indexOf('/prematch-ou-engine-tick'),
+           noOldCronIssuer:!sched.includes("stub.fetch('https://prematch.internal/ou-cycle-test'"),
+           latestV2Run:eng.http===200&&E.last?.engine==='B46_PREMATCH_OU_ENGINE_V1_TEST',
+           noV2Duplicate:U.ouLedger?.rows?.length===new Set((U.ouLedger?.rows??[]).map(x=>x.fixture_id)).size,
+           settledSnapshotConsistent:T.stats?.total===T.stats?.pending+T.stats?.win+T.stats?.loss+T.stats?.push,
+           UIStatsEqual:JSON.stringify(U.ouLedger?.stats??null)===JSON.stringify(F.ouLedger?.stats??null),
+           resultVisible:U.ouLedger?.rows?.some(x=>x.fixture_id===204906152&&x.status==='LOSS'&&x.units===-1)&&
+            F.ouLedger?.rows?.some(x=>x.fixture_id===204906152&&x.status==='LOSS'&&x.units===-1)
+          };
+          console.log('B46_CIRC_CHECKS '+JSON.stringify({assertions,
+           passes:Object.values(assertions).filter(Boolean).length,
+           failures:Object.entries(assertions).filter(([k,v])=>!v).map(([k])=>k),
+           extra5UsdCallsByAudit:0,changedCloudflareWorkers:0}));
+          if(Object.values(assertions).some(x=>!x))process.exitCode=1;
+          JS
