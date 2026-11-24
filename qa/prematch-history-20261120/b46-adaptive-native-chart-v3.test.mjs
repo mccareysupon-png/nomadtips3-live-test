@@ -5,7 +5,7 @@ const source=[
 "const PREMATCH_TEST_SHELL_VERSION='test';",
 "// B46_ADAPTIVE_RESEARCH_NATIVE_OU_TEST_V1",
 "// B46_ADAPTIVE_NATIVE_RESEARCH_LAYOUT_FIX_V2",
-"let b46AdaptiveData=null,b46AdaptiveAt=0,b46AdaptiveLoading=null;",
+"  let b46AdaptiveData=null,b46AdaptiveAt=0,b46AdaptiveLoading=null;",
 "function b46AdaptivePanel(content){",
 "panel.className='b46pm-adaptive-research-isolated';",
 "      panel.append(mk('p',",
