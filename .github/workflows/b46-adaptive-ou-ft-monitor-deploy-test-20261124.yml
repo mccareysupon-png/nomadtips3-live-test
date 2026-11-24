@@ -1,0 +1,28 @@
+name: BALL46 Adaptive 42 Formula FT auto settlement isolated TEST 20261124
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-adaptive-ou-ft-monitor-deploy-test-20261124.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-prematch-only-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Test verified HUB FT and archived FT settlements, snapshot separation and other market regressions
+        run: |
+          node --experimental-sqlite --test qa/prematch-history-20261120/b46-adaptive-ou-research-v1.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-value-screener-v2.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-v2-settlement.test.mjs
+      - name: Patch only Adaptive FT monitor integration in the existing TEST Worker and verify unchanged UI and stats isolation
+        run: node qa/prematch-history-20261120/b46-adaptive-ou-ft-monitor-deploy-test-20261124.mjs
