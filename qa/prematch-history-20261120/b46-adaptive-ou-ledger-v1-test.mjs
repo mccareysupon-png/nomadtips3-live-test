@@ -6,6 +6,8 @@ import {FORMULAS,ADAPTIVE_OU_ID,screenAdaptiveResearch} from './b46-adaptive-ou-
 import {extractFullMarketOuOffers} from './ou-value-screener-v2-test.mjs';
 import {initOuTargetHistoryFT} from './ou-target-history-ft-v1-test.mjs';
 import {londonAccountingWindow} from './london-cutoff.mjs';
+import {adaptiveSnapshotSeries} from './b46-adaptive-ou-series-v2-test.mjs';
+import {initAdaptiveEventJournal,recordAdaptiveFirstOutcome,reconcileAdaptiveFtRevisions,readAdaptiveEventJournal} from './b46-adaptive-ou-events-v2-test.mjs';
 const sql=(db,q,...a)=>Array.from(db.exec(q,...a));
 const whole=x=>Number.isSafeInteger(x)&&x>=0;
 const dollars=x=>Math.round(x*100000000)/100000000;
@@ -19,6 +21,7 @@ export function initAdaptiveOuLedger(db){
  db.exec("CREATE TABLE IF NOT EXISTS b46_adaptive_ou_research_v1_daily_test(formula_id TEXT NOT NULL,business_day TEXT NOT NULL,selected INTEGER NOT NULL DEFAULT 0,settled INTEGER NOT NULL DEFAULT 0,win INTEGER NOT NULL DEFAULT 0,loss INTEGER NOT NULL DEFAULT 0,net_units REAL NOT NULL DEFAULT 0,PRIMARY KEY(formula_id,business_day))");
  for(const f of FORMULAS)for(const side of ['ALL','OVER','UNDER'])
   db.exec("INSERT OR IGNORE INTO b46_adaptive_ou_research_v1_snapshot_test(formula_id,selection) VALUES(?,?)",f,side);
+ initAdaptiveEventJournal(db);
  initialized.add(db);
 }
 function statUp(db,formula,side,delta,now){
@@ -128,9 +131,13 @@ export function settleAdaptiveOu(db,now,{snapshot=null}={}){
    settled++;win+=Number(won);loss+=Number(!won);
    for(const side of ['ALL',p.selection])settleSnapshot(db,p.formula_id,side,net,won,now);
    dayUp(db,p.formula_id,now,{settled:1,win:Number(won),loss:Number(!won),net});
+   recordAdaptiveFirstOutcome(db,p,ft,won?'WIN':'LOSS',net,now);
   }
  });
- return {settled,win,loss,missingVerifiedFt:noFt,providerCalls:0,otherLedgersTouched:false};
+ // Revisions are applied only when a NEWER verified FT differs from the
+ // previously settled result. Never re-select or re-price a prediction.
+ const revision=reconcileAdaptiveFtRevisions(db,now,{snapshot,verifyFt:verifiedFt});
+ return {settled,win,loss,missingVerifiedFt:noFt,revision,providerCalls:0,otherLedgersTouched:false};
 }
 function summarize(s){
  const total=Number(s.total),win=Number(s.win),loss=Number(s.loss),settled=win+loss;
@@ -156,6 +163,9 @@ export function readAdaptiveStats(db,now,{limit=500}={}){
   rulesAreExperimental:true,portfolioTotalIsNotReal:true,
   cutoff:'06:00 Europe/London',businessDay:currentDay,
   formulas:stats,bySelection:sides,daily:days,
+  eventJournal:readAdaptiveEventJournal(db),
+  series30:adaptiveSnapshotSeries(db,now,30),
+  series90:adaptiveSnapshotSeries(db,now,90),
   records:recent.map(x=>({...x,
    supporting_teams:JSON.parse(x.supporting_teams),
    history_evidence:JSON.parse(x.history_evidence)})),
