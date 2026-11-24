@@ -20,7 +20,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      B46_MOBILE_FOOTER_MODE: stage
+      B46_MOBILE_FOOTER_MODE: activate
       B46_MOBILE_FOOTER_CANDIDATE: ed321803-bc3c-488e-9552-62a464fa79cf
     steps:
       - uses: actions/checkout@v4
@@ -33,7 +33,7 @@ jobs:
           npm ci --no-audit --no-fund
           npm test
           npx playwright install chromium --only-shell
-      - name: Stage and verify the inactive presentation version
+      - name: Activate the verified presentation version and check the public site
         run: node qa/ball46-mobile-footer-seo-20261124/release.mjs
       - uses: actions/upload-artifact@v4
         if: always()
