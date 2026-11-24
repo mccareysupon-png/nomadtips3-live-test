@@ -117,7 +117,7 @@ test('pre-Match Engine consumes existing Full Market cached bookmaker O/U lines,
   assert.equal(first.providerCalls,0);
   assert.equal(readOuValueShadow(db).length,1);
   const locked=readOuValueShadow(db)[0];
-  assert.equal(locked.price>1.50,true);
+  assert.equal(locked.price>=1.40&&locked.price<=10.00,true);
   assert.equal(locked.line,4.5);
   assert.equal(locked.bookmaker,'pinnacle');
   assert(locked.ev>=0.05);
@@ -277,4 +277,11 @@ test('Full Market wrong fixture ID is recorded NO PRICE, never locks prediction 
   assert.equal(second.priceBridge.state,'NO_MODELLED_NEW_UPCOMING');
   assert.equal(svc.calls.filter(x=>x.startsWith('/fixture-odds')).length,1);
  }finally{db.close()}
+});
+
+test('Pre-Match O/U price gate is inclusive 1.40 through 10.00; quota and EV stay unchanged',()=>{
+ assert.equal(PREMATCH_OU_ENGINE_V1_POLICY.minPriceInclusive,1.40);
+ assert.equal(PREMATCH_OU_ENGINE_V1_POLICY.maxPriceInclusive,10.00);
+ assert.equal(PREMATCH_OU_ENGINE_V1_POLICY.minEV,.05);
+ assert.equal(PREMATCH_OU_ENGINE_V1_POLICY.maxSharedOuRequestsPerLondonDay,4);
 });

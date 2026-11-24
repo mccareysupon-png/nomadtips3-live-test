@@ -70,7 +70,7 @@ test('Asian 2.25 and 2.75 split half stakes, push, half win and half loss exactl
  assert.equal(profitForOuResult(3,3,'UNDER',1.9),0);
  assert(Math.abs(profitForOuResult(4,3.5,'OVER',1.9)-.9)<1e-12);
 });
-test('all TEN earlier hypothetical situations, exact Asian EV, price >1.50 and EV >=5%',()=>{
+test('all TEN earlier hypothetical situations, exact Asian EV, price 1.40 to 10 and EV >=5%',()=>{
  const cases=[
   [3,3.5,'UNDER',1.65,6.79,true],
   [3,2.5,'OVER',1.90,9.59,true],
@@ -196,8 +196,9 @@ test('missing full market price never produces a prediction or fake EV',async()=
   assert.equal(recordOuValueShadow(d,r.selected,now).added,0);
  }finally{d.close()}
 });
-test('strict >1.50 and >=+5% precisely, not unrelated 64% fixed probability gate',()=>{
- assert.equal(OU_VALUE_V2_POLICY.minimumPriceExclusive,1.5);
+test('inclusive prices 1.40 to 10.00 and >=+5% precisely, not unrelated probability gate',()=>{
+ assert.equal(OU_VALUE_V2_POLICY.minimumPriceInclusive,1.40);
+ assert.equal(OU_VALUE_V2_POLICY.maximumPriceInclusive,10.00);
  assert.equal(OU_VALUE_V2_POLICY.minimumEV,.05);
  assert.equal(OU_VALUE_V2_POLICY.legacyOuV1Unchanged,true);
  assert.equal(OU_VALUE_V2_POLICY.providerCalls,0);
@@ -216,4 +217,36 @@ test('O/U V2 only screens upcoming fixtures with three FINISHED games per team, 
   assert.equal(buildOuValueModels(d,[{...fixture,status:'live'}],now).models.length,0);
   assert.equal(buildOuValueModels(d,[{...fixture,kickoff_ts:now-50}],now).models.length,0);
  }finally{d.close()}
+});
+
+test('1.40 and 10.00 included, 1.39 and 10.01 excluded on selection AND shadow ledger',()=>{
+ const d=database();
+ try{
+  for(const [price,allowed] of [[1.39,false],[1.40,true],[10.00,true],[10.01,false]]){
+   const picked=chooseBestOuValue(model(3),[offer(4.5,price,'UNDER')],now);
+   assert.equal(!!picked.selected,allowed,'range '+price);
+   if(allowed){
+    assert.equal(picked.selected.price,price);
+    const ledger=recordOuValueShadow(d,[picked.selected],now);
+    assert.equal(ledger.added+(ledger.duplicate),1);
+   }
+  }
+  const valid=chooseBestOuValue(model(3),[offer(4.5,1.40,'UNDER')],now).selected;
+  assert.equal(recordOuValueShadow(d,[{...valid,fixtureId:7101,price:1.39}],now).rejected,1);
+  assert.equal(recordOuValueShadow(d,[{...valid,fixtureId:7102,price:10.01}],now).rejected,1);
+  assert.equal(recordOuValueShadow(d,[{...valid,fixtureId:7103,price:10.00}],now).added,1);
+  assert.equal(readOuValueShadow(d).length,2);
+ }finally{d.close()}
+});
+test('raw valid bookmaker quote with opposite side below 1.40 stays visible; stale still rejected',()=>{
+ const e=entry(7001,[bk('bet365',[
+  line(4.5,{over:10,under:1.20},{over:10,under:1.20})
+ ])]);
+ const x=extractFullMarketOuOffers(e,7001,now,kickoff);
+ assert.equal(x.offers.length,1);
+ assert.equal(x.offers[0].under,1.20);
+ assert.equal(x.offers[0].over,10);
+ assert.equal(chooseBestOuValue(model(3),x.offers,now).selected?.price,10);
+ const stale={...e,stale:true};
+ assert.equal(extractFullMarketOuOffers(stale,7001,now,kickoff).offers.length,0);
 });

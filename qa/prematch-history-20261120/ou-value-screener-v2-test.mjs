@@ -1,6 +1,6 @@
 // BALL46 TEST ONLY — O/U VALUE SCREEN V2.
 // Analyze historical goals -> score / total distribution -> every offered
-// verified O/U Asian line from existing Full Market cache -> decimal price >1.50
+// verified O/U Asian line from existing Full Market cache -> decimal price 1.40..10.00 inclusive
 // AND 1-unit settlement EV >= +0.05 -> select one best priced side per fixture.
 // Shadow/TEST ledger only. No predictions in legacy/production; no 5USD calls.
 // Poisson shrinkage is a statistical model, NOT an AI-trained guarantee.
@@ -11,13 +11,15 @@ const get=(db,q,...args)=>Array.from(db.exec(q,...args));
 const validId=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
 const n=x=>typeof x==='number'&&Number.isFinite(x);
 const isPrice=x=>n(x)&&x>1&&x<=1000;
+// Only the SELECTED side is limited to 1.40..10.00. Opposite-side odds
+// below 1.40 must remain readable for the bookmaker pair to be valid.
 const norm=x=>String(x??'').replace(/[\s_-]/g,'').toLowerCase();
 const BOOKMAKERS=Object.freeze(['bet365','pinnacle','williamhill','ladbrokes','vcbet',
  '1xbet','bwin','easybets','interwetten','betfair','snai','macauslot','betsson',
  'betathome','18bet','10bet','12bet','coral','crown']);
 export const OU_VALUE_V2_MODEL=OU_HISTORY_V3_ID;
 export const OU_VALUE_V2_POLICY=Object.freeze({
- minimumPriceExclusive:1.50,minimumEV:0.05,
+ minimumPriceInclusive:1.40,maximumPriceInclusive:10.00,minimumEV:0.05,
  allowMarkets:['goal_line_fixed','goal_line'],allowStage:['closing','opening'],
  targetEveryAvailableLine:true,asianQuarterFullAndHalf:true,
  minCombinedHistory:6,minHistoryPerTeam:3,
@@ -27,9 +29,12 @@ export const OU_VALUE_V2_POLICY=Object.freeze({
  cacheMaxAgeMs:120000,maxCacheBatch:70,
  topSelectionsPerFixture:1,providerCalls:0,productionWrites:0,
  legacyOuV1Unchanged:true,legacy1x2Unchanged:true,
- shadowOnly:true,revision:'V3_HISTORY_20261124',
+ shadowOnly:true,revision:'V3_PRICE_1P40_TO_10_INCLUSIVE_20261124',
  historyModel:OU_HISTORY_V3_ID,historyPolicy:OU_HISTORY_V3_POLICY
 });
+const priceInSelectionRange=x=>isPrice(x)&&
+ x>=OU_VALUE_V2_POLICY.minimumPriceInclusive&&
+ x<=OU_VALUE_V2_POLICY.maximumPriceInclusive;
 export const validateLine=line=>n(line)&&line>=0&&line<=20&&
  Math.abs(line*4-Math.round(line*4))<1e-9;
 // Unlike hardwired 2.5, Asian quarter stakes split exactly 50/50.
@@ -234,7 +239,7 @@ export function chooseBestOuValue(model,offers,now){
   if(quote.fixtureId!==model.fixtureId||!validateLine(quote.line))continue;
   for(const side of ['OVER','UNDER']){
    const price=quote[side.toLowerCase()];
-   if(!isPrice(price)||price<=OU_VALUE_V2_POLICY.minimumPriceExclusive)continue;
+   if(!priceInSelectionRange(price))continue;
    const score=evaluateAsianOu(model.expectedTotalGoals,quote.line,side,price);
    const v={fixtureId:model.fixtureId,homeId:model.homeId,awayId:model.awayId,
     home:model.home,away:model.away,leagueId:model.leagueId,leagueName:model.leagueName,
@@ -310,8 +315,7 @@ export function recordOuValueShadow(db,selected,now){
   for(const p of selected){
    if(!validId(p.fixtureId)||!validId(p.homeId)||!validId(p.awayId)||
     p.homeId===p.awayId||!['OVER','UNDER'].includes(p.side)||
-    p.pick!==p.side||!validateLine(p.line)||!isPrice(p.price)||
-    p.price<=OU_VALUE_V2_POLICY.minimumPriceExclusive||
+    p.pick!==p.side||!validateLine(p.line)||!priceInSelectionRange(p.price)||
     !n(p.ev)||p.ev<OU_VALUE_V2_POLICY.minimumEV-1e-12||
     p.pickedAt!==now||p.kickoff<=now+OU_VALUE_V2_POLICY.minSecondsBeforeKickoff||
     !BOOKMAKERS.includes(p.bookmaker)||!n(p.sourceObservedAt)||
