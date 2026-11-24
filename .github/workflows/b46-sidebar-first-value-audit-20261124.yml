@@ -1,0 +1,18 @@
+name: B46 sidebar time to first value read-only
+on:
+  push:
+    branches: [audit/b46-live-sidebar-stale-20261124]
+    paths: ['qa/live-sidebar-stale-20261124/timing.mjs','.github/workflows/b46-sidebar-first-value-audit-20261124.yml']
+permissions: {contents: read}
+jobs:
+  timing:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - run: node qa/live-sidebar-stale-20261124/timing.mjs
