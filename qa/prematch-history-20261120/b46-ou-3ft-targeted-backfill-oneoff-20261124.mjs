@@ -119,7 +119,8 @@ try{
  assert(priority.length>0,'NO_VERIFIED_UPCOMING_LEAGUES');
  for(const league of priority){
   if(stop)break;
-  const from='2026-01-01T00:00:00Z',end=new Date().toISOString();
+  // Provider expects Unix-seconds start_time/end_time (verified in prior successful 5USD calls).
+  const from=String(Math.floor(Date.parse('2026-01-01T00:00:00Z')/1000)),end=String(sec());
   const query=new URLSearchParams({status:'finished',start_time:from,end_time:end,
    per_page:'100',page:'1'});
   const path='/v1/leagues/'+league.leagueId+'/fixtures?'+query;
