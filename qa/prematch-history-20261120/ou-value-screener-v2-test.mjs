@@ -19,7 +19,7 @@ export const OU_VALUE_V2_POLICY=Object.freeze({
  minimumPriceExclusive:1.50,minimumEV:0.05,
  allowMarkets:['goal_line_fixed','goal_line'],allowStage:['closing','opening'],
  targetEveryAvailableLine:true,asianQuarterFullAndHalf:true,
- minCombinedHistory:OU_POLICY.minCombinedHistory,
+ minCombinedHistory:6,minHistoryPerTeam:3,
  maxHistoryPerTeam:OU_POLICY.maxHistory,
  maxLeagueHistory:120,maxCandidatesPerCycle:350,
  minSecondsBeforeKickoff:300,maxLookaheadSec:OU_POLICY.maxLookaheadSec,
@@ -193,7 +193,8 @@ export function buildOuValueModels(db,fixtures,now,{maxFixtures=350}={}){
   seen.add(id);counts.checked++;
   const home=bttsLastMatches(db,homeId,kickoff,now,OU_VALUE_V2_POLICY.maxHistoryPerTeam);
   const away=bttsLastMatches(db,awayId,kickoff,now,OU_VALUE_V2_POLICY.maxHistoryPerTeam);
-  if(home.length+away.length<OU_VALUE_V2_POLICY.minCombinedHistory){
+  if(home.length<OU_VALUE_V2_POLICY.minHistoryPerTeam||
+     away.length<OU_VALUE_V2_POLICY.minHistoryPerTeam){
    counts.insufficientHistory++;continue;
   }
   const prior=leaguePriorAsOf(db,f?.league?.id,kickoff,now,leagueCache);
