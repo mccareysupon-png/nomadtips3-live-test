@@ -54,7 +54,9 @@ export default {
       for (const name of ['content-encoding', 'content-length', 'etag', 'last-modified']) outgoing.delete(name);
       outgoing.set('cache-control', 'no-store');
       outgoing.set('x-b46-preview', ID);
-      return new HTMLRewriter().on('head', {
+      return new HTMLRewriter().on('style#' + ID + ', script#b46-mobile-match-drawer', {
+        element(node) { node.remove(); },
+      }).on('head', {
         element(head) {
           head.append('<style id="' + ID + '">' + styles + '</style>' +
             '<script id="b46-mobile-match-drawer">' + mobileMatchDrawerScript + '</script>', { html: true });

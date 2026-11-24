@@ -35,6 +35,7 @@ async function proofOfScope() {
   assert.match(liveHtml, /<html[^>]*\blang="en"/);
   assert(liveHtml.includes('hreflang="x-default" href="https://www.ball46.com/"'));
   assert.equal(testHtml.split('id="' + styleId + '"').length, 2);
+  assert.equal(testHtml.split('id="b46-mobile-match-drawer"').length, 2);
   assert(testHtml.includes('<style id="' + styleId + '">' + expectedStyle + '</style>'));
   assert(testHtml.includes('<script id="b46-mobile-match-drawer">' + mobileMatchDrawerScript + '</script>'));
   const liveFlowScript = [...liveHtml.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)]
@@ -112,6 +113,48 @@ async function assertFits(loc) {
 async function visibleEventPlot(flow) {
   return flow.locator('b46-mobile-event-bars').evaluateAll(elements =>
     elements.map(el => getComputedStyle(el).getPropertyValue('--plot').trim()));
+}
+
+async function checkFeaturedDetails(dialog, theme) {
+  const featured = dialog.locator('.b46gn-featured .featured-card[data-featured]');
+  const comparison = featured.locator('.feature-stats:visible:has(> .stat-row)');
+  const events = featured.locator('.feature-events:visible:has(> .event-item)');
+  const result = { comparisonRows: 0, recentEvents: 0 };
+  for (const [panel, selector, output, file] of [
+    [comparison, '.stat-row', 'comparisonRows', 'match-comparison'],
+    [events, '.event-item', 'recentEvents', 'recent-events'],
+  ]) {
+    if (!await panel.count()) continue;
+    assert.equal((await palette(panel)).backgroundColor, colors[theme].well);
+    assert.equal((await palette(panel)).borderTopWidth, '0px');
+    await assertFits(panel);
+    const rows = await panel.locator(selector).evaluateAll(nodes => nodes.map(node => {
+      const row = getComputedStyle(node);
+      const text = [...node.querySelectorAll('time,b,span')].flatMap(label => label.matches('.event-item > span')
+        ? ['::before', '::after'].map(pseudo => getComputedStyle(label, pseudo).color)
+        : [getComputedStyle(label).color]);
+      return { background: row.backgroundColor, text, fits: node.scrollWidth <= node.clientWidth + 1 };
+    }));
+    assert(rows.every(row => row.fits && row.background.startsWith('rgb(') &&
+      row.text.every(color => contrast(color, row.background) >= 4.5)));
+    result[output] = rows.length;
+    if (artifacts) await panel.screenshot({ path: join(artifacts, theme + '-' + file + '.png'), animations: 'disabled' });
+  }
+  return result;
+}
+
+async function assertSignalOddsTypography(row, theme) {
+  const markets = row.locator(':scope > .market-cell:visible');
+  const sizes = await markets.evaluateAll(items => items.map(item => item.getBoundingClientRect().width));
+  if (!sizes.length) return 0;
+  assert(Math.max(...sizes) - Math.min(...sizes) < 1, 'Signal market columns have different widths');
+  for (const market of await markets.all()) assert.equal((await palette(market)).backgroundColor, colors[theme].well);
+  const quotes = await markets.locator(':is(.market-quote,.market-price-row)').evaluateAll(nodes => nodes.map(node => ({
+    enoughSpace: node.scrollWidth <= node.clientWidth + 1,
+    upright: [...node.querySelectorAll(':scope > :is(i,em,strong)')].every(value => getComputedStyle(value).fontStyle === 'normal'),
+  })));
+  assert(quotes.every(quote => quote.enoughSpace && quote.upright), 'Signal odds are italic or overflow');
+  return quotes.length;
 }
 
 const brandBounds = page => page.locator('#b46m-teal-shell .b46m-brand').evaluate(brand => {
@@ -199,6 +242,7 @@ async function testMobile(browser, theme, device) {
     assert.deepEqual(await palette(match), before, 'Collapsed match card changed');
     await assertFits(sheet);
     await screenshot(page, theme + '-match-details');
+    const featured = await checkFeaturedDetails(dialog, theme);
     await sheet.evaluate(node => { node.scrollTop = 180; });
     await page.waitForFunction(() => document.querySelector('#b46gn-detail .b46gn-sheet').scrollTop > 60);
     assert.deepEqual(await brandBounds(page), logo);
@@ -291,6 +335,7 @@ async function testMobile(browser, theme, device) {
     const signalRow = page.locator('[data-workspace-view="signal"] .match-row[data-match-id]:visible').first();
     let signalExpanded = false;
     let signalDetailsOpened = false;
+    let uprightSignalQuotes = 0;
     let inlineMarketCells = 0;
     await signalRow.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {});
     if (replay.length) await signalRow.waitFor({ state: 'visible', timeout: 20_000 });
@@ -299,8 +344,10 @@ async function testMobile(browser, theme, device) {
       const detail = page.locator('.match-expanded[data-expanded-match]:visible').first();
       await detail.waitFor({ state: 'visible', timeout: 10_000 });
       assert.equal((await palette(detail.locator('.expand-card').first())).color, colors[theme].ink);
-      const miniMarket = signalRow.locator('.market-cell:visible').first();
-      if (await miniMarket.count()) assert.equal((await palette(miniMarket)).backgroundColor, colors[theme].well);
+      uprightSignalQuotes = await assertSignalOddsTypography(signalRow, theme);
+      if (artifacts && uprightSignalQuotes) {
+        await signalRow.screenshot({ path: join(artifacts, theme + '-signal-card.png'), animations: 'disabled' });
+      }
       const inlineBook = detail.locator('.fmb-tab.has-data').first();
       await inlineBook.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {});
       if (await inlineBook.count()) {
@@ -340,7 +387,7 @@ async function testMobile(browser, theme, device) {
       opensFromRight: true, fixedLogo: true, headerGap, pageScrollPreserved: true,
       eventPlotData: plot.length > 0, matchStats: true, marketOpened, historyDetails: true,
       sharedNativeExpansion: true, signalExpanded, signalDetailsOpened, signalReplay: replay.length > 0,
-      sheetMarketCells, inlineMarketCells, historyContrast: Number(detailsContrast.toFixed(2)),
+      sheetMarketCells, inlineMarketCells, featured, uprightSignalQuotes, historyContrast: Number(detailsContrast.toFixed(2)),
       language: 'en', javascriptErrors: errors };
   } finally {
     await context.close();
