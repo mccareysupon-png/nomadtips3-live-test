@@ -82,6 +82,6 @@ try{
  }
  console.log('B46_OU_AGGREGATE_NATIVE_BROWSER_QA_PASS '+JSON.stringify({
   formulaCount:42,devices:result,
-  source:combined.source,noBackendCallsAdded:0
+  source:'per-browser-captured-original-and-adaptive-snapshots',noBackendCallsAdded:0
  }));
 }finally{await browser.close()}
