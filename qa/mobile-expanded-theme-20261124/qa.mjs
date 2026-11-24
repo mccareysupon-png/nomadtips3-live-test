@@ -121,14 +121,26 @@ const brandBounds = page => page.locator('#b46m-teal-shell .b46m-brand').evaluat
 
 async function recordDrawerMotion(page) {
   await page.evaluate(() => {
-    const sheet = document.querySelector('#b46gn-detail .b46gn-sheet');
+    const dialog = document.querySelector('#b46gn-detail');
+    const sheet = dialog.querySelector('.b46gn-sheet');
+    const brand = document.querySelector('#b46m-teal-shell .b46m-brand');
+    const start = new DOMMatrix(getComputedStyle(sheet).transform);
+    const observer = new MutationObserver(() => {
+      if (dialog.getAttribute('aria-hidden') !== 'false') return;
+      observer.disconnect();
+      // Flush the open styles before sampling the transition in a browser frame.
+      void getComputedStyle(sheet).transform;
+      const transition = sheet.getAnimations().find(animation => animation.transitionProperty === 'transform');
+      if (!transition) return;
+      const frames = transition.effect.getKeyframes();
+      sheet.dataset.qaSlide = JSON.stringify(frames.map(frame => frame.transform));
+    });
+    observer.observe(dialog, { attributes: true, attributeFilter: ['aria-hidden'] });
     sheet.addEventListener('transitionrun', event => {
       if (event.target !== sheet || event.propertyName !== 'transform') return;
-      const frame = new DOMMatrix(getComputedStyle(sheet).transform);
-      const brand = document.querySelector('#b46m-teal-shell .b46m-brand');
       const logo = brand.getBoundingClientRect();
       sheet.dataset.qaMotion = JSON.stringify({
-        x: frame.m41, y: frame.m42,
+        x: start.m41, y: start.m42,
         logo: [logo.x, logo.y, logo.width, logo.height, getComputedStyle(brand).fontSize],
       });
     });
@@ -165,6 +177,8 @@ async function testMobile(browser, theme, device) {
     await dialog.locator('.b46gn-sheet[data-qa-motion]').waitFor({ state: 'attached' });
     const motion = JSON.parse(await sheet.getAttribute('data-qa-motion'));
     assert(motion.x > 100 && Math.abs(motion.y) < 1, 'Match details must enter horizontally from the right');
+    const slide = await sheet.getAttribute('data-qa-slide');
+    assert.match(slide ?? '', /^\["translateX\(100%\)","translateX\(0(?:px|%)?\)"\]$/);
     assert.deepEqual(motion.logo, logo);
     await page.waitForFunction(() => Math.abs(new DOMMatrix(
       getComputedStyle(document.querySelector('#b46gn-detail .b46gn-sheet')).transform,
