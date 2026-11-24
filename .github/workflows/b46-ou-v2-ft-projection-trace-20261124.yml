@@ -1,0 +1,53 @@
+name: BALL46 O/U actual FT UI projection post-failure trace GET only 20261124
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-v2-ft-projection-trace-20261124.yml]
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Read exact active inline code and real public and private status
+        run: |
+          node --input-type=module <<'JS'
+          import crypto from 'node:crypto';
+          const t=process.env.CLOUDFLARE_API_TOKEN,a=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const cf=async p=>{
+           const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers'+p,
+            {headers:{authorization:'Bearer '+t},signal:AbortSignal.timeout(30000)});
+           const j=await r.json();if(!r.ok||!j.success)throw Error('CF_FAIL_'+p);return j.result;};
+          const name='ball46-prematch-only-test-20261120';
+          const version=(await cf('/scripts/'+name+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+          const body=await cf('/workers/'+name+'/versions/'+version+'?include=modules');
+          const src=Buffer.from(body.modules.find(m=>m.name===body.main_module).content_base64,'base64').toString();
+          console.log('B46_OU_FT_ACTIVE_SOURCE '+JSON.stringify({version,
+           inlineWasUpdated:src.includes("status:validSettled?settled.status:'PENDING'"),
+           settlementParamPassed:src.includes('settlementState:readOuV2SettlementState(this.db,now)'),
+           inlinedCount:src.split('const __b46ProjectPricedOuForUi=').length-1,
+           settlementCalls:src.split('settleOuV2FromExistingResults').length-1,
+           snippets:['const __b46ProjectPricedOuForUi=','const pricedV2Ui=__b46ProjectPricedOuForUi({',
+             'settlementState:readOuV2SettlementState(this.db,now)'].map(needle=>{
+             const i=src.indexOf(needle);return {needle,at:i,excerpt:i<0?null:src.slice(Math.max(0,i-120),i+700)};})}));
+          const key='Bearer '+crypto.createHmac('sha256',t).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const host='https://'+name+'.mccarey-supon.workers.dev';
+          const get=async(p,auth=true)=>{const r=await fetch(host+p,{headers:auth?{authorization:key}:{},cache:'no-store',signal:AbortSignal.timeout(30000)});
+           return {http:r.status,data:await r.json().catch(()=>null)};};
+          const [settled,view,front]=await Promise.all([
+           get('/ou-v2-settlement-state'),get('/preview-data'),
+           fetch('https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/__b46_prematch_data',{cache:'no-store',signal:AbortSignal.timeout(30000)}).then(r=>r.json())]);
+          console.log('B46_OU_FT_TRACE_STATE '+JSON.stringify({
+           version,settlementHttp:settled.http,settlement: settled.data?.settlements?.['204906152'],
+           settledStats:settled.data?.stats,
+           directUI:view.data?.ouLedger?.rows?.find(x=>Number(x.fixture_id)===204906152),
+           directStats:view.data?.ouLedger?.stats,
+           frontendUI:front?.ouLedger?.rows?.find(x=>Number(x.fixture_id)===204906152),
+           frontendStats:front?.ouLedger?.stats,
+           paidProviderCallsByAudit:0}).slice(0,18000));
+          JS
