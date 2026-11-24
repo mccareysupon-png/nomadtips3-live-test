@@ -2,7 +2,7 @@ name: BALL46 TEST readonly inspect Over Under sidebar win rate binding 20261124
 on:
   push:
     branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
-    paths: [.github/workflows/b46-ou-sidebar-winrate-readonly-20261124.yml]
+    paths: [.github/workflows/b46-ou-sidebar-winrate-readonly-20261124.yml, qa/prematch-history-20261120/b46-ou-sidebar-winrate-readonly-20261124.mjs]
 permissions: {contents: read}
 jobs:
   inspect:
