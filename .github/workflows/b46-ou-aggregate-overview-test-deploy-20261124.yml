@@ -1,0 +1,28 @@
+name: BALL46 TEST native OU combined cumulative win rate graph deploy 20261124
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-aggregate-overview-test-deploy-20261124.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-prematch-frontend-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify exact combined O-U 1U arithmetic and UI patch syntax
+        run: |
+          node --check qa/prematch-history-20261120/b46-ou-overview-aggregate-test-v1.mjs
+          node --check qa/prematch-history-20261120/patch-ou-unified-overview-v1-test.mjs
+          node --test qa/prematch-history-20261120/b46-ou-overview-aggregate.test.mjs
+      - name: Deploy only existing PreMatch TEST frontend; verify all 42 formula snapshots and unchanged other workers
+        run: node qa/prematch-history-20261120/deploy-ou-unified-overview-v1-test-20261124.mjs
