@@ -1,0 +1,38 @@
+name: BALL46 O/U dedicated FT upcoming teams real 5USD oneoff 20261124
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths:
+      - .github/workflows/b46-ou-3ft-targeted-backfill-dedicated-oneoff-20261124.yml
+permissions: {contents: read}
+concurrency:
+  group: ball46-provider-shared-5usd-history-dedicated-oneoff-20261124
+  cancel-in-progress: false
+jobs:
+  backfill:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify pure history minimum and pre-match O/U existing pricing intact
+        run: |
+          node --check qa/prematch-history-20261120/b46-ou-3ft-targeted-backfill-oneoff-20261124.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-value-screener-v2.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/history-cargo-registry.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/btts-history-private.test.mjs
+      - name: Oneoff verified 5USD FT historical backfill to TEST only, no odds requests or automatic retries
+        run: node qa/prematch-history-20261120/b46-ou-3ft-targeted-backfill-oneoff-20261124.mjs
+      - name: Keep summary evidence for audit without leaking paid provider response bodies
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b46-ou-upcoming-history-three-20261124-audit
+          path: evidence/b46-ou-upcoming-history-three-20261124/REPORT.json
+          if-no-files-found: warn
+          retention-days: 30
