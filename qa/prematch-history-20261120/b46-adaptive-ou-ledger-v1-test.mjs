@@ -9,7 +9,9 @@ import {londonAccountingWindow} from './london-cutoff.mjs';
 const sql=(db,q,...a)=>Array.from(db.exec(q,...a));
 const whole=x=>Number.isSafeInteger(x)&&x>=0;
 const dollars=x=>Math.round(x*100000000)/100000000;
+const initialized=new WeakSet();
 export function initAdaptiveOuLedger(db){
+ if(initialized.has(db))return;
  db.exec("CREATE TABLE IF NOT EXISTS b46_adaptive_ou_research_v1_ledger_test(fixture_id INTEGER NOT NULL,formula_id TEXT NOT NULL,market TEXT NOT NULL,selection TEXT NOT NULL CHECK(selection IN ('OVER','UNDER')),home_id INTEGER NOT NULL,away_id INTEGER NOT NULL,home TEXT NOT NULL,away TEXT NOT NULL,kickoff INTEGER NOT NULL,picked_at INTEGER NOT NULL,line REAL NOT NULL CHECK(line=2.5),odds REAL NOT NULL,bookmaker TEXT NOT NULL,odds_source TEXT NOT NULL,quote_observed_at INTEGER NOT NULL,history_used INTEGER NOT NULL,supporting_teams TEXT NOT NULL,history_evidence TEXT NOT NULL,formula_support INTEGER NOT NULL,opposite_research INTEGER NOT NULL,status TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','WIN','LOSS')),hg INTEGER,ag INTEGER,settled_at INTEGER,result_observed_at INTEGER,result_source TEXT,net_units REAL,PRIMARY KEY(fixture_id,formula_id,market,selection))");
  db.exec("CREATE INDEX IF NOT EXISTS b46_adaptive_ou_research_v1_pending_idx ON b46_adaptive_ou_research_v1_ledger_test(status,kickoff)");
  db.exec("CREATE INDEX IF NOT EXISTS b46_adaptive_ou_research_v1_formula_idx ON b46_adaptive_ou_research_v1_ledger_test(formula_id,selection)");
@@ -17,6 +19,7 @@ export function initAdaptiveOuLedger(db){
  db.exec("CREATE TABLE IF NOT EXISTS b46_adaptive_ou_research_v1_daily_test(formula_id TEXT NOT NULL,business_day TEXT NOT NULL,selected INTEGER NOT NULL DEFAULT 0,settled INTEGER NOT NULL DEFAULT 0,win INTEGER NOT NULL DEFAULT 0,loss INTEGER NOT NULL DEFAULT 0,net_units REAL NOT NULL DEFAULT 0,PRIMARY KEY(formula_id,business_day))");
  for(const f of FORMULAS)for(const side of ['ALL','OVER','UNDER'])
   db.exec("INSERT OR IGNORE INTO b46_adaptive_ou_research_v1_snapshot_test(formula_id,selection) VALUES(?,?)",f,side);
+ initialized.add(db);
 }
 function statUp(db,formula,side,delta,now){
  db.exec("UPDATE b46_adaptive_ou_research_v1_snapshot_test SET total=total+1,pending=pending+1,sum_odds=sum_odds+?,total_units=total_units+1,updated_at=? WHERE formula_id=? AND selection=?",
