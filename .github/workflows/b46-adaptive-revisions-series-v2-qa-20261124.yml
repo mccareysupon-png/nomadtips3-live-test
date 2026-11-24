@@ -18,3 +18,5 @@ jobs:
           node --check qa/prematch-history-20261120/b46-adaptive-ou-series-v2-test.mjs
           node --experimental-sqlite --test qa/prematch-history-20261120/b46-adaptive-ou-research-v1.test.mjs
           node --experimental-sqlite --test qa/prematch-history-20261120/ou-value-screener-v2.test.mjs
+
+# Normalize displayed daily net units to ledger precision (SQLite float accumulation).

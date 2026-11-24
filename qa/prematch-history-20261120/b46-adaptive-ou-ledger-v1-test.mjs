@@ -157,7 +157,7 @@ export function readAdaptiveStats(db,now,{limit=500}={}){
  const sides=rows.filter(r=>r.selection!=='ALL').map(summarize);
  const recent=sql(db,"SELECT * FROM b46_adaptive_ou_research_v1_ledger_test ORDER BY picked_at DESC,fixture_id,formula_id,selection LIMIT ?",limit);
  const currentDay=londonAccountingWindow(now).businessDay;
- const days=sql(db,"SELECT * FROM b46_adaptive_ou_research_v1_daily_test WHERE business_day<=? ORDER BY business_day DESC,formula_id LIMIT 4000",currentDay);
+ const days=sql(db,"SELECT * FROM b46_adaptive_ou_research_v1_daily_test WHERE business_day<=? ORDER BY business_day DESC,formula_id LIMIT 4000",currentDay).map(x=>({...x,net_units:dollars(Number(x.net_units))}));
  for(const s of rows)if(s.total!==s.pending+s.win+s.loss)throw Error('ADAPTIVE_SNAPSHOT_INVARIANT');
  return {code:ADAPTIVE_OU_ID,isolated:true,allFormulas:FORMULAS.length,
   rulesAreExperimental:true,portfolioTotalIsNotReal:true,
