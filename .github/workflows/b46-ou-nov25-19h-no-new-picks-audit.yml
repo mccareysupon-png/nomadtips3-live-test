@@ -1,0 +1,19 @@
+name: BALL46 TEST read-only 25 Nov 19h no new O-U predictions diagnostics
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-nov25-19h-no-new-picks-audit.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Read actual TEST Cron and owner GET diagnostic snapshots only
+        run: node qa/prematch-history-20261120/b46-ou-nov25-19h-no-new-picks-audit.mjs
