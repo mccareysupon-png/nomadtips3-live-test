@@ -29,6 +29,8 @@ const innerCardStyle = `@media (max-width: 760px) {
   }
   #details .detail-row + .detail-row { margin-top: 6px; }
   #details .details-head { padding-bottom: 8px; }
+  #details .detail-row h3.home { color: var(--b46-detail-ink-accent, var(--home)); }
+  #details .detail-row h3.away { color: var(--b46-detail-away, var(--away)); }
 }`;
 
 export function prepareMobileFlowAsset(script) {

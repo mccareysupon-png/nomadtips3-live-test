@@ -147,6 +147,7 @@
     --muted: var(--b46-detail-muted);
     --b46-home: var(--b46-detail-ink-accent);
     --b46-away: var(--b46-detail-away);
+    --b46-neutral: var(--b46-detail-muted);
     background: var(--b46-detail-card) !important;
     color: var(--b46-detail-ink) !important;
     box-shadow: none !important;
@@ -172,8 +173,8 @@
   }
 
   html:root[data-theme] body .league-block > .match-row[data-match-id][aria-expanded="true"]
-  .market-cell :is(.market-quote, .market-price-row) {
-    column-gap: 4px;
+  .market-cell :is(.market-quote, .market-price-row) > :is(i, em) + :is(em, strong) {
+    margin-inline-start: .22em;
   }
 
   html:root[data-theme] body .league-block > .match-row.active[aria-expanded="true"] + .match-expanded[data-expanded-match],
@@ -252,6 +253,7 @@
     --muted: var(--b46-detail-muted);
     --b46-home: var(--b46-detail-ink-accent);
     --b46-away: var(--b46-detail-away);
+    --b46-neutral: var(--b46-detail-muted);
   }
 
   html:root[data-theme] body :is(#b46gn-detail#b46gn-detail, .match-expanded[data-expanded-match])

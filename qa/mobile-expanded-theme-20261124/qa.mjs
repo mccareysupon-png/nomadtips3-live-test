@@ -252,6 +252,7 @@ async function testMobile(browser, theme, device) {
         const paint = await palette(innerCard);
         assert.equal(paint.backgroundColor, colors[theme].well);
         assert.equal(paint.borderTopWidth, '0px');
+        assert(contrast((await palette(innerCard.locator('h3'))).color, paint.backgroundColor) >= 4.5);
         await assertFits(innerDetails);
         if (artifacts) {
           await innerDetails.screenshot({ path: join(artifacts, theme + '-signal-inner.png'), animations: 'disabled' });
