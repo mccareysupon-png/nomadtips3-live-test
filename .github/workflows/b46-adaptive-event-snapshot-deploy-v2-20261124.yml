@@ -1,0 +1,28 @@
+name: BALL46 Adaptive Research 42 TEST FT event journal & 30D90D snapshot deploy
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-adaptive-event-snapshot-deploy-v2-20261124.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-prematch-only-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 13
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Offline FT revisions, ledger prices, London 06 and snapshot-only 30D90D
+        run: |
+          node --check qa/prematch-history-20261120/b46-adaptive-event-snapshot-deploy-v2-20261124.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/b46-adaptive-ou-research-v1.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-value-screener-v2.test.mjs
+      - name: Deploy only existing PreMatch TEST backend and verify unchanged legacy statistics
+        run: node qa/prematch-history-20261120/b46-adaptive-event-snapshot-deploy-v2-20261124.mjs
