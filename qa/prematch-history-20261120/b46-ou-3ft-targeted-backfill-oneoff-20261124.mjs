@@ -95,17 +95,18 @@ const beforeVersion=Object.fromEntries(await Promise.all(protectedNames.map(asyn
 const testVersion=await version('ball46-prematch-only-test-20261120');
 const [before,archive,truck,visible,health]=await Promise.all([
  owner('/history-cargo-registry?detail=0'),
- owner('/btts-history-private-test'),
+ owner('/ou-history-ft-state'),
  owner('/btts-bulk-v2-state'),
  owner('/preview-data'),
  hubHealth()]);
 report.begin={at:new Date().toISOString(),testVersion,health,
- hcrFT:before.inventory?.finishedFixtures,privateFT:archive.archive?.privateFT,
+ hcrFT:before.inventory?.finishedFixtures,privateFT:archive.archive?.ft,
  upcoming:before.supplyPlanning?.upcomingFixtures,ready3:before.supplyPlanning?.readyFixtures,
  missingTeamGames:before.supplyPlanning?.deduplicatedTeamMatchGaps};
 assert(truck.config.mode==='CLOSED','ULTRA_TRUCK_MUST_REMAIN_CLOSED');
 assert.equal(before.supplyPlanning.targetHistoryPerTeam,3,'TEST_GATE_MUST_BE_THREE');
-assert.equal(before.supplyPlanning.historySource,'DEDUPED_1X2_AND_BTTS_FINISHED_FT_ASOF');
+assert.equal(before.supplyPlanning.historySource,'DEDUPED_OU_ONLY_PLUS_1X2_BTTS_FINISHED_FT_ASOF');
+assert(archive.code==='B46_OU_TARGET_FT_HISTORY_V1_TEST','OU_DEDICATED_VAULT_NOT_AVAILABLE');
 assert(before.supplyPlanning.upcomingFixtures>0,'NO_UPCOMING_WAITING_IN_TARGET_FEED');
 const originalOu=visible.ouLedger?.rows?.find(x=>Number(x.fixture_id)===204906152);
 assert(originalOu?.status==='LOSS'&&originalOu?.units===-1,'OU_OLD_IMMUTABLE_PICK_MISSING');
@@ -134,16 +135,15 @@ try{
   assert(report.requestedRows+body.data.length<=MAX_ROWS,'FT_RETURN_CAP_EXCEEDED');
   report.requestedRows+=body.data.length;
   const observed=sec();
-  const imported=await owner('/btts-history-import-test',{
-    source:'ULTRA_FINISHED_LEAGUE_SEASON',leagueId:Number(league.leagueId),
-    season:'2026',observed,rows:body.data
+  const imported=await owner('/ou-history-ft-import-test',{
+    source:'UPCOMING_LEAGUE_FT',leagueId:Number(league.leagueId),observed,rows:body.data
   });
-  assert(imported.mode==='BTTS_PRIVATE_HISTORY_TEST'&&
-   imported.oneX2Changed===false&&imported.HCRChanged===false,
-   'ISOLATED_TEST_IMPORT_INVALID');
+  assert(imported.code==='B46_OU_TARGET_FT_HISTORY_V1_TEST'&&
+   imported.oneX2LedgerUnchanged===true&&imported.bttsProjectUnchanged===true,
+   'ISOLATED_OU_TEST_IMPORT_INVALID');
   const rec={leagueId:league.leagueId,leagueName:safeName(league.leagueName),
    upcomingFixtures:league.totalFixtures,received:body.data.length,
-   newFT:imported.stats.added,duplicates:imported.stats.duplicates,
+   newFT:imported.stats.added,duplicates:imported.stats.unchanged,
    hasMore:page.has_more,source:'PROVIDER_2026_WINDOW_PAGE_1_NOT_FULL_SEASON'};
   report.leagueRounds.push(rec);
   console.log('B46_OU_HISTORY_LEAGUE_PAGE '+JSON.stringify(rec));
@@ -183,12 +183,12 @@ try{
       aborted='MAX_RETURNED_FT_ROWS_REACHED';stop=true;break
     }
     report.requestedRows+=body.data.length;
-    let imported={stats:{added:0,duplicates:0,conflicts:0}};
-    if(body.data.length)imported=await owner('/btts-team-fallback-test',{
-     source:'ULTRA_TEAM_LAST10_FALLBACK',fixtureId:f.fixtureId,teamId,
+    let imported={stats:{added:0,unchanged:0,conflicts:0}};
+    if(body.data.length)imported=await owner('/ou-history-ft-import-test',{
+     source:'UPCOMING_TEAM_FT',fixtureId:f.fixtureId,teamId,
      observed:sec(),rows:body.data});
     const rec={fixtureId:f.fixtureId,teamId,teamName:safeName(team.teamName),
-     received:body.data.length,newFT:imported.stats.added,duplicates:imported.stats.duplicates,
+     received:body.data.length,newFT:imported.stats.added,duplicates:imported.stats.unchanged,
      oldestKickoff:body.data.length?new Date(Math.min(...body.data.map(x=>x.kickoff_ts))*1000).toISOString():null};
     report.teamRounds.push(rec);
     console.log('B46_OU_HISTORY_TEAM_FALLBACK '+JSON.stringify(rec));
@@ -202,18 +202,18 @@ try{
 }
 try{
  const [after,priv,closed,ou,afterVersions,afterTestVersion]=await Promise.all([
-  owner('/history-cargo-registry?detail=0'),owner('/btts-history-private-test'),
+  owner('/history-cargo-registry?detail=0'),owner('/ou-history-ft-state'),
   owner('/btts-bulk-v2-state'),owner('/preview-data'),
   Promise.all(protectedNames.map(async n=>[n,await version(n)])).then(Object.fromEntries),
   version('ball46-prematch-only-test-20261120')
  ]);
  report.end={at:new Date().toISOString(),hcrFT:after.inventory.finishedFixtures,
-  privateFT:priv.archive.privateFT,upcoming:after.supplyPlanning.upcomingFixtures,
+  privateFT:priv.archive.ft,upcoming:after.supplyPlanning.upcomingFixtures,
   ready3:after.supplyPlanning.readyFixtures,
   missingTeamGames:after.supplyPlanning.deduplicatedTeamMatchGaps,
   uniqueTeamsMissing:after.supplyPlanning.uniqueTeamsNeedingHistory,
   deltaReady3:after.supplyPlanning.readyFixtures-before.supplyPlanning.readyFixtures,
-  deltaPrivateFT:priv.archive.privateFT-archive.archive.privateFT,
+  deltaPrivateFT:priv.archive.ft-archive.archive.ft,
   testedOuCandidateReadyAtNextCron:after.supplyPlanning.readyFixtures};
  report.ultraActivated=closed.config.mode!=='CLOSED';
  const afterPick=ou.ouLedger?.rows?.find(x=>Number(x.fixture_id)===204906152);
