@@ -360,11 +360,80 @@ async function testDesktop(browser) {
   }
 }
 
+async function testLogoWithClassicScrollbar(browser, theme) {
+  const page = await browser.newPage({ viewport: { width: 430, height: 784 } });
+  await page.addInitScript(value => localStorage.setItem('nomad343_dashboard_theme_v1', value), theme);
+  await page.route('**/*', route => ['GET', 'HEAD'].includes(route.request().method()) ? route.continue() : route.abort());
+  try {
+    await page.goto(host + '/?view=live', { waitUntil: 'domcontentloaded', timeout: 45_000 });
+    const match = page.locator('#b46gn-cards .b46gn-card:visible').first();
+    await match.waitFor({ state: 'visible', timeout: 30_000 });
+    await match.scrollIntoViewIfNeeded();
+    const gutter = await page.evaluate(() => innerWidth - document.documentElement.clientWidth);
+    assert(gutter > 0, 'A classic viewport scrollbar is required to exercise the logo jump');
+
+    await page.evaluate(() => {
+      const dialog = document.querySelector('#b46gn-detail');
+      const header = document.querySelector('#b46m-teal-shell');
+      const brand = header.querySelector('.b46m-brand');
+      const text = document.createRange();
+      text.selectNodeContents(brand);
+      const samples = [];
+      function sample() {
+        const { x, y, width, height } = text.getBoundingClientRect();
+        samples.push([x, y, width, height, header.clientWidth]);
+      }
+      let frame;
+      function measure() {
+        sample();
+        frame = requestAnimationFrame(measure);
+      }
+      measure();
+      const observer = new MutationObserver(sample);
+      observer.observe(dialog, { attributeFilter: ['aria-hidden'] });
+      window.__b46ReadLogoSamples = () => {
+        cancelAnimationFrame(frame);
+        observer.disconnect();
+        sample();
+        return samples;
+      };
+    });
+
+    await match.click();
+    const dialog = page.locator('#b46gn-detail[aria-hidden="false"]');
+    const sheet = dialog.locator('.b46gn-sheet');
+    await sheet.waitFor({ state: 'visible' });
+    await sheet.evaluate(async node => {
+      await Promise.all(node.getAnimations().map(animation => animation.finished));
+      node.scrollTop = 180;
+    });
+    await page.waitForFunction(() => document.querySelector('#b46gn-detail .b46gn-sheet').scrollTop > 60);
+    await dialog.getByRole('button', { name: 'Close match details' }).click();
+    await page.waitForFunction(() => getComputedStyle(document.querySelector('#b46gn-detail')).visibility === 'hidden');
+    const samples = await page.evaluate(() => window.__b46ReadLogoSamples());
+    const maxLogoShift = Math.max(...samples.map(sample => Math.max(
+      ...sample.slice(0, 4).map((value, index) => Math.abs(value - samples[0][index])),
+    )));
+    assert.equal(maxLogoShift, 0, 'Logo text moved or changed size while opening or closing');
+    assert(samples.every(sample => sample[4] === samples[0][4]), 'Header width changed while locking the scrollbar');
+    return { theme, viewport: 430, gutter, samples: samples.length, maxLogoShift };
+  } finally {
+    await page.close();
+  }
+}
+
 await proofOfScope();
-const browser = await chromium.launch(process.env.B46_CHROMIUM ? { executablePath: process.env.B46_CHROMIUM } : {});
+const browser = await chromium.launch({
+  executablePath: process.env.B46_CHROMIUM,
+  ignoreDefaultArgs: ['--hide-scrollbars'],
+  args: ['--disable-features=OverlayScrollbar'],
+});
 try {
-  const report = { preview: host, pc: await testDesktop(browser), mobile: [] };
-  for (const theme of ['dark', 'light']) report.mobile.push(await testMobile(browser, theme, devices['Pixel 7']));
+  const report = { preview: host, pc: await testDesktop(browser), mobile: [], classicScrollbar: [] };
+  for (const theme of ['dark', 'light']) {
+    report.classicScrollbar.push(await testLogoWithClassicScrollbar(browser, theme));
+    report.mobile.push(await testMobile(browser, theme, devices['Pixel 7']));
+  }
   if (artifacts) await writeFile(join(artifacts, 'qa.json'), JSON.stringify(report, null, 2) + '\n');
   console.log('BALL46_MOBILE_THEME_QA', JSON.stringify(report));
 } finally {

@@ -93,6 +93,11 @@
     outline-offset: 2px;
   }
 
+  /* Keep the header centered in the same viewport when the drawer locks page scrolling. */
+  html[data-b46gn="1"] {
+    scrollbar-gutter: stable;
+  }
+
   /* Keep the original sticky brand header outside the animated detail panel. */
   html[data-b46gn="1"] #b46gn-detail {
     --b46-drawer-duration: 240ms;
