@@ -2,7 +2,7 @@ name: BALL46 TEST original OU public history cards 10 per page real-browser QA 2
 on:
   push:
     branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
-    paths: [.github/workflows/b46-original-ou-history-cards-browser-qa-20261124.yml]
+    paths: [.github/workflows/b46-original-ou-history-cards-browser-qa-20261124.yml, qa/prematch-history-20261120/b46-original-ou-history-cards-browser-qa-20261124.mjs]
 permissions: {contents: read}
 jobs:
   browser:
