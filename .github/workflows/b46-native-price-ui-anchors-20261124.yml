@@ -17,3 +17,5 @@ jobs:
         with: {node-version: '22'}
       - run: node --check qa/prematch-history-20261120/b46-native-price-ui-anchors-20261124.mjs
       - run: node qa/prematch-history-20261120/b46-native-price-ui-anchors-20261124.mjs
+
+# Remove second problematic literal from observer-only audit.

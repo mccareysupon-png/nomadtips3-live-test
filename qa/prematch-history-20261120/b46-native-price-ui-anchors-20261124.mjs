@@ -13,7 +13,6 @@ const hits=[
  ['MAIN_PREMATCH_STORE',main,'env.PREMATCH_STORE',1150],
  ['MAIN_PREMATCH_DATA',main,'/__b46_prematch_data',900],
  ['CLIENT_DRAW_FINISH',client,'const finish=()=>{',2800],
- ['CLIENT_OU_RENDER',client,'const activeLedger=mode===\\'ou\\'',1400],
  ['CLIENT_FOOTER',client,'if(document.readyState',1000]
 ];
 console.log('B46_NATIVE_INSERT_INSPECT '+JSON.stringify({version:ver,
