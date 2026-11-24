@@ -1,0 +1,102 @@
+name: BALL46 O/U history vehicle coverage diagnostic read-only 20261124
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-history-coverage-readonly-20261124.yml]
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Read current HCR, BTTS history cargo, O/U model coverage and routes with no provider calls
+        run: |
+          node --input-type=module <<'JS'
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          if(!token||!account)throw Error('CF_CREDENTIALS_NOT_PRESENT');
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const getCF=async p=>{
+           const r=await fetch(root+p,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(25000)});
+           const j=await r.json();if(!r.ok||!j.success)throw Error('CF_'+p+'_'+r.status);return j.result;
+          };
+          const name='ball46-prematch-only-test-20261120';
+          const version=(await getCF('/scripts/'+name+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+          const v=await getCF('/workers/'+name+'/versions/'+version+'?include=modules');
+          const main=Buffer.from(v.modules.find(m=>m.name===v.main_module).content_base64,'base64').toString('utf8');
+          const routes=[...new Set([...main.matchAll(/path\s*===\s*['"]([^'"]+)['"]/g)].map(x=>x[1]))].filter(p=>/(history|btts|ou|mission|preview)/i.test(p));
+          const hit=main.indexOf('bttsLastMatches(');
+          const owner={authorization:'Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex')};
+          console.log('B46_HISTORY_WORKER '+JSON.stringify({version,routeNames:routes,modules:v.modules.map(m=>m.name).filter(x=>/history|bulk|cargo|ou|btts/i.test(x)),bttsHistorySource:hit>=0?main.slice(Math.max(0,hit-280),hit+380):null}).slice(0,13000));
+          const host='https://'+name+'.mccarey-supon.workers.dev';
+          async function fetchJSON(path,headers=owner){
+           try{
+            const r=await fetch(host+path,{method:'GET',headers,cache:'no-store',signal:AbortSignal.timeout(32000)});
+            const data=await r.json().catch(()=>null);
+            return {code:r.status,data};
+           }catch(err){return {code:0,error:String(err?.message??err).slice(0,180)}}
+          }
+          const endpoints=['/history-cargo-registry?detail=0','/history-round-state',
+           '/history-state','/btts-bulk-v2-state','/btts-bulk-state',
+           '/btts-history-private-state','/btts-history-state',
+           '/prematch-ou-engine-state','/preview-data',
+           '/prematch-stats-registry-test?days=90'];
+          const entries=await Promise.all(endpoints.map(async path=>[path,await fetchJSON(path)]));
+          for(const [p,z] of entries){
+           const data=z.data??{};
+           if(p.startsWith('/history-cargo-registry')){
+            const rounds=data.rounds??[],planner=data.supplyPlanning??{},inventory=data.inventory??{};
+            const recent=rounds.slice(0,15).map(x=>({
+             day:x.businessDay,round:x.roundNo,state:x.state,imported:x.imported,
+             received:x.received,providerCalls:x.providerCalls,manifestStatus:x.manifestStatus
+            }));
+            const histogram={zero:0,oneOrTwo:0,threeToFour:0,fiveToNine:0,ten:0};
+            for(const v of planner.highestPriority??[]){
+             for(const team of [v.home,v.away]){if(!team)continue;
+              let n=Number(team.historyMatches);let band=n===0?'zero':n<3?'oneOrTwo':n<5?'threeToFour':n<10?'fiveToNine':'ten';
+              histogram[band]++;
+             }
+            }
+            console.log('B46_HISTORY_HCR '+JSON.stringify({http:z.code,checkedAt:data.checkedAtUTC,scope:data.scope,
+             inventory,planner:{target:planner.targetHistoryPerTeam,upcoming:planner.upcomingFixtures,
+              ready10:planner.readyFixtures,incomplete:planner.incompleteFixtures,
+              uniqueTeams:planner.uniqueTeams,uniqueNeeding:planner.uniqueTeamsNeedingHistory,
+              teamMatchGaps:planner.deduplicatedTeamMatchGaps,
+              topTeams:(planner.priorityTeams??[]).slice(0,12),
+              topLeagues:(planner.priorityLeagues??[]).slice(0,8),
+              highestPriority:(planner.highestPriority??[]).slice(0,6),top20Histogram:histogram},
+             rounds:recent
+            }).slice(0,24500));
+           }else if(p==='/prematch-ou-engine-state'){
+            console.log('B46_HISTORY_OU_ENGINE '+JSON.stringify({http:z.code,keys:Object.keys(data),
+             last:data.last,policy:data.policy,quota:data.quota,summary:data.summary
+            }).slice(0,13000));
+           }else if(p==='/preview-data'){
+            console.log('B46_HISTORY_V2_PICKS '+JSON.stringify({http:z.code,
+             rows:(data.ouLedger?.rows??[]).slice(-12).map(x=>({id:x.fixture_id,home:x.home,away:x.away,
+              homeCount:x.home_count,awayCount:x.away_count,historyConfidence:x.historyConfidence,
+              status:x.status,kickoff:x.kickoff,price:x.price,source:x.price_source})),
+             ouStats:data.ouLedger?.stats,
+             testLedger:data.testLedger?.rows?.length
+            }).slice(0,8000));
+           }else{
+            console.log('B46_HISTORY_ROUTE '+JSON.stringify({path:p,http:z.code,keys:Object.keys(data),
+             state:data.state,slot:data.slot,roundsUsed:data.roundsUsed,imported:data.imported,
+             received:data.received,added:data.added,providerCalls:data.providerCalls,
+             usedToday:data.usedToday,rounds:(data.rounds??data.records??[]).slice?.(-6)
+            }).slice(0,8500));
+           }
+          }
+          const hcr=entries.find(x=>x[0].startsWith('/history-cargo-registry'))?.[1];
+          if(hcr?.code!==200)throw Error('HCR_OWNER_REPORT_UNREADABLE');
+          console.log('B46_HISTORY_COVERAGE_AUDIT_PASS '+JSON.stringify({
+           checkedAt:new Date().toISOString(),hcrFinished:hcr.data.inventory?.finishedFixtures,
+           hcrReady10:hcr.data.supplyPlanning?.readyFixtures,
+           hcrUpcoming:hcr.data.supplyPlanning?.upcomingFixtures,
+           noProviderCalls:true,noWrites:true,productionUnchanged:true}));
+          JS
