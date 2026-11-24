@@ -10,6 +10,7 @@
     --b46-detail-ink: #eff8f3;
     --b46-detail-muted: #a6c1b8;
     --b46-detail-ink-accent: #76e2b5;
+    --b46-detail-away: #e8ca74;
     --b46-detail-active: #20493c;
     --b46-detail-grid: rgb(190 224 215 / .13);
     --b46-detail-shadow: 0 4px 12px rgb(0 0 0 / .17);
@@ -28,6 +29,7 @@
     --b46-detail-ink: var(--b46m-text, #153b29);
     --b46-detail-muted: var(--b46m-muted, #496a56);
     --b46-detail-ink-accent: #08734a;
+    --b46-detail-away: #765811;
     --b46-detail-active: #d5ebdf;
     --b46-detail-grid: rgb(45 91 67 / .15);
     --b46-detail-shadow: 0 4px 12px rgb(22 62 38 / .075);
@@ -140,9 +142,38 @@
     color: var(--b46-detail-ink) !important;
   }
 
-  html:root[data-theme] body .league-block > .match-row.active[aria-expanded="true"] {
+  html:root[data-theme] body .league-block > .match-row[data-match-id][aria-expanded="true"] {
+    --text: var(--b46-detail-ink);
+    --muted: var(--b46-detail-muted);
+    --b46-home: var(--b46-detail-ink-accent);
+    --b46-away: var(--b46-detail-away);
+    background: var(--b46-detail-card) !important;
+    color: var(--b46-detail-ink) !important;
     box-shadow: none !important;
     border-color: transparent !important;
+  }
+
+  html:root[data-theme] body .league-block > .match-row[data-match-id][aria-expanded="true"]
+  :is(.teams-cell > b, .teams-cell > .desktop-team-score, .score-cell > strong) {
+    color: var(--b46-detail-ink) !important;
+  }
+
+  html:root[data-theme] body .league-block > .match-row[data-match-id][aria-expanded="true"]
+  :is(.market-cell, .signal-cell.prediction-live) {
+    background: var(--b46-detail-well) !important;
+    border-color: transparent !important;
+    border-radius: 9px !important;
+    box-shadow: none !important;
+  }
+
+  html:root[data-theme] body .league-block > .match-row[data-match-id][aria-expanded="true"] .signal-cell.prediction-live {
+    --green: var(--b46-detail-ink-accent);
+    color: var(--b46-detail-ink-accent) !important;
+  }
+
+  html:root[data-theme] body .league-block > .match-row[data-match-id][aria-expanded="true"]
+  .market-cell :is(.market-quote, .market-price-row) {
+    column-gap: 4px;
   }
 
   html:root[data-theme] body .league-block > .match-row.active[aria-expanded="true"] + .match-expanded[data-expanded-match],
@@ -213,8 +244,42 @@
     --line: var(--b46-detail-grid);
   }
 
-  html:root[data-theme] body :is(#b46gn-detail#b46gn-detail, .match-expanded[data-expanded-match]) .fmb-market > table :is(thead th, tbody tr:nth-child(even)) {
+  /* The mobile sheet mirrors these native market tables. Bind the existing
+     HOME/AWAY and neutral price colors to the mobile palette in both. */
+  html:root[data-theme] body :is(#b46gn-detail#b46gn-detail, .match-expanded[data-expanded-match])
+  .expand-full-market-card .fmb-market {
+    --text: var(--b46-detail-ink);
+    --muted: var(--b46-detail-muted);
+    --b46-home: var(--b46-detail-ink-accent);
+    --b46-away: var(--b46-detail-away);
+  }
+
+  html:root[data-theme] body :is(#b46gn-detail#b46gn-detail, .match-expanded[data-expanded-match])
+  .fmb-market .fmb-table-wrap > table :is(thead th, tbody tr:nth-child(even)) {
     background: var(--b46-detail-well) !important;
+  }
+
+  html:root[data-theme] body :is(#b46gn-detail#b46gn-detail, .match-expanded[data-expanded-match])
+  .fmb-market .fmb-table-wrap > table tbody tr:nth-child(odd) {
+    background: var(--b46-detail-card) !important;
+  }
+
+  html:root[data-theme] body :is(#b46gn-detail#b46gn-detail, .match-expanded[data-expanded-match])
+  .fmb-market .fmb-table-wrap :is(th, td) {
+    padding-block: 7px !important;
+    padding-inline: 3px !important;
+    line-height: 1.3 !important;
+    font-size: 11px !important;
+  }
+
+  html:root[data-theme] body :is(#b46gn-detail#b46gn-detail, .match-expanded[data-expanded-match])
+  .fmb-market .fmb-table-wrap th {
+    font-size: 9px !important;
+  }
+
+  html:root[data-theme] body :is(#b46gn-detail#b46gn-detail, .match-expanded[data-expanded-match])
+  .expand-full-market-card .fmb-tab {
+    min-height: 40px;
   }
 
   html:root[data-theme] body :is(#b46gn-detail#b46gn-detail, .match-expanded[data-expanded-match]) .fmb-tab[aria-pressed="true"] {

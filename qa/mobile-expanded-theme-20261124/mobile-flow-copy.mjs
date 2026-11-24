@@ -14,7 +14,24 @@ const labels = new Map([
   ['ไม่ระบุนาที', 'Minute unavailable'],
 ]);
 
-export function englishFlowCopy(script) {
+const innerCardStyle = `@media (max-width: 760px) {
+  #details {
+    background: var(--panel);
+    border: 0;
+    border-radius: var(--b46-detail-radius, 13px);
+    box-shadow: var(--b46-detail-shadow, none);
+  }
+  #details .detail-row {
+    background: var(--callout);
+    border: 0;
+    border-radius: 9px;
+    padding: 10px;
+  }
+  #details .detail-row + .detail-row { margin-top: 6px; }
+  #details .details-head { padding-bottom: 8px; }
+}`;
+
+export function prepareMobileFlowAsset(script) {
   for (const [from, to] of labels) {
     // The labels include a shorter phrase that also appears in the chart hint.
     // Replace complete string literals so the hint and button remain distinct.
@@ -22,5 +39,7 @@ export function englishFlowCopy(script) {
       .replaceAll('"' + from + '"', '"' + to + '"')
       .replaceAll('>' + from + '<', '>' + to + '<');
   }
-  return script.replaceAll('class="empty-chart" x=', 'class="empty-chart" text-anchor="middle" fill="var(--muted)" font-size="10" x=');
+  return script
+    .replaceAll('class="empty-chart" x=', 'class="empty-chart" text-anchor="middle" fill="var(--muted)" font-size="10" x=')
+    .replace("CSS_TEXT+'</style>'+TEMPLATE", 'CSS_TEXT+' + JSON.stringify(innerCardStyle) + "+'</style>'+TEMPLATE");
 }

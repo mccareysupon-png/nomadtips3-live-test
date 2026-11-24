@@ -1,5 +1,5 @@
 import styles from './mobile-details.css';
-import { englishFlowCopy, FLOW_ASSET } from './mobile-flow-copy.mjs';
+import { prepareMobileFlowAsset, FLOW_ASSET } from './mobile-flow-copy.mjs';
 
 const SITE = 'https://ball46.com';
 const ID = 'b46-mobile-expanded-theme-20261124';
@@ -46,7 +46,7 @@ export default {
     if (request.method === 'GET' && source.ok && url.pathname === FLOW_ASSET) {
       for (const name of ['content-encoding', 'content-length', 'etag', 'last-modified']) outgoing.delete(name);
       outgoing.set('cache-control', 'no-store');
-      return new Response(englishFlowCopy(await source.text()), { status: source.status, headers: outgoing });
+      return new Response(prepareMobileFlowAsset(await source.text()), { status: source.status, headers: outgoing });
     }
     if (request.method === 'GET' && source.ok && pages.has(url.pathname) &&
         outgoing.get('content-type')?.includes('text/html')) {

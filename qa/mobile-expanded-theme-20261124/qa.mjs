@@ -1,12 +1,16 @@
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { FLOW_ASSET, englishFlowCopy } from './mobile-flow-copy.mjs';
+import { FLOW_ASSET, prepareMobileFlowAsset } from './mobile-flow-copy.mjs';
 
 const { chromium, devices } = await import(process.env.B46_PLAYWRIGHT_MODULE ?? 'playwright');
 const host = process.env.B46_PREVIEW ?? 'https://ball46-mobile-expanded-theme-test-20261124.mccarey-supon.workers.dev';
 const styleId = 'b46-mobile-expanded-theme-20261124';
 const artifacts = process.env.B46_QA_DIR;
+const replayDirectory = process.env.B46_QA_SIGNAL_REPLAY;
+const replay = replayDirectory ? await Promise.all(['signals', 'board'].map(async name =>
+  [name, JSON.parse(await readFile(join(replayDirectory, name + '.json'), 'utf8'))],
+)) : [];
 const colors = {
   dark: { sheet: 'rgb(10, 26, 29)', well: 'rgb(27, 52, 54)', ink: 'rgb(239, 248, 243)', plot: '#0d2225' },
   light: { sheet: 'rgb(244, 248, 245)', well: 'rgb(234, 243, 237)', ink: 'rgb(21, 59, 41)', plot: '#f5faf7' },
@@ -41,9 +45,10 @@ async function proofOfScope() {
     assert(asset.ok, 'Mobile Event Flow asset HTTP ' + asset.status);
     return asset.text();
   }));
-  assert.equal(testFlow, englishFlowCopy(liveFlow));
+  assert.equal(testFlow, prepareMobileFlowAsset(liveFlow));
   assert(!/[\u0e00-\u0e7f]/.test(testFlow), 'Mobile Event Flow still has Thai labels');
   assert(testFlow.includes('Tap a bar for its value or a signal for details'));
+  assert(testFlow.includes('#details .detail-row'));
   for (const id of ['b46-sidebar-winrate-production', 'b46-odds-flash-runtime-production']) {
     const pattern = new RegExp('<script id="' + id + '">([\\s\\S]*?)</script>');
     assert(liveHtml.match(pattern)?.[1], id + ' missing in Production');
@@ -66,6 +71,28 @@ function contrast(foreground, background) {
   }
   const [dark, light] = [luminance(foreground), luminance(background)].sort((a, b) => a - b);
   return (light + 0.05) / (dark + 0.05);
+}
+
+async function checkMarketPrices(panel) {
+  const swatches = await panel.locator('.fmb-market :is(th, td)').evaluateAll(cells =>
+    cells.filter(cell => cell.textContent.trim()).map(cell => {
+      const value = cell.querySelector('a') ?? cell;
+      const color = getComputedStyle(value).color;
+      let background;
+      for (let node = cell; node; node = node.parentElement) {
+        const surface = getComputedStyle(node).backgroundColor;
+        if (surface.startsWith('rgb(')) {
+          background = surface;
+          break;
+        }
+      }
+      return { label: value.textContent.trim(), color, background };
+    }),
+  );
+  for (const { label, color, background } of swatches) {
+    assert(background && contrast(color, background) >= 4.5, 'Unreadable market cell ' + label + ' ' + color + ' on ' + background);
+  }
+  return swatches.length;
 }
 
 async function screenshot(page, file) {
@@ -143,12 +170,14 @@ async function testMobile(browser, theme, device) {
     }
     const bookmaker = markets.locator('.fmb-tab.has-data').first();
     let marketOpened = false;
+    let sheetMarketCells = 0;
     if (await bookmaker.count()) {
       await bookmaker.click();
       const marketData = markets.locator('.fmb-panel:not([hidden])');
       await marketData.waitFor({ state: 'visible', timeout: 10_000 });
       assert.equal(await bookmaker.getAttribute('aria-pressed'), 'true');
       await assertFits(markets);
+      sheetMarketCells = await checkMarketPrices(marketData);
       marketOpened = true;
       await screenshot(page, theme + '-full-market');
       await bookmaker.click();
@@ -178,26 +207,67 @@ async function testMobile(browser, theme, device) {
     assert(contrast((await palette(item.locator('label'))).color, extraSurface) >= 4.5);
     assert.equal((await palette(extra)).borderTopWidth, '0px');
     await assertFits(extra);
-    if (artifacts) await history.screenshot({ path: join(artifacts, theme + '-statistics-details.png'), animations: 'disabled' });
+    await screenshot(page, theme + '-statistics-details');
     await detailsButton.click();
     await extra.waitFor({ state: 'hidden' });
 
-    await page.goto(host + '/?view=signal&signalMarket=ou', { waitUntil: 'domcontentloaded', timeout: 45_000 });
+    // Optional read-only replay of the captured public Signal and board responses.
+    for (const [name, payload] of replay) {
+      await context.route(url => url.pathname === '/api/engine/' + name, route => route.fulfill({ json: payload }));
+    }
+    await page.goto(host + '/?view=signal', { waitUntil: 'domcontentloaded', timeout: 45_000 });
     await page.waitForFunction(() => document.body.dataset.workspaceView === 'signal');
     const signalRow = page.locator('[data-workspace-view="signal"] .match-row[data-match-id]:visible').first();
     let signalExpanded = false;
+    let signalDetailsOpened = false;
+    let inlineMarketCells = 0;
     await signalRow.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {});
+    if (replay.length) await signalRow.waitFor({ state: 'visible', timeout: 20_000 });
     if (await signalRow.count()) {
       await signalRow.click();
       const detail = page.locator('.match-expanded[data-expanded-match]:visible').first();
       await detail.waitFor({ state: 'visible', timeout: 10_000 });
       assert.equal((await palette(detail.locator('.expand-card').first())).color, colors[theme].ink);
+      const miniMarket = signalRow.locator('.market-cell:visible').first();
+      if (await miniMarket.count()) assert.equal((await palette(miniMarket)).backgroundColor, colors[theme].well);
+      const inlineBook = detail.locator('.fmb-tab.has-data').first();
+      await inlineBook.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {});
+      if (await inlineBook.count()) {
+        await inlineBook.click();
+        const panel = detail.locator('.fmb-panel:not([hidden])');
+        await panel.waitFor({ state: 'visible' });
+        inlineMarketCells = await checkMarketPrices(panel);
+        if (artifacts && inlineMarketCells) {
+          await panel.locator('.fmb-group').first().screenshot({
+            path: join(artifacts, theme + '-signal-prices.png'), animations: 'disabled',
+          });
+        }
+      }
+      const allSignals = detail.locator('#all-signals:enabled');
+      if (await allSignals.count()) {
+        await allSignals.click();
+        const innerDetails = detail.locator('b46-mobile-event-bars #details:not([hidden])');
+        await innerDetails.waitFor({ state: 'visible' });
+        const innerCard = innerDetails.locator('.detail-row').first();
+        const paint = await palette(innerCard);
+        assert.equal(paint.backgroundColor, colors[theme].well);
+        assert.equal(paint.borderTopWidth, '0px');
+        await assertFits(innerDetails);
+        if (artifacts) {
+          await innerDetails.screenshot({ path: join(artifacts, theme + '-signal-inner.png'), animations: 'disabled' });
+        }
+        await innerDetails.locator('[data-close]').click();
+        await innerDetails.waitFor({ state: 'hidden' });
+        signalDetailsOpened = true;
+      }
       signalExpanded = true;
     }
+    if (replay.length) assert(signalExpanded && inlineMarketCells > 0 && signalDetailsOpened);
     assert.deepEqual(errors, []);
     return { viewport: device.viewport.width, theme, matchDetails: true, eventFlow: true,
       eventPlotData: plot.length > 0, matchStats: true, marketOpened, historyDetails: true,
-      sharedNativeExpansion: true, signalExpanded, historyContrast: Number(detailsContrast.toFixed(2)),
+      sharedNativeExpansion: true, signalExpanded, signalDetailsOpened, signalReplay: replay.length > 0,
+      sheetMarketCells, inlineMarketCells, historyContrast: Number(detailsContrast.toFixed(2)),
       language: 'en', javascriptErrors: errors };
   } finally {
     await context.close();
