@@ -31,9 +31,16 @@ async function proofOfScope() {
   assert(liveHtml.includes('hreflang="x-default" href="https://www.ball46.com/"'));
   assert.equal(testHtml.split('id="' + styleId + '"').length, 2);
   assert(testHtml.includes('<style id="' + styleId + '">' + expectedStyle + '</style>'));
-  const [testFlow, liveFlow] = await Promise.all(
-    [host, 'https://ball46.com'].map(async origin => (await fetch(origin + FLOW_ASSET)).text()),
-  );
+  const liveFlowScript = [...liveHtml.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)]
+    .map(([, src]) => new URL(src, 'https://ball46.com/'))
+    .find(src => src.pathname === FLOW_ASSET);
+  assert(liveFlowScript, 'Mobile Event Flow script missing from Production HTML');
+  const assetPath = liveFlowScript.pathname + liveFlowScript.search;
+  const [testFlow, liveFlow] = await Promise.all([host, 'https://ball46.com'].map(async origin => {
+    const asset = await fetch(origin + assetPath);
+    assert(asset.ok, 'Mobile Event Flow asset HTTP ' + asset.status);
+    return asset.text();
+  }));
   assert.equal(testFlow, englishFlowCopy(liveFlow));
   assert(!/[\u0e00-\u0e7f]/.test(testFlow), 'Mobile Event Flow still has Thai labels');
   assert(testFlow.includes('Tap a bar for its value or a signal for details'));
