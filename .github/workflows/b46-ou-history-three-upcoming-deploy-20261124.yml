@@ -1,0 +1,30 @@
+name: BALL46 O/U three verified FT each Upcoming Waiting TEST guarded deploy 20261124
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths:
+      - .github/workflows/b46-ou-history-three-upcoming-deploy-20261124.yml
+permissions: {contents: read}
+concurrency:
+  group: ball46-prematch-only-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Offline O/U model three per side, history planner and guarded existing engine
+        run: |
+          node --check qa/prematch-history-20261120/deploy-ou-history-three-upcoming-test-20261124.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-value-screener-v2.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/history-cargo-registry.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/prematch-ou-engine-v1.test.mjs
+      - name: Deploy two tested modules to TEST only and validate actual DO route with zero paid calls
+        run: node qa/prematch-history-20261120/deploy-ou-history-three-upcoming-test-20261124.mjs
