@@ -24,14 +24,17 @@ export async function cloudflare(path, method = 'GET', body) {
     ].includes(path), 'Cloudflare write scope');
   }
   const form = body instanceof FormData;
-  const response = await fetch('https://api.cloudflare.com/client/v4/accounts/' + account + '/workers' + path, {
-    method, headers: {authorization: 'Bearer ' + token, ...(body && !form ? {'content-type':'application/json'} : {})},
-    body: body === undefined || form ? body : JSON.stringify(body), signal: AbortSignal.timeout(90000),
-  });
-  const payload = await response.json();
-  assert(response.ok && payload.success, method + ' ' + path + ' HTTP ' + response.status + ' ' +
-    JSON.stringify((payload.errors ?? []).map(e => ({code:e.code,message:e.message}))));
-  return payload.result;
+  const request = async () => {
+    const response = await fetch('https://api.cloudflare.com/client/v4/accounts/' + account + '/workers' + path, {
+      method, headers: {authorization: 'Bearer ' + token, ...(body && !form ? {'content-type':'application/json'} : {})},
+      body: body === undefined || form ? body : JSON.stringify(body), signal: AbortSignal.timeout(90000),
+    });
+    const payload = await response.json();
+    assert(response.ok && payload.success, method + ' ' + path + ' HTTP ' + response.status + ' ' +
+      JSON.stringify((payload.errors ?? []).map(e => ({code:e.code,message:e.message}))));
+    return payload.result;
+  };
+  return method === 'GET' ? eventually(request,4,1000) : request();
 }
 
 export async function active(script = SITE) {

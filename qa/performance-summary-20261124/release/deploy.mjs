@@ -43,8 +43,8 @@ const report = { rollback: expected, previousDeployment: lock.site.deployment, s
 const save = () => writeFile(process.env.RUNNER_TEMP + '/performance-release-proof.json', JSON.stringify(report,null,2));
 await save();
 
-const getText = async (host,path,userAgent) =>
-  (await get(host + path, {headers:{'user-agent':userAgent ?? userAgents[0]}})).text();
+const getText = (host,path,userAgent) => eventually(async () =>
+  (await get(host + path, {headers:{'user-agent':userAgent ?? userAgents[0]}})).text(),3,600);
 const count = (html, pattern) => [...html.matchAll(pattern)].length;
 function verifyMarkup(html) {
   assert.equal(count(html, boot),1,'Missing or duplicate Performance bootstrap');
