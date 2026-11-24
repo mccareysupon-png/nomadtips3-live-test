@@ -1,0 +1,17 @@
+name = "ball46-performance-summary"
+main = "sidecar.mjs"
+compatibility_date = "2026-11-24"
+workers_dev = false
+preview_urls = false
+
+[[services]]
+binding = "B46_STATISTICS_READ"
+service = "nomadtips3-engine-343"
+
+[[durable_objects.bindings]]
+name = "PERFORMANCE_SUMMARY"
+class_name = "PerformanceSummary"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["PerformanceSummary"]

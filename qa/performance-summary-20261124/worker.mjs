@@ -61,7 +61,7 @@ export class PerformanceSummary {
   }
 }
 
-async function summaryFor(request, env, ctx) {
+export async function summaryFor(request, env, ctx) {
   const now = Date.now();
   const key = new Request(new URL(SUMMARY_PATH, request.url));
   const cache = caches.default;
@@ -88,15 +88,15 @@ async function summaryFor(request, env, ctx) {
   return null;
 }
 
-function patchCard(response, view) {
+export function patchCard(response, view, {clientPath = CLIENT_PATH, headerName = 'x-b46-performance-preview'} = {}) {
   const headers = new Headers(response.headers);
   for (const field of ['content-length', 'content-encoding', 'etag', 'last-modified']) headers.delete(field);
   headers.set('cache-control', 'no-store');
-  headers.set('x-b46-performance-preview', REVISION);
+  headers.set(headerName, REVISION);
 
   return new HTMLRewriter()
     .on('head', { element(element) {
-      element.append(bootData(view) + '<script defer src="' + CLIENT_PATH + '"></script>', {html: true});
+      element.append(bootData(view) + '<script defer src="' + clientPath + '"></script>', {html: true});
     } })
     .on('script#b46-daily-performance-runtime', { element(element) { element.remove(); } })
     .on('.main-board > .board-toolbar', { element(element) {

@@ -17,7 +17,8 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      EXPECTED_PRODUCTION_VERSION: ''
+      EXPECTED_PRODUCTION_VERSION: b4273ed3-b33e-4e8a-aa30-f67a4996ece7
+      EXPECTED_PRODUCTION_SOURCE_SHA: f2ef76014e73ef79efd84916a20578877260e7c4bb38a5fe542c31b6a2099287
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -25,7 +26,21 @@ jobs:
           node-version: '22'
       - name: Inspect and record active source and rollback
         run: node qa/performance-summary-20261124/release/inspect.mjs
+      - name: Check locked source and validated feature
+        run: |
+          node --test qa/performance-summary-20261124/summary.test.mjs
+          node --input-type=module -e "import fs from 'node:fs'; import assert from 'node:assert/strict'; const audit=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/performance-inspection.json')); assert.equal(audit.site.version,process.env.EXPECTED_PRODUCTION_VERSION); assert.equal(audit.mainHash,process.env.EXPECTED_PRODUCTION_SOURCE_SHA); assert(audit.previewsEnabled)"
+      - name: Deploy dedicated Performance summary service
+        run: npx --yes wrangler@4.50.0 deploy --config qa/performance-summary-20261124/release/sidecar.toml
+      - name: Verify inactive candidate, activate, and verify public site
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+          node qa/performance-summary-20261124/release/deploy.mjs
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: b46-performance-inspection-${{ github.run_id }}
-          path: ${{ runner.temp }}/performance-inspection.json
+          path: |
+            ${{ runner.temp }}/performance-inspection.json
+            ${{ runner.temp }}/performance-release-proof.json
