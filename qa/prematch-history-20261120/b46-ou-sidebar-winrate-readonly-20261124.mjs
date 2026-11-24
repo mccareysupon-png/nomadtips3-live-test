@@ -14,4 +14,15 @@ for(const needle of ['function navRow(route){','function updateMenu(){','functio
  while((i=src.indexOf(needle,i+1))>=0&&all.length<3)all.push(i);
  console.log('B46_OU_SIDEBAR_SOURCE '+JSON.stringify({needle,count:all.length,parts:all.map(j=>src.slice(Math.max(0,j-270),Math.min(src.length,j+6900)))}));
 }
+
+for(const part of [
+ {term:'b46AdaptivePanel',start:"  function b46AdaptivePanel(content){"},
+ {term:'AdaptiveLatestRecords',start:"      panel.append(mk('strong','SEPARATE FORMULA STATISTICS'"},
+ {term:'CoreDisplay',start:"  function updateMenu(){"},
+ {term:'LoadingAndRefresh',start:"  async function load(){"}
+ ]){
+ const i=src.indexOf(part.start);
+ if(i>=0)console.log('B46_OU_SIDEBAR_FOCUS '+JSON.stringify({term:part.term,index:i,source:src.slice(i,i+14300)}));
+}
+
 console.log('B46_OU_SIDEBAR_VERSION '+JSON.stringify({version:v,clientSize:src.length,mainSize:m[deployed.main_module].length}));
