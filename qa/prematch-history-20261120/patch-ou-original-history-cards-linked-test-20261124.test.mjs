@@ -8,7 +8,7 @@ test('keep both the native card UI and new Adaptive analytics, only link origina
  assert(code.includes("mode==='ou'?10:MATCHES_PER_PAGE"));
  assert(code.includes('(Number(b.kickoff)||0)-(Number(a.kickoff)||0)'));
  assert(code.includes('b46AdaptiveData'));
- assert(code.includes('data-b46'));
+ assert(code.includes('dataset.b46AdaptiveFormula'));
  assert(code.includes('b46OuHistoryMount')===false);
  assert(code.includes('Probability —'));
  assert(code.includes('return [...prior,...generated]'));
