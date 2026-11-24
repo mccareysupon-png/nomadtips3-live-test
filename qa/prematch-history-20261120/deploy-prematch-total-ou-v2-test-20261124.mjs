@@ -156,13 +156,24 @@ const frontFiles={...beforeFront.contents,[beforeFront.versionData.main_module]:
 let appliedBack=null,appliedFront=null;
 try{
  appliedBack=await uploadWorker(beforeBack,backFiles,beforeBack.id);
- // Cloudflare Durable Object may keep serving the previous deployed module briefly.
+ // Oct 2026 default deferred DO rollout (300s) is overridden for TEST only.
+ await cf('/scripts/'+backend+'/deployments',{
+  method:'POST',headers:{'content-type':'application/json'},
+  body:JSON.stringify({strategy:'percentage',versions:[{
+   version_id:appliedBack.version,percentage:100
+  }],code_update_strategy:{mode:'immediate'}})
+ });
+ console.log('B46_PREMATCH_TOTAL_OU_IMMEDIATE_DO_DEPLOY '+JSON.stringify({
+  worker:backend,version:appliedBack.version,codeUpdateStrategy:'immediate',
+  productionAffected:false,extra5UsdCalls:0
+ }));
+ // Verify the real Durable Object after activating the new TEST version.
  // Do not mistake asynchronous propagation for failed aggregation and roll back too early.
  let direct=null,reg=null,propagationError=null;
  // DO isolate can remain pinned to prior code while GETs keep it hot.
  // Allow idle time between checks so the new revision can be activated.
  for(let i=0;i<5;i++){
-  await new Promise(resolve=>setTimeout(resolve,i===0?65000:45000));
+  await new Promise(resolve=>setTimeout(resolve,i===0?4500:7000));
   try{
    reg=await get(backendHost+'/prematch-stats-registry-test?days=90',owner);
    if(reg?.markets?.['O/U']){
@@ -246,7 +257,15 @@ try{
   try{
    if(await version(obj.name)!==applied.version)throw Error('VERSION_DRIFT_NO_ROLLBACK');
    const restored=await uploadWorker(obj,obj.contents,applied.version);
-   recovery.push({name:obj.name,restored:restored.version});
+   if(obj.name===backend){
+     await cf('/scripts/'+backend+'/deployments',{
+      method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({strategy:'percentage',versions:[{
+       version_id:restored.version,percentage:100
+      }],code_update_strategy:{mode:'immediate'}})
+     });
+    }
+    recovery.push({name:obj.name,restored:restored.version});
   }catch(e){recovery.push({name:obj.name,error:String(e?.message??e)});}
  }
  console.log('B46_PREMATCH_TOTAL_OU_ROLLBACK '+JSON.stringify(recovery));
