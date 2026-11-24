@@ -29,8 +29,8 @@ try{
    const sidebar=page.locator('[data-b46-prematch-route="ou"] .b46pm-menu-count');
    await page.waitForFunction(()=>{
     const spans=[...document.querySelectorAll('[data-b46-prematch-route="ou"] .b46pm-menu-count')];
-    return spans.length>0&&spans.some(n=>/^\\d+\\.\\d{2}%$/.test(n.textContent.trim()));
-   },{timeout:45000});
+    return spans.length>0&&spans.some(n=>/^\d+\.\d{2}%$/.test(n.textContent.trim()));
+   },null,{timeout:45000});
    assert(adaptive&&legacy,'FRONTEND_SNAPSHOT_MISSING_'+pageName);
    assert.equal(adaptive.formulas.length,42,'FORMULAS_NOT_42');
    const f=adaptive.formulas.filter(x=>x.selection==='ALL');
@@ -57,6 +57,7 @@ try{
     assert(first[1].includes(expected[0].home),'FIRST_KICKOFF_HOME_MISMATCH');
     assert(first[1].includes(expected[0].away),'FIRST_KICKOFF_AWAY_MISMATCH');
     assert.equal(first[2],expected[0].formula_id,'FIRST_FORMULA_ORDER');
+    await section.getByRole('button',{name:'Next'}).scrollIntoViewIfNeeded();
     const scrollBefore=await page.locator('#b46-prematch-panel').evaluate(el=>el.scrollTop);
     await section.getByRole('button',{name:'Next'}).click();
     assert.equal(await rows.count(),10,'SECOND_HISTORY_NOT_10');
