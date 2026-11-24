@@ -2,14 +2,6 @@ import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
 import {combineOuOverview} from './b46-ou-overview-aggregate-test-v1.mjs';
 const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/';
-const [r,a]=await Promise.all([
- fetch(base+'__b46_prematch_data',{cache:'no-store'}),
- fetch(base+'__b46_pm_adaptive_research',{cache:'no-store'})
-]);
-assert(r.ok&&a.ok,'TEST_DATA_HTTP_FAILURE');
-const [dataset,adaptive]=await Promise.all([r.json(),a.json()]);
-const combined=combineOuOverview(dataset.ouLedger,dataset.ouDailySeries,dataset.ouDailyBook,adaptive);
-assert.equal(combined.formulaCount,42,'EXPECTED_ALL_42_FORMULAS');
 const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
 const result=[];
 try{
@@ -20,12 +12,25 @@ try{
   const ctx=await browser.newContext({viewport:{width:device.width,height:device.height},
    isMobile:device.mobile,hasTouch:device.mobile});
   const page=await ctx.newPage();
+  let dataset=null,adaptive=null;
+  for(const [suffix,which] of [['__b46_prematch_data','base'],['__b46_pm_adaptive_research','adaptive']]){
+   await page.route('**/'+suffix,async route=>{
+    const response=await route.fetch({timeout:30000});
+    assert(response.ok(),'BROWSER_CAPTURE_HTTP_'+suffix);
+    const value=await response.json();
+    if(which==='base')dataset=value;else adaptive=value;
+    await route.fulfill({response,body:JSON.stringify(value),headers:{'content-type':'application/json','cache-control':'no-store'}});
+   });
+  }
   const errors=[];page.on('pageerror',e=>errors.push(String(e.message)));
   const response=await page.goto(base+'?b46pm=ou',{waitUntil:'domcontentloaded',timeout:60000});
   assert(response?.ok(),'OU_PAGE_HTTP_'+device.name);
   await page.locator('#b46-prematch-panel .b46pm-performance-summary .b46pm-performance-hero')
    .waitFor({state:'visible',timeout:55000});
   await page.waitForFunction(()=>document.querySelectorAll('#b46-adaptive-native table').length>=2,{timeout:45000});
+  assert(dataset&&adaptive,'BROWSER_NATIVE_API_PAYLOAD_NOT_CAPTURED');
+  const combined=combineOuOverview(dataset.ouLedger,dataset.ouDailySeries,dataset.ouDailyBook,adaptive);
+  assert.equal(combined.formulaCount,42,'ALL_42_FORMULAS_EXPECTED');
   let ui=await page.evaluate(()=>{
    const board=document.querySelector('#b46-prematch-panel .b46pm-stats-board');
    const cards=board?[...board.querySelectorAll('.b46pm-stat')].map(e=>[
@@ -76,7 +81,7 @@ try{
   await ctx.close();
  }
  console.log('B46_OU_AGGREGATE_NATIVE_BROWSER_QA_PASS '+JSON.stringify({
-  summary:combined.total,formulaCount:combined.formulaCount,devices:result,
+  formulaCount:42,devices:result,
   source:combined.source,noBackendCallsAdded:0
  }));
 }finally{await browser.close()}
