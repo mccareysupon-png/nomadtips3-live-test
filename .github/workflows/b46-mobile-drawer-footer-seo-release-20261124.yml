@@ -21,6 +21,7 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       B46_MOBILE_FOOTER_MODE: stage
+      B46_MOBILE_FOOTER_CANDIDATE: 1418e0a2-a276-43d7-889c-4916ef842a59
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -38,5 +39,7 @@ jobs:
         if: always()
         with:
           name: b46-mobile-footer-seo-proof-${{ github.run_id }}
-          path: ${{ runner.temp }}/ball46-mobile-footer-*.json
+          path: |
+            ${{ runner.temp }}/ball46-mobile-footer-*.json
+            ${{ runner.temp }}/ball46-mobile-footer-*.png
           if-no-files-found: error

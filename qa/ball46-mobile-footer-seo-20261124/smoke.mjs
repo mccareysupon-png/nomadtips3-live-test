@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { join } from 'node:path';
 import { get, hash } from '../default-odds-crossdevice-20261123/release/cloudflare.mjs';
 import { mobileDashboardHead } from '../ball46-seo-20261124/b46-mobile-footer-ui-20261124.mjs';
 
@@ -184,15 +185,22 @@ export async function browserQA(host, name) {
           });
           assert(info.final && info.insideViewport && info.noHorizontalOverflow);
           assert(info.links.length === 16 && info.links.every(([href, line]) => href && line === 'none'));
+          if (mode !== 'classic' && process.env.RUNNER_TEMP) {
+            await footer.screenshot({ path: join(process.env.RUNNER_TEMP, 'ball46-mobile-footer-' + name + '-' + mode + '-' + theme + '.png') });
+          }
           const checked = { mode, theme, footer: true, links: info.links.length, oddsReady: true };
           if (mode !== 'desktop') checked.drawer = await drawerQA(page, mode === 'classic');
           if (mode === 'mobile' && theme === 'dark') {
             await page.goto(host + '/?view=signal', { waitUntil: 'domcontentloaded', timeout: 45_000 });
-            const signal = page.locator('[data-workspace-panel="signal"]');
-            await signal.waitFor({ state: 'visible', timeout: 25_000 });
-            await signal.locator('.match-row:visible, [data-b46-live-empty]:visible').first()
-              .waitFor({ state: 'visible', timeout: 12_000 }).catch(() => {});
-            checked.livePredictions = { visible: true, visibleMatches: await signal.locator('.match-row:visible').count() };
+            await page.waitForFunction(() => document.body.dataset.workspaceView === 'signal');
+            const rows = page.locator('[data-workspace-view="signal"] .match-row[data-match-id]:visible');
+            await rows.first().waitFor({ state: 'visible', timeout: 6_000 }).catch(() => {});
+            checked.livePredictions = { routeReady: true, visibleMatches: await rows.count() };
+            if (checked.livePredictions.visibleMatches) {
+              await rows.first().click();
+              await page.locator('.match-expanded[data-expanded-match]:visible').first().waitFor({ state: 'visible' });
+              checked.livePredictions.expanded = true;
+            }
             await page.goto(host + '/?view=statistics', { waitUntil: 'domcontentloaded', timeout: 45_000 });
             await page.locator('.b46m-detail-toggle:visible').first().waitFor({ state: 'visible', timeout: 30_000 });
             checked.statistics = true;

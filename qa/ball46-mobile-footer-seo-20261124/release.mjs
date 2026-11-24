@@ -123,7 +123,8 @@ let candidate;
 let activationAttempted = false;
 try {
   const [directBaseline, publicBaseline] = await Promise.all([surfaces(DIRECT, { preview: true }), surfaces(DOMAIN)]);
-  candidate = mode === 'stage' ? await upload() : process.env.B46_MOBILE_FOOTER_CANDIDATE;
+  candidate = process.env.B46_MOBILE_FOOTER_CANDIDATE;
+  if (mode === 'stage' && !candidate) candidate = await upload();
   assert.match(candidate ?? '', /^[0-9a-f-]{36}$/);
   assert.notEqual(candidate, baselineVersion);
   const preview = 'https://' + candidate.slice(0, 8) + '-' + SITE + '.mccarey-supon.workers.dev';
