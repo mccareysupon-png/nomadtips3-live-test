@@ -77,7 +77,7 @@ for(const n of [main,research]){
 console.log('B46_ADAPTIVE_FT_PREFLIGHT '+JSON.stringify({
  version:previousId,pendingResearch:adaptiveBefore.formulas.reduce((s,x)=>s+x.pending,0),
  existingOldOuShadow:existingOuBefore.shadowCount,archivedFT:hcrBefore.archive.ft,
- 42FormulasPreserved:true,existingStatsUI:true,existingCronOnly:true,
+ formulas42Preserved:true,existingStatsUI:true,existingCronOnly:true,
  noExtraHubCalls:true,noPaidApiCalls:true}));
 assert.equal(await version(worker),previousId,'CONCURRENT_TEST_DEPLOY');
 const metadata={main_module:main,compatibility_date:installed.compatibility_date||'2026-11-20',

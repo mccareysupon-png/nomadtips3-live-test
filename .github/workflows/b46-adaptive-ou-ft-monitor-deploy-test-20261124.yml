@@ -24,5 +24,6 @@ jobs:
           node --experimental-sqlite --test qa/prematch-history-20261120/b46-adaptive-ou-research-v1.test.mjs
           node --experimental-sqlite --test qa/prematch-history-20261120/ou-value-screener-v2.test.mjs
           node --experimental-sqlite --test qa/prematch-history-20261120/ou-v2-settlement.test.mjs
+      - run: node --check qa/prematch-history-20261120/b46-adaptive-ou-ft-monitor-deploy-test-20261124.mjs
       - name: Patch only Adaptive FT monitor integration in the existing TEST Worker and verify unchanged UI and stats isolation
         run: node qa/prematch-history-20261120/b46-adaptive-ou-ft-monitor-deploy-test-20261124.mjs
