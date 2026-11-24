@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
-import { active, canonical, cloudflare, DIRECT, DOMAIN, eventually, get, hash, SITE } from
+import { active, canonical, cloudflare, DIRECT, DOMAIN, eventually, get, hash, SITE, version } from
   '../../default-odds-crossdevice-20261123/release/cloudflare.mjs';
 
 export const settingFields = [
@@ -16,8 +16,6 @@ export function sourceHash(base) {
   ]).sort(([a], [b]) => a.localeCompare(b))));
 }
 
-export const readVersion = (name, id) => cloudflare('/' + name + '/versions/' + id + '?include=modules');
-
 export async function settingsForSite() {
   const [settings, subdomain, schedules] = await Promise.all(
     ['settings', 'subdomain', 'schedules'].map(endpoint => cloudflare('/scripts/' + SITE + '/' + endpoint)),
@@ -30,7 +28,7 @@ async function inspect() {
   await writeFile(proofPath, JSON.stringify({ live, rollback: live.version }, null, 2));
   assert.equal(live.version, expected, 'Production version differs from the previous verified release');
   const [base, settings, response, board] = await Promise.all([
-    readVersion(SITE, live.version),
+    version(SITE, live.version),
     settingsForSite(),
     eventually(() => get(DIRECT + '/?view=signal'), 4, 1200),
     eventually(async () => (await get(DOMAIN + '/api/hub/snapshot')).json(), 4, 1200),
