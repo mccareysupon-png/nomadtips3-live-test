@@ -1,0 +1,27 @@
+name: BALL46 fix Adaptive O-U TEST UI appearing on top 20261124
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-native-ou-overlay-repair-v2-deploy-20261124.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-premium-match-colors-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 13
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Prove native UI panel deconfliction and unchanged rest of frontend
+        run: |
+          node --check qa/prematch-history-20261120/fix-adaptive-ou-native-overlay-v2-test.mjs
+          node --check qa/prematch-history-20261120/b46-native-ou-overlay-repair-v2-deploy-20261124.mjs
+          node --test qa/prematch-history-20261120/fix-adaptive-ou-native-overlay-v2.test.mjs
+      - name: Deploy only front TEST worker after verified immutable code patch
+        run: node qa/prematch-history-20261120/b46-native-ou-overlay-repair-v2-deploy-20261124.mjs
