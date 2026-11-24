@@ -1,0 +1,26 @@
+name: BALL46 O/U minimum three FT per Upcoming Waiting team TEST QA 20261124
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths:
+      - qa/prematch-history-20261120/ou-value-screener-v2-test.mjs
+      - qa/prematch-history-20261120/ou-value-screener-v2.test.mjs
+      - qa/prematch-history-20261120/history-cargo-registry.mjs
+      - qa/prematch-history-20261120/history-cargo-registry.test.mjs
+      - .github/workflows/b46-ou-history-three-upcoming-offline-20261124.yml
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify three completed matches per side and upcoming waiting supply planner with no provider API
+        run: |
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-value-screener-v2.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/history-cargo-registry.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/prematch-ou-engine-v1.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/history-five-rounds.test.mjs
+          echo B46_OU_HISTORY_3_PER_TEAM_UPCOMING_WAITING_OFFLINE_PASS
