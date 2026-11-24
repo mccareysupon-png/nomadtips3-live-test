@@ -1,0 +1,23 @@
+name: BALL46 TEST remove mistaken fullscreen loader return normal first paint 20261124
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-prematch-remove-fullscreen-loader-20261124.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-prematch-frontend-test-20261120
+  cancel-in-progress: false
+jobs:
+  rollback:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Restore prior original PreMatch TEST frontend only, verify all routes and protected worker versions
+        run: node qa/prematch-history-20261120/b46-prematch-remove-fullscreen-loader-20261124.mjs
