@@ -2,7 +2,9 @@ name: BALL46 O/U V3 three all-ground FT optional H2H offline QA 20261124
 on:
   push:
     branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
-    paths: [.github/workflows/b46-ou-v3-allground-h2h-offline-20261124.yml]
+    paths:
+      - .github/workflows/b46-ou-v3-allground-h2h-offline-20261124.yml
+      - qa/prematch-history-20261120/ou-target-history-ft-v1.test.mjs
 permissions: {contents: read}
 jobs:
   qa:
