@@ -1,0 +1,14 @@
+name = "ball46-mobile-expanded-theme-test-20261124"
+main = "worker.mjs"
+compatibility_date = "2026-11-24"
+workers_dev = true
+preview_urls = false
+
+[[rules]]
+type = "Text"
+globs = ["**/*.css"]
+fallthrough = true
+
+[[services]]
+binding = "B46_PRODUCTION_READ"
+service = "ball46-production"

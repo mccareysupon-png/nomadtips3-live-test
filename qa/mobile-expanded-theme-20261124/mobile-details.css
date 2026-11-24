@@ -1,0 +1,238 @@
+/* Mobile details use the same graphite-teal and mint tones as the match list.
+   Keep this scope on the existing expanders so the closed cards and PC stay intact. */
+@media (max-width: 767px) {
+  html[data-theme] {
+    --b46-detail-sheet: #0a1a1d;
+    --b46-detail-card: #102126;
+    --b46-detail-card-top: #14282b;
+    --b46-detail-well: #1b3436;
+    --b46-detail-plot: #0d2225;
+    --b46-detail-ink: #eff8f3;
+    --b46-detail-muted: #a6c1b8;
+    --b46-detail-ink-accent: #76e2b5;
+    --b46-detail-active: #20493c;
+    --b46-detail-grid: rgb(190 224 215 / .13);
+    --b46-detail-shadow: 0 4px 12px rgb(0 0 0 / .17);
+    --b46-detail-sheet-shadow: 0 -12px 44px rgb(0 0 0 / .36);
+    --b46-detail-overlay: rgb(3 10 10 / .66);
+    --b46-detail-radius: 13px;
+    --b46-detail-space: 12px;
+  }
+
+  html[data-theme="light"] {
+    --b46-detail-sheet: var(--b46m-bg, #f4f8f5);
+    --b46-detail-card: var(--b46m-surface, #fff);
+    --b46-detail-card-top: #f1f7f3;
+    --b46-detail-well: var(--b46m-surface-2, #eaf3ed);
+    --b46-detail-plot: #f5faf7;
+    --b46-detail-ink: var(--b46m-text, #153b29);
+    --b46-detail-muted: var(--b46m-muted, #496a56);
+    --b46-detail-ink-accent: #08734a;
+    --b46-detail-active: #d5ebdf;
+    --b46-detail-grid: rgb(45 91 67 / .15);
+    --b46-detail-shadow: 0 4px 12px rgb(22 62 38 / .075);
+    --b46-detail-sheet-shadow: 0 -10px 36px rgb(23 58 40 / .16);
+    --b46-detail-overlay: rgb(13 39 26 / .36);
+  }
+
+  html[data-theme] body #b46gn-detail {
+    background: var(--b46-detail-overlay) !important;
+  }
+
+  html[data-theme] body #b46gn-detail .b46gn-sheet {
+    background: var(--b46-detail-sheet) !important;
+    color: var(--b46-detail-ink) !important;
+    padding-inline: var(--b46-detail-space) !important;
+    border: 0 !important;
+    box-shadow: var(--b46-detail-sheet-shadow) !important;
+  }
+
+  html[data-theme] body #b46gn-detail .b46gn-handle {
+    background: var(--b46-detail-muted) !important;
+    opacity: .52;
+  }
+
+  html[data-theme] body #b46gn-detail .b46gn-sheethead {
+    background: transparent !important;
+    color: var(--b46-detail-ink) !important;
+  }
+
+  html[data-theme] body #b46gn-detail .b46gn-dismiss,
+  html[data-theme] body #b46gn-detail .b46-suite-nav button {
+    background: var(--b46-detail-well) !important;
+    color: var(--b46-detail-ink) !important;
+    border: 0 !important;
+    border-radius: 9px !important;
+  }
+
+  html[data-theme] body #b46gn-detail .b46gn-dismiss {
+    inline-size: 44px;
+    block-size: 44px;
+    flex-shrink: 0;
+  }
+
+  html[data-theme] body #b46gn-detail .b46gn-sheetbody > .b46-suite-nav {
+    background: var(--b46-detail-card) !important;
+    border-radius: var(--b46-detail-radius) !important;
+    box-shadow: var(--b46-detail-shadow);
+  }
+
+  html[data-theme] body #b46gn-detail .b46-suite-nav button {
+    min-height: 44px;
+    font-size: 11px;
+  }
+
+  html[data-theme] body #b46gn-detail .b46-suite-nav button:active {
+    background: var(--b46-detail-active) !important;
+  }
+
+  html[data-theme] body #b46gn-detail :is(.b46gn-dismiss, .b46-suite-nav button):focus-visible {
+    outline: 2px solid var(--b46-detail-ink-accent) !important;
+    outline-offset: 2px;
+  }
+
+  html[data-theme] body #b46gn-detail#b46gn-detail .b46gn-sheetbody :is(.b46gn-teams, .b46gn-event-flow),
+  html[data-theme] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured] {
+    background: linear-gradient(145deg, var(--b46-detail-card-top), var(--b46-detail-card)) !important;
+    color: var(--b46-detail-ink) !important;
+    border: 0 !important;
+    border-radius: var(--b46-detail-radius) !important;
+    box-shadow: var(--b46-detail-shadow) !important;
+  }
+
+  html[data-theme] body #b46gn-detail .b46gn-prices > div {
+    background: var(--b46-detail-card) !important;
+    border: 0 !important;
+    box-shadow: var(--b46-detail-shadow);
+  }
+
+  html[data-theme] body #b46gn-detail .b46gn-prices .market-head {
+    color: var(--b46-detail-muted) !important;
+  }
+
+  html[data-theme] body #b46gn-detail#b46gn-detail .featured-card[data-featured] {
+    --f10-ink: var(--b46-detail-ink);
+    --f10-head: var(--b46-detail-ink);
+    --f10-muted: var(--b46-detail-muted);
+    --f10-accent: var(--b46-detail-ink-accent);
+    --f10-panel: var(--b46-detail-well);
+    --f10-event: var(--b46-detail-card);
+    --f10-signal: var(--b46-detail-card);
+    --f10-shadow: none;
+  }
+
+  html[data-theme] body #b46gn-detail#b46gn-detail .featured-card[data-featured] .feature-score,
+  html[data-theme] body #b46gn-detail#b46gn-detail .featured-card[data-featured] .feature-facts {
+    background: var(--b46-detail-well) !important;
+    box-shadow: none !important;
+  }
+
+  html[data-theme] body #b46gn-detail#b46gn-detail .featured-card[data-featured] .feature-facts > div {
+    background: var(--b46-detail-card) !important;
+    box-shadow: none !important;
+  }
+
+  html[data-theme] body #b46gn-detail#b46gn-detail .featured-card[data-featured] .feature-facts > div > span {
+    color: var(--b46-detail-muted) !important;
+  }
+
+  html[data-theme] body #b46gn-detail#b46gn-detail .featured-card[data-featured] .feature-facts > div > b {
+    color: var(--b46-detail-ink) !important;
+  }
+
+  html:root[data-theme] body .league-block > .match-row.active[aria-expanded="true"] {
+    box-shadow: none !important;
+    border-color: transparent !important;
+  }
+
+  html:root[data-theme] body .league-block > .match-row.active[aria-expanded="true"] + .match-expanded[data-expanded-match],
+  html:root[data-theme] body dialog.b46-eventflow-top-layer {
+    background: var(--b46-detail-sheet) !important;
+    color: var(--b46-detail-ink) !important;
+    box-shadow: var(--b46-detail-shadow) !important;
+    border: 0 !important;
+  }
+
+  /* Some older theme rules group the inline and sheet variants in one :is().
+     Match their scope in both renderers, including the detached Event Flow dialog. */
+  html:root[data-theme] body :is(#b46gn-detail#b46gn-detail, .match-expanded[data-expanded-match], dialog.b46-eventflow-top-layer) {
+    --quiet-base: var(--b46-detail-card);
+    --quiet-card: var(--b46-detail-card);
+    --quiet-header: var(--b46-detail-well);
+    --quiet-row: var(--b46-detail-active);
+    --quiet-muted: var(--b46-detail-muted);
+    --quiet-line: var(--b46-detail-grid);
+  }
+
+  html:root[data-theme] body :is(#b46gn-detail#b46gn-detail, .match-expanded[data-expanded-match], dialog.b46-eventflow-top-layer)
+  :is(.expand-card, .fmb-market) {
+    background: var(--b46-detail-card) !important;
+    color: var(--b46-detail-ink) !important;
+    border: 0 !important;
+    border-radius: var(--b46-detail-radius) !important;
+  }
+
+  html:root[data-theme] body :is(#b46gn-detail#b46gn-detail, .match-expanded[data-expanded-match], dialog.b46-eventflow-top-layer)
+  :is(.expand-card-head, .fmb-head, .fmb-tabs, .fmb-market > header) {
+    background: var(--b46-detail-card-top) !important;
+    color: var(--b46-detail-ink) !important;
+    text-shadow: none !important;
+  }
+
+  html:root[data-theme] body :is(#b46gn-detail#b46gn-detail, .match-expanded[data-expanded-match], dialog.b46-eventflow-top-layer)
+  :is(.expand-flow-chart, .expand-flow-legend) {
+    background: var(--b46-detail-plot) !important;
+    color: var(--b46-detail-muted) !important;
+    box-shadow: none !important;
+  }
+
+  html:root[data-theme] body :is(#b46gn-detail#b46gn-detail, .match-expanded[data-expanded-match], dialog.b46-eventflow-top-layer)
+  :is(.expand-card-head b, .expand-flow-legend b, .fmb-market > header b, .fmb-tab[aria-pressed="true"]) {
+    color: var(--b46-detail-ink) !important;
+  }
+
+  html:root[data-theme] body :is(#b46gn-detail#b46gn-detail, .match-expanded[data-expanded-match], dialog.b46-eventflow-top-layer)
+  :is(.expand-card-head small, .expand-flow-legend > small, .fmb-head small, .expand-empty, .expand-loading, .b46gn-flow-loading) {
+    color: var(--b46-detail-muted) !important;
+  }
+
+  html:root[data-theme] body :is(#b46gn-detail#b46gn-detail, .match-expanded[data-expanded-match], dialog.b46-eventflow-top-layer)
+  b46-mobile-event-bars {
+    --page: var(--b46-detail-sheet);
+    --panel: var(--b46-detail-card);
+    --plot: var(--b46-detail-plot);
+    --ink: var(--b46-detail-ink);
+    --muted: var(--b46-detail-muted);
+    --callout: var(--b46-detail-well);
+    --grid: var(--b46-detail-grid);
+    --line: var(--b46-detail-grid);
+  }
+
+  html:root[data-theme] body :is(#b46gn-detail#b46gn-detail, .match-expanded[data-expanded-match]) .fmb-market > table :is(thead th, tbody tr:nth-child(even)) {
+    background: var(--b46-detail-well) !important;
+  }
+
+  html:root[data-theme] body :is(#b46gn-detail#b46gn-detail, .match-expanded[data-expanded-match]) .fmb-tab[aria-pressed="true"] {
+    background: var(--b46-detail-active) !important;
+  }
+
+  html:root[data-theme] body[data-workspace-view="statistics"] .workspace.singlepage .b46m-hcard[data-expanded="true"] .b46m-extra {
+    border: 0 !important;
+    gap: 8px !important;
+    padding: 0 var(--b46-detail-space) var(--b46-detail-space) !important;
+  }
+
+  html:root[data-theme] body[data-workspace-view="statistics"] .workspace.singlepage .b46m-hcard[data-expanded="true"] .b46m-extra-item {
+    background: var(--b46-detail-well) !important;
+    border-radius: 9px;
+    padding: 8px 10px;
+  }
+
+  html:root[data-theme] body[data-workspace-view="statistics"] .workspace.singlepage .b46m-hcard[data-expanded="true"] .b46m-extra-item label {
+    color: var(--b46-detail-muted) !important;
+  }
+
+  html:root[data-theme] body[data-workspace-view="statistics"] .workspace.singlepage .b46m-hcard[data-expanded="true"] .b46m-extra-item span {
+    color: var(--b46-detail-ink) !important;
+  }
+}
