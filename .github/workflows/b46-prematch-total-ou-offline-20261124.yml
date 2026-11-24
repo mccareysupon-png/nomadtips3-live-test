@@ -1,0 +1,24 @@
+name: BALL46 PREMATCH TOTAL OU offline invariant regression 20261124
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths:
+      - qa/prematch-history-20261120/prematch-total-priced-ou-v2-test.mjs
+      - qa/prematch-history-20261120/prematch-total-priced-ou-v2.test.mjs
+      - .github/workflows/b46-prematch-total-ou-offline-20261124.yml
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Pure persisted-snapshot Total aggregation, duplicate market key, ROI and 1X2 regression; no provider keys
+        run: |
+          node --check qa/prematch-history-20261120/prematch-total-priced-ou-v2-test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/prematch-total-priced-ou-v2.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/prematch-stats-registry-test.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-v2-settlement.test.mjs
+          echo B46_PREMATCH_TOTAL_PLUS_OU_OFFLINE_REGRESSION_PASS
