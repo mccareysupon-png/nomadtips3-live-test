@@ -30,6 +30,15 @@ for(const [tag,term,n] of queries){
  let i=s.indexOf(term);
  console.log('B46_EXISTING_FRONTEND_SOURCE '+JSON.stringify({tag,term,index:i,code:i<0?'':s.slice(Math.max(0,i-300),i+n)}));
 }
+
+const start=s.indexOf("  function draw(pageOnly=false){");
+const end=s.indexOf("  function show(modeNext){",start);
+console.log('B46_ORIGINAL_CARD_DRAW_TAIL '+JSON.stringify({start,end,code:s.slice(start+7000,Math.min(end,start+18500))}));
+for(const t of ['function historyRow(','function premiumHistoryRow(','function listSection(','function statusHistory','function oldHistory','b46pm-prediction-history','b46pm-stats-board','pageSize=','const history=','pagination','pageItems','premiumMatchRow(item','premiumMatchRow(row','premiumMatchRow(r','append(premiumMatchRow']){
+ const i=s.indexOf(t,start);
+ console.log('B46_ORIGINAL_CARD_NEEDLE '+JSON.stringify({needle:t,offset:i,code:i<0?'':s.slice(Math.max(start,i-700),Math.min(end,i+2100))}));
+}
+
 const base='https://'+name+'.mccarey-supon.workers.dev';
 const [b,a]=await Promise.all([
  fetch(base+'/__b46_prematch_data',{cache:'no-store',signal:AbortSignal.timeout(24000)}),
