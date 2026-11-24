@@ -1,0 +1,30 @@
+name: BALL46 O/U V2 actual finished result to existing UI FIX TEST
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths:
+      - qa/prematch-history-20261120/fix-ou-v2-real-ft-ui-20261124.mjs
+      - .github/workflows/b46-ou-v2-real-ft-ui-fix-20261124.yml
+permissions: {contents: read}
+concurrency:
+  group: ball46-prematch-only-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Check TEST real FT UI projection, settlement and original engine
+        run: |
+          node --check qa/prematch-history-20261120/fix-ou-v2-real-ft-ui-20261124.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-v2-settlement.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/patch-priced-ou-into-existing-prematch-ui.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/prematch-ou-engine-v1.test.mjs
+      - name: Repair actual inline UI projection and verify real settled LOSS on TEST
+        run: node qa/prematch-history-20261120/fix-ou-v2-real-ft-ui-20261124.mjs
