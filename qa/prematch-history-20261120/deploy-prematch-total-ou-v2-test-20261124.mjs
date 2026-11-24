@@ -83,11 +83,11 @@ function replaceOnce(source,from,to,label){
 backendCode="import {combinePrematchTotalSnapshots,appendPricedOuToPrematchAll} from './"+
  moduleName+"';\n"+backendCode;
 backendCode=replaceOnce(backendCode,
- "  const registry=readPreMarketStatsRegistry(this.db,now);",
- "  const registry=combinePrematchTotalSnapshots(readPreMarketStatsRegistry(this.db,now),readOuV2SettlementState(this.db,now));",
+ "const registry=readPreMarketStatsRegistry(this.db,now);",
+ "const registry=combinePrematchTotalSnapshots(readPreMarketStatsRegistry(this.db,now),readOuV2SettlementState(this.db,now));",
  'COMBINE_THREE_MARKETS');
 backendCode=replaceOnce(backendCode,
- "   settlementState:readOuV2SettlementState(this.db,now)\n  });",
+ "settlementState:readOuV2SettlementState(this.db,now)\n  });",
  "   settlementState:readOuV2SettlementState(this.db,now)\n  });\n"+
  "  const allCombinedWithOu=appendPricedOuToPrematchAll(allLedgerNow,pricedV2Ui.ouLedger.rows,registry.markets.TOTAL);",
  'APPEND_IMMUTABLE_PRICED_PICKS');
@@ -96,8 +96,8 @@ backendCode=replaceOnce(backendCode,
  "allLedger:allCombinedWithOu,ouLedger:pricedV2Ui.ouLedger",
  'ALL_LEDGER_RESULTS');
 backendCode=replaceOnce(backendCode,
- "   return json(readPreMarketStatsRegistry(this.db,now,{rangeDays:days}));",
- "   return json(combinePrematchTotalSnapshots(readPreMarketStatsRegistry(this.db,now,{rangeDays:days}),readOuV2SettlementState(this.db,now)));",
+ "return json(readPreMarketStatsRegistry(this.db,now,{rangeDays:days}));",
+ "return json(combinePrematchTotalSnapshots(readPreMarketStatsRegistry(this.db,now,{rangeDays:days}),readOuV2SettlementState(this.db,now)));",
  'TOTAL_REGISTRY_OWNER_ROUTE');
 assert(backendCode.includes('marketDailyBooks:dailyMarkets')&&
  backendCode.includes('allDailySeries:registry.dailySeries.TOTAL')&&
