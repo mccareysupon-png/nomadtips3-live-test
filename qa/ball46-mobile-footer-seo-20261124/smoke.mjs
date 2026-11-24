@@ -122,8 +122,9 @@ async function drawerQA(page, classic, theme) {
     await Promise.all(node.getAnimations().map(animation => animation.finished));
     node.scrollTop = 180;
   });
-  const featured = await dialog.locator('.b46gn-featured .featured-card[data-featured]').evaluate(card => {
-    const panels = [...card.querySelectorAll('.feature-stats:has(> .stat-row), .feature-events:has(> .event-item)')];
+  const featured = await dialog.evaluate(node => {
+    const panels = [...node.querySelectorAll('.b46gn-featured .featured-card[data-featured] ' +
+      ':is(.feature-stats:has(> .stat-row), .feature-events:has(> .event-item))')];
     return panels.filter(panel => panel.clientWidth > 0 && panel.clientHeight > 0)
       .map(panel => [panel.className, getComputedStyle(panel).backgroundColor, panel.scrollWidth <= panel.clientWidth + 1]);
   });
