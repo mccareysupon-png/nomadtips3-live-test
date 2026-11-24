@@ -1,0 +1,25 @@
+name: B46 live sidebar intermittent stale read-only audit
+on:
+  push:
+    branches: [audit/b46-live-sidebar-stale-20261124]
+    paths:
+      - 'qa/live-sidebar-stale-20261124/**'
+      - '.github/workflows/b46-live-sidebar-stale-audit-20261124.yml'
+permissions: {contents: read}
+concurrency:
+  group: b46-live-sidebar-stale-20261124
+  cancel-in-progress: true
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install headless browser for read-only observation
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Observe visible menu, live network and backend without changes
+        run: node qa/live-sidebar-stale-20261124/audit.mjs
