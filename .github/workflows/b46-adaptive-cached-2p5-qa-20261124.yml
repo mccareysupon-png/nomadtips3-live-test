@@ -17,3 +17,5 @@ jobs:
           node --check qa/prematch-history-20261120/b46-adaptive-ou-ledger-v1-test.mjs
           node --experimental-sqlite --test qa/prematch-history-20261120/b46-adaptive-ou-research-v1.test.mjs
           node --experimental-sqlite --test qa/prematch-history-20261120/ou-value-screener-v2.test.mjs
+
+# Research accepts 39-minute recorded odds, but rejects observations older than six hours.

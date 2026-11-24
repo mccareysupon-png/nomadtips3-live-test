@@ -143,7 +143,7 @@ test('live real-style 2.5 quote + separate immutable per-formula ledger, snapsho
   assert.equal(raw.prepare("SELECT COUNT(*) n FROM sqlite_master WHERE type='table' AND name='b46_ou_v2_snapshot_test'").get().n,0);
  }finally{raw.close()}
 });
-test('no quote, expired odds, incorrect line or outside 1.40-10 => no price and no pick',async()=>{
+test('no quote, older than 6h odds, incorrect line or outside 1.40-10 => no price and no pick',async()=>{
  const {db,raw,add,fixture}=mk();
  try{
   add(101,501,2,2);add(102,501,3,1);
@@ -151,7 +151,7 @@ test('no quote, expired odds, incorrect line or outside 1.40-10 => no price and 
   for(const entry of [null,
    {fullOdds:{fixture_id:7001,bookmakers:[{slug:'bet365',odds:{
     goal_line_fixed:[{line:2.5,opening:{over:1.6,under:1.7},closing:{over:1.6,under:1.7}}]
-   }}]},fetchedAt:NOW*1000-180000,ageMs:180000,stale:true},
+   }}]},fetchedAt:NOW*1000-25200000,ageMs:25200000,stale:true},
    {fullOdds:{fixture_id:7001,bookmakers:[{slug:'bet365',odds:{
     goal_line_fixed:[{line:3.5,opening:{over:1.6,under:1.7},closing:{over:1.6,under:1.7}}]
    }}]},fetchedAt:NOW*1000-5000,ageMs:5000,stale:false},
