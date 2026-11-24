@@ -1,0 +1,43 @@
+name: BALL46 O/U after real 367 FT first gate natural Cron read only 20261124
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-after-367ft-readonly-20261124.yml]
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Read real TEST O/U first gate after historical imports without restarting engine or prices
+        run: |
+          node --input-type=module <<'JS'
+          import crypto from 'node:crypto';
+          const t=process.env.CLOUDFLARE_API_TOKEN,h='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          const headers={authorization:'Bearer '+crypto.createHmac('sha256',t).update('BALL46_PREMATCH_ONLY_V1').digest('hex')};
+          const get=async p=>{const r=await fetch(h+p,{headers,cache:'no-store',signal:AbortSignal.timeout(30000)});
+           if(!r.ok)throw Error('GET_'+p+'_'+r.status);return r.json()};
+          const [hcr,engine,archive,truck,preview]=await Promise.all([
+           get('/history-cargo-registry?detail=0'),get('/prematch-ou-engine-state'),
+           get('/ou-history-ft-state'),get('/btts-bulk-v2-state'),get('/preview-data')
+          ]);
+          const last=engine.last||{};
+          const report={at:new Date().toISOString(),
+           archive:archive.archive,fixtures:hcr.supplyPlanning.upcomingFixtures,
+           eligibleThree:hcr.supplyPlanning.readyFixtures,
+           gapsToThree:hcr.supplyPlanning.deduplicatedTeamMatchGaps,
+           lastEngineAtUTC:last.at?new Date(last.at*1000).toISOString():null,
+           newHistoryEffectiveOnLastTick:last.at>=1795490049,
+           lastScan:last.scan,lastPriceBridge:last.priceBridge?.state,
+           ouLedger:preview.ouLedger?.stats,
+           bttsTruckMode:truck.config.mode,
+           productionWrites:0,providerCallsThisRead:0};
+          console.log('B46_OU_367FT_STAGE_ONE_REAL_CHECK '+JSON.stringify(report));
+          if(archive.archive.ft<367||hcr.supplyPlanning.readyFixtures<18||
+             truck.config.mode!=='CLOSED')throw Error('STAGE_ONE_HISTORY_REGRESSION');
+          console.log('B46_OU_367FT_STAGE_ONE_READONLY_PASS');
+          JS
