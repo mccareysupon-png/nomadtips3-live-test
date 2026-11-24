@@ -159,8 +159,14 @@ try{
  const direct=await get(backendHost+'/preview-data',owner);
  const reg=await get(backendHost+'/prematch-stats-registry-test?days=90',owner);
  assert.equal(direct.allLedger.stats.total,reg.markets.TOTAL.total,'BACKEND_TOTAL_MISMATCH');
- assert.equal(direct.allLedger.stats.total,direct.testLedger.stats.total+
-  direct.bttsLedger.stats.total+direct.ouLedger.stats.total,'MARKET_TOTAL_MISMATCH');
+ console.log('B46_PREMATCH_TOTAL_OU_SOURCE_DIAGNOSTIC '+JSON.stringify({
+  baseOneX2:direct.testLedger.stats,baseBtts:direct.bttsLedger.stats,
+  sourceRegistry:reg.markets, ou:direct.ouLedger.stats,
+  all:direct.allLedger.stats,rows:{all:direct.allLedger.rows.length,
+   oneX2:direct.testLedger.rows.length,btts:direct.bttsLedger.rows.length,
+   ou:direct.ouLedger.rows.length}}));
+ assert.equal(direct.allLedger.stats.total,reg.markets['1X2'].total+
+  reg.markets.BTTS.total+reg.markets['O/U'].total,'MARKET_TOTAL_MISMATCH');
  assert.equal(direct.allLedger.stats.win,direct.testLedger.stats.win+
   direct.bttsLedger.stats.win+direct.ouLedger.stats.win);
  assert.equal(direct.allLedger.stats.loss,direct.testLedger.stats.loss+
