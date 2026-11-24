@@ -1,0 +1,20 @@
+name: BALL46 TEST browser verify old interim UI removed and in-content spinner 20261124
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-prematch-content-only-loader-browser-qa-20261124.yml]
+permissions: {contents: read}
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install isolated Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          npx playwright install chromium
+      - name: Test 5 routes 2 sizes, slow backend and failure state without writes
+        run: node qa/prematch-history-20261120/b46-prematch-content-only-loader-browser-qa-20261124.mjs
