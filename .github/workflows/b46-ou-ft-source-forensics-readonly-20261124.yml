@@ -1,0 +1,50 @@
+name: BALL46 O/U FT source forensics read-only 20261124
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-ft-source-forensics-readonly-20261124.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Inspect current hub snapshot and pre-match pending fixture without any upstream calls
+        run: |
+          node --input-type=module <<'JS'
+          import crypto from 'node:crypto';
+          const base='https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev';
+          const host='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          const owner={authorization:'Bearer '+crypto.createHmac('sha256',process.env.CLOUDFLARE_API_TOKEN).update('BALL46_PREMATCH_ONLY_V1').digest('hex')};
+          const get=async(url,headers={})=>{
+           const r=await fetch(url,{headers,cache:'no-store',signal:AbortSignal.timeout(25000)});
+           return {http:r.status,data:await r.json().catch(()=>null)};
+          };
+          const [hub,ledger,settlement,monitor]=await Promise.all([
+           get(base+'/snapshot'),get(host+'/preview-data',owner),
+           get(host+'/ou-v2-settlement-state',owner),get(host+'/normal-hub-state',owner)
+          ]);
+          const rows=ledger.data?.ouLedger?.rows??[];
+          const byId=new Map((hub.data?.fixtures??[]).map(x=>[String(x.fixtureId??x.id),x]));
+          console.log('B46_FT_SOURCE_HUB '+JSON.stringify({http:hub.http,ok:hub.data?.ok,
+           cacheOnly:hub.data?.cacheOnly,fetchedAt:hub.data?.fetchedAt,
+           ageMs:hub.data?.ageMs,stale:hub.data?.stale,fixtureCount:hub.data?.fixtures?.length,
+           statusCounts:(hub.data?.fixtures??[]).reduce((acc,f)=>{
+            const key=String(f.status??'')+'/'+String(f.boardState??'')+'/'+String(f.statusCode??'');
+            acc[key]=(acc[key]??0)+1;return acc;},{}),
+           v2:rows.map(p=>{const f=byId.get(String(p.fixture_id));return {
+            id:p.fixture_id,pick:p.pick,price:p.price,pickedAt:p.picked_at,kickoff:p.kickoff,
+            inHub:!!f,hubInfo:f?{status:f.status,boardState:f.boardState,
+             statusCode:f.statusCode,home:f.home?.id,away:f.away?.id,
+             goals:f.goals,kickoff:f.kickoffUtc}:null}})}));
+          console.log('B46_FT_SOURCE_MONITOR '+JSON.stringify({http:monitor.http,keys:Object.keys(monitor.data??{}),
+           excerpt:JSON.stringify(monitor.data??{}).slice(0,2500)}));
+          console.log('B46_FT_SOURCE_LEDGER '+JSON.stringify({v2:rows.length,stats:ledger.data?.ouLedger?.stats,
+           settled:ledger.data?.ouLedger?.rows?.filter(x=>x.status!=='PENDING').length,
+           settlement: settlement.data?.stats,legacy:ledger.data?.testLedger?.rows?.length}));
+          console.log('B46_FT_SOURCE_CHECK_ZERO_PROVIDER_CALLS');
+          JS
