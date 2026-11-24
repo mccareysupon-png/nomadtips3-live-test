@@ -91,9 +91,12 @@ async function browserQA(host) {
     assert.match(await page.locator(selector).textContent(),/^\d+$/);
     await cold.close();
 
-    for (const mobile of [false,true]) {
+    for (const {mobile,theme} of [
+      {mobile:false,theme:'dark'}, {mobile:false,theme:'light'}, {mobile:true,theme:'dark'},
+    ]) {
       const context = await browser.newContext(mobile ? device : {viewport:{width:1440,height:900}});
       const page = await context.newPage();
+      await page.addInitScript(theme => localStorage.setItem('nomad343_dashboard_theme_v1', theme), theme);
       const errors = [];
       page.on('pageerror', error => errors.push(error.message));
       await page.route('**/*', route => {
@@ -106,11 +109,9 @@ async function browserQA(host) {
       assert.equal(await page.locator('#ball46-daily-performance').count(),1);
       assert.match(await page.locator(selector).textContent(),/^\d+$/);
       assert.equal(await page.locator(selector).isVisible(),!mobile);
-      if (!mobile) {
-        await page.getByRole('button',{name:'Switch theme',exact:true}).click({timeout:8000});
-        assert(await page.locator(selector).isVisible());
-      }
+      await page.waitForFunction(expectedTheme => document.documentElement.dataset.theme === expectedTheme, theme, {timeout:8000});
       assert(!errors.some(message => /Performance|__name/.test(message)),errors.join('\n'));
+      console.log('PERFORMANCE_BROWSER_QA',JSON.stringify({host,mobile,theme,verifiedFirstRender:true}));
       await context.close();
     }
   } finally {
