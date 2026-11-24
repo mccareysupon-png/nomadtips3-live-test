@@ -209,6 +209,123 @@ const mobileCss = `
     color: var(--b46-detail-ink) !important;
   }
 
+  /* Match Comparison and Recent Events are copied from the desktop Featured card. */
+  html[data-theme][data-b46gn="1"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]
+  > :is(.feature-stats, .feature-events) {
+    --v11-title: var(--b46-detail-ink);
+    --v11-text: var(--b46-detail-ink);
+    --v11-muted: var(--b46-detail-muted);
+    --v11-mint: var(--b46-detail-ink-accent);
+    --v11-statnum: var(--b46-detail-ink-accent);
+    --v11-gold: var(--b46-detail-away);
+    background: var(--b46-detail-well) !important;
+    border: 0 !important;
+    border-radius: var(--b46-detail-radius) !important;
+    box-shadow: none !important;
+    margin: var(--b46-detail-space) 3px 0 !important;
+  }
+
+  html[data-theme][data-b46gn="1"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured] > .feature-stats {
+    padding: 54px 10px 10px !important;
+  }
+
+  html[data-theme][data-b46gn="1"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]
+  > .feature-stats::before,
+  html[data-theme][data-b46gn="1"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]
+  > .feature-stats::after {
+    top: 9px !important;
+    font-size: 10px !important;
+    line-height: 19px !important;
+  }
+
+  html[data-theme][data-b46gn="1"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]
+  > .feature-stats::before {
+    color: var(--b46-detail-ink-accent) !important;
+  }
+
+  html[data-theme][data-b46gn="1"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]
+  > .feature-stats::after {
+    color: var(--b46-detail-away) !important;
+  }
+
+  html[data-theme][data-b46gn="1"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]
+  :is(.feature-stats > .stat-row, .feature-events > .event-item) {
+    background: var(--b46-detail-card) !important;
+    border: 0 !important;
+    border-radius: 9px !important;
+    margin: 0 0 5px !important;
+    box-shadow: none !important;
+  }
+
+  html[data-theme][data-b46gn="1"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]
+  :is(.feature-stats > .stat-row, .feature-events > .event-item):last-child {
+    margin-bottom: 0 !important;
+  }
+
+  html[data-theme][data-b46gn="1"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]
+  .feature-stats > .stat-row {
+    grid-template-columns: minmax(32px, auto) repeat(2, minmax(0, 1fr)) minmax(32px, auto) !important;
+    column-gap: 5px !important;
+    padding: 7px 8px !important;
+  }
+
+  html[data-theme][data-b46gn="1"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]
+  .feature-stats > .stat-row > :is(b, span) {
+    font-size: 11px !important;
+    font-variant-numeric: tabular-nums;
+  }
+
+  html:root[data-theme][data-b46gn="1"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]
+  .feature-stats > .stat-row > b:first-child {
+    color: var(--b46-detail-ink-accent) !important;
+  }
+
+  html:root[data-theme][data-b46gn="1"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]
+  .feature-stats > .stat-row > b:last-child {
+    color: var(--b46-detail-away) !important;
+  }
+
+  html[data-theme][data-b46gn="1"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]
+  .feature-stats > .stat-row > .stat-track {
+    background: var(--b46-detail-active) !important;
+  }
+
+  html[data-theme][data-b46gn="1"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]
+  .feature-stats > .stat-row > .stat-track.home > i {
+    background: var(--b46-detail-ink-accent) !important;
+  }
+
+  html[data-theme][data-b46gn="1"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]
+  .feature-stats > .stat-row > .stat-track.away > i {
+    background: var(--b46-detail-away) !important;
+  }
+
+  html[data-theme][data-b46gn="1"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]
+  .feature-events > .event-item {
+    min-height: 36px !important;
+  }
+
+  html:root[data-theme][data-b46gn="1"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]
+  .feature-events > .event-item > time {
+    color: var(--b46-detail-ink-accent) !important;
+    font-size: 11px !important;
+    font-variant-numeric: tabular-nums;
+  }
+
+  html[data-theme][data-b46gn="1"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]
+  .feature-events > .event-item > span::before {
+    font-size: 11px !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+  }
+
+  html[data-theme][data-b46gn="1"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]
+  .feature-events > .event-title::after,
+  html[data-theme][data-b46gn="1"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]
+  .feature-events > .event-item > span::after {
+    font-size: 9px !important;
+  }
+
   html:root[data-theme] body .league-block > .match-row[data-match-id][aria-expanded="true"] {
     --text: var(--b46-detail-ink);
     --muted: var(--b46-detail-muted);
@@ -242,6 +359,61 @@ const mobileCss = `
   html:root[data-theme] body .league-block > .match-row[data-match-id][aria-expanded="true"]
   .market-cell :is(.market-quote, .market-price-row) > :is(i, em) + :is(em, strong) {
     margin-inline-start: .22em;
+  }
+
+  /* Match the mobile Signal card to its expanded Event Flow and keep odds legible. */
+  html[data-theme][data-b46-signal-mobile-v2="1"] body[data-workspace-view="signal"]
+  .workspace.singlepage .status-section .league-block > article.match-row[data-match-id][aria-expanded="true"] {
+    background: linear-gradient(145deg, var(--b46-detail-card-top), var(--b46-detail-card)) !important;
+    border: 0 !important;
+    border-radius: var(--b46-detail-radius) var(--b46-detail-radius) 0 0 !important;
+    box-shadow: var(--b46-detail-shadow) !important;
+  }
+
+  html[data-theme][data-b46-signal-mobile-v2="1"] body[data-workspace-view="signal"]
+  .workspace.singlepage .status-section .league-block > article.match-row[data-match-id][aria-expanded="true"]
+  + .match-expanded[data-expanded-match] {
+    background: var(--b46-detail-sheet) !important;
+    border: 0 !important;
+    border-radius: 0 0 var(--b46-detail-radius) var(--b46-detail-radius) !important;
+    box-shadow: var(--b46-detail-shadow) !important;
+  }
+
+  html[data-theme][data-b46-signal-mobile-v2="1"] body[data-workspace-view="signal"]
+  .workspace.singlepage .status-section .league-block > article.match-row[data-match-id]
+  .market-cell :is(.market-quote, .market-price-row) {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: baseline !important;
+    column-gap: 3px !important;
+    min-height: 18px;
+  }
+
+  html[data-theme][data-b46-signal-mobile-v2="1"] body[data-workspace-view="signal"]
+  .workspace.singlepage .status-section .league-block > article.match-row[data-match-id]
+  .market-cell :is(.market-quote, .market-price-row) > :is(i, em, strong) {
+    font-style: normal !important;
+    font-variant-numeric: lining-nums tabular-nums;
+    margin-inline: 0 !important;
+  }
+
+  html[data-theme][data-b46-signal-mobile-v2="1"] body[data-workspace-view="signal"]
+  .workspace.singlepage .status-section .league-block > article.match-row[data-match-id]
+  .market-cell :is(.market-quote, .market-price-row) > :is(i, em) {
+    font-size: 10px !important;
+  }
+
+  html[data-theme][data-b46-signal-mobile-v2="1"] body[data-workspace-view="signal"]
+  .workspace.singlepage .status-section .league-block > article.match-row[data-match-id]
+  .market-cell :is(.market-quote, .market-price-row) > strong {
+    font-size: 11px !important;
+  }
+
+  html[data-theme][data-b46-signal-mobile-v2="1"] body[data-workspace-view="signal"]
+  .workspace.singlepage .status-section .league-block > article.match-row[data-match-id]
+  .market-cell > :is(.market-head, small) {
+    color: var(--b46-detail-muted) !important;
+    font-size: 9px !important;
   }
 
   html:root[data-theme] body .league-block > .match-row.active[aria-expanded="true"] + .match-expanded[data-expanded-match],
@@ -375,6 +547,104 @@ const mobileCss = `
 }
 `;
 
+const desktopCss = `
+@layer b46-pc-featured-details {
+  @media (min-width: 1024px) {
+    .live-stage-grid > .right-rail > .featured-card[data-featured] {
+      --b46-pc-inset: #13291f;
+      --b46-pc-track: #285043;
+      --b46-pc-shadow: inset 0 2px 5px rgb(0 12 7 / .23), inset 0 -1px rgb(231 255 240 / .035);
+      --b46-pc-home: #78dfb2;
+      --b46-pc-away: #e8ca74;
+      --b46-pc-secondary: #a3c0af;
+    }
+    html[data-theme="light"] .live-stage-grid > .right-rail > .featured-card[data-featured] {
+      --b46-pc-inset: #e7efe9;
+      --b46-pc-track: #cedfd4;
+      --b46-pc-shadow: inset 0 2px 4px rgb(40 73 56 / .09), inset 0 -1px rgb(255 255 255 / .6);
+      --b46-pc-home: #116741;
+      --b46-pc-away: #725611;
+      --b46-pc-secondary: #446253;
+    }
+    .live-stage-grid > .right-rail > .featured-card[data-featured] > :is(.feature-stats, .feature-events) {
+      border: 0 !important;
+      border-radius: 11px !important;
+    }
+    .live-stage-grid > .right-rail > .featured-card[data-featured] > .feature-stats {
+      padding: 53px 8px 8px !important;
+    }
+    .live-stage-grid > .right-rail > .featured-card[data-featured] .feature-stats::before,
+    .live-stage-grid > .right-rail > .featured-card[data-featured] .feature-stats::after {
+      top: 8px !important;
+      font-size: 10px !important;
+      line-height: 18px !important;
+    }
+    .live-stage-grid > .right-rail > .featured-card[data-featured] .feature-stats::before {
+      color: var(--b46-pc-home) !important;
+    }
+    .live-stage-grid > .right-rail > .featured-card[data-featured] .feature-stats::after {
+      color: var(--b46-pc-away) !important;
+    }
+    .live-stage-grid > .right-rail > .featured-card[data-featured]
+    :is(.feature-stats > .stat-row, .feature-events > .event-item) {
+      background: var(--b46-pc-inset) !important;
+      box-shadow: var(--b46-pc-shadow) !important;
+      border: 0 !important;
+      border-radius: 8px !important;
+      margin: 0 0 5px !important;
+    }
+    .live-stage-grid > .right-rail > .featured-card[data-featured]
+    :is(.feature-stats > .stat-row, .feature-events > .event-item):last-child {
+      margin-bottom: 0 !important;
+    }
+    .live-stage-grid > .right-rail > .featured-card[data-featured] .stat-row {
+      grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1fr) 32px !important;
+      padding: 6px 7px !important;
+      column-gap: 4px !important;
+    }
+    .live-stage-grid > .right-rail > .featured-card[data-featured] .stat-row > :is(b, span) {
+      font-size: 11px !important;
+      font-variant-numeric: tabular-nums;
+    }
+    .live-stage-grid > .right-rail > .featured-card[data-featured] .stat-row > b:first-child,
+    .live-stage-grid > .right-rail > .featured-card[data-featured] .feature-events time {
+      color: var(--b46-pc-home) !important;
+    }
+    .live-stage-grid > .right-rail > .featured-card[data-featured] .stat-row > b:last-child {
+      color: var(--b46-pc-away) !important;
+    }
+    .live-stage-grid > .right-rail > .featured-card[data-featured] .stat-row > span,
+    .live-stage-grid > .right-rail > .featured-card[data-featured] .feature-events > .event-title::after,
+    .live-stage-grid > .right-rail > .featured-card[data-featured] .event-item > span::after {
+      color: var(--b46-pc-secondary) !important;
+    }
+    .live-stage-grid > .right-rail > .featured-card[data-featured] .stat-row > .stat-track {
+      background: var(--b46-pc-track) !important;
+    }
+    .live-stage-grid > .right-rail > .featured-card[data-featured] .stat-row > .stat-track.home > i {
+      background: var(--b46-pc-home) !important;
+    }
+    .live-stage-grid > .right-rail > .featured-card[data-featured] .stat-row > .stat-track.away > i {
+      background: var(--b46-pc-away) !important;
+    }
+    .live-stage-grid > .right-rail > .featured-card[data-featured] .feature-events {
+      padding: 10px 8px 8px !important;
+    }
+    .live-stage-grid > .right-rail > .featured-card[data-featured] .feature-events > .event-item {
+      min-height: 33px !important;
+    }
+    .live-stage-grid > .right-rail > .featured-card[data-featured] .feature-events time,
+    .live-stage-grid > .right-rail > .featured-card[data-featured] .event-item > span::before {
+      font-size: 11px !important;
+    }
+    .live-stage-grid > .right-rail > .featured-card[data-featured] .event-item > span::before {
+      white-space: normal !important;
+      overflow-wrap: anywhere;
+    }
+  }
+}
+`;
+
 const footerCss = `
 #b46-site-footer-v1 .b46-seo-guide--footer-bottom{
  display:flex!important;flex-direction:column!important;align-items:stretch!important;
@@ -465,6 +735,7 @@ const mobileMatchDrawerScript = `(() => {
 })();`;
 
 export const mobileDashboardHead = '<style id="b46-mobile-expanded-theme-20261124">' + mobileCss + '</style>' +
+  '<style id="b46-desktop-featured-details-20261124">' + desktopCss + '</style>' +
   '<script id="b46-mobile-match-drawer">' + mobileMatchDrawerScript + '</script>';
 
 export const footerGuideHead = '<style id="b46-footer-seo-bottom-release-style">' + footerCss + '</style>';

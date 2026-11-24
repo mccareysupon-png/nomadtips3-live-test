@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { get, hash } from '../default-odds-crossdevice-20261123/release/cloudflare.mjs';
 import { mobileDashboardHead } from '../ball46-seo-20261124/b46-mobile-footer-ui-20261124.mjs';
+import { checkDesktopFeatured, desktopStyleId } from './desktop-featured-qa.mjs';
 
 const tool = new URL('../ball46-seo-20261124/node_modules/playwright/index.mjs', import.meta.url);
 const { chromium, devices } = await import(tool);
@@ -39,14 +40,14 @@ export async function surfaces(host, { candidate = false, preview = false } = {}
   assert.equal((homeGuide.match(/<a href=/g) ?? []).length, 3);
   const footer = html.match(/<footer id="b46-site-footer-v1"[^>]*>[\s\S]*?<\/footer>/)?.[0];
   assert(footer, 'Main footer absent in the rendered source');
-  assert.equal(footer.includes(homeGuide), candidate);
-  if (candidate) {
-    assert(footer.includes(homeGuide + '</div>') || footer.includes(homeGuide + '\n</div>'),
-      'The SEO guide is not at the end of the server-rendered footer');
-    const script = mobileDashboardHead.match(/<script id="b46-mobile-match-drawer">[\s\S]*?<\/script>/)[0];
-    assert(html.includes(script), 'Missing exact drawer script');
-    assert(html.includes('id="b46-footer-seo-bottom-release-style"'));
-  }
+  assert(footer.includes(homeGuide + '</div>') || footer.includes(homeGuide + '\n</div>'),
+    'The SEO guide is not at the end of the server-rendered footer');
+  const drawerScript = mobileDashboardHead.match(/<script id="b46-mobile-match-drawer">[\s\S]*?<\/script>/)[0];
+  assert(html.includes(drawerScript), 'Missing exact drawer script');
+  const footerStyle = html.match(/<style id="b46-footer-seo-bottom-release-style">[\s\S]*?<\/style>/)?.[0];
+  assert(footerStyle, 'Missing footer stylesheet');
+  assert.equal(html.includes('id="' + desktopStyleId + '"'), candidate);
+  if (candidate) assert(html.includes(mobileDashboardHead), 'The released stylesheet differs from the sandbox');
   const runtime = html.match(scripts);
   assert.equal(runtime?.length, 2);
   const activeScripts = [...html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)]
@@ -73,7 +74,7 @@ export async function surfaces(host, { candidate = false, preview = false } = {}
   assert.match(matches, /<loc>https:\/\/www\.ball46\.com\/match\//);
   const count = (matches.match(/<loc>/g) ?? []).length;
   assert(count > 0);
-  return { invariant: { seo, stats, homeGuide: homeGuide.replace(' b46-seo-guide--footer-bottom', ''),
+  return { invariant: { seo, stats, homeGuide, footerStyle, drawerScript,
     runtime: runtime.map(hash), assets, api, robots, staticMap }, matchSitemapUrls: count };
 }
 
@@ -101,7 +102,7 @@ function readLogoDuringTransition() {
   };
 }
 
-async function drawerQA(page, classic) {
+async function drawerQA(page, classic, theme) {
   const matches = page.locator('#b46gn-cards .b46gn-card:visible');
   await matches.first().waitFor({ state: 'visible', timeout: 35_000 });
   const live = matches.filter({ has: page.locator('.b46gn-cardhead[data-kind="live"]') });
@@ -121,6 +122,13 @@ async function drawerQA(page, classic) {
     await Promise.all(node.getAnimations().map(animation => animation.finished));
     node.scrollTop = 180;
   });
+  const featured = await dialog.locator('.b46gn-featured .featured-card[data-featured]').evaluate(card => {
+    const panels = [...card.querySelectorAll('.feature-stats:has(> .stat-row), .feature-events:has(> .event-item)')];
+    return panels.filter(panel => panel.clientWidth > 0 && panel.clientHeight > 0)
+      .map(panel => [panel.className, getComputedStyle(panel).backgroundColor, panel.scrollWidth <= panel.clientWidth + 1]);
+  });
+  const well = theme === 'dark' ? 'rgb(27, 52, 54)' : 'rgb(234, 243, 237)';
+  assert(featured.every(([, color, fits]) => color === well && fits), 'Mobile comparison/event panels do not match the phone palette');
   assert(await sheet.evaluate(node => node.scrollTop > 60));
   const distance = await dialog.evaluate(node => Math.abs(node.getBoundingClientRect().top -
     document.querySelector('#b46m-teal-shell').getBoundingClientRect().bottom));
@@ -144,7 +152,28 @@ async function drawerQA(page, classic) {
   await page.waitForFunction(() => getComputedStyle(document.querySelector('#b46gn-detail')).visibility === 'hidden');
   const logo = await page.evaluate(() => window.__b46FinishLogoCheck());
   assert(logo.steady, 'Logo moved during drawer interaction');
-  return { classicGutter: gutter, logo, slidesFromRight: true, eventFlow: true, matchStats: true, fullMarket: true, marketData };
+  return { classicGutter: gutter, logo, slidesFromRight: true, eventFlow: true, matchStats: true,
+    fullMarket: true, marketData, featured: featured.map(([name]) => name) };
+}
+
+async function checkSignalOdds(page, host) {
+  await page.goto(host + '/?view=signal', { waitUntil: 'domcontentloaded', timeout: 45_000 });
+  await page.waitForFunction(() => document.body.dataset.workspaceView === 'signal');
+  const all = page.locator('[data-workspace-view="signal"] .match-row[data-match-id]:visible');
+  const live = all.filter({ has: page.locator('.market-cell[title$=" · LIVE" i], .market-cell[title$=" · NOW" i]') });
+  await all.first().waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {});
+  const visibleMatches = await all.count();
+  if (!visibleMatches) return { routeReady: true, visibleMatches, uprightQuotes: 0 };
+  const row = (await live.count() ? live : all).first();
+  await row.click();
+  await page.locator('.match-expanded[data-expanded-match]:visible').first().waitFor({ state: 'visible' });
+  const sizes = await row.locator('.market-cell:visible').evaluateAll(nodes => nodes.map(node => node.clientWidth));
+  if (sizes.length) assert(Math.max(...sizes) - Math.min(...sizes) <= 1, 'Mobile market columns are uneven');
+  const quotes = await row.locator('.market-cell:visible :is(.market-quote, .market-price-row)').evaluateAll(nodes =>
+    nodes.map(node => [...node.querySelectorAll(':scope > :is(i, em, strong)')].every(value =>
+      getComputedStyle(value).fontStyle === 'normal')));
+  assert(quotes.every(Boolean), 'Italic odds in the mobile Signal card');
+  return { routeReady: true, visibleMatches, expanded: true, uprightQuotes: quotes.length };
 }
 
 export async function browserQA(host, name) {
@@ -162,7 +191,8 @@ export async function browserQA(host, name) {
   try {
     for (const [mode, device] of Object.entries(options)) {
       for (const theme of ['dark', 'light']) {
-        const context = await browser.newContext({ ...device, serviceWorkers: 'block' });
+        const viewport = mode === 'desktop' && theme === 'dark' ? { width: 1280, height: 900 } : device.viewport;
+        const context = await browser.newContext({ ...device, viewport, serviceWorkers: 'block' });
         try {
           await context.addInitScript(value => localStorage.setItem('nomad343_dashboard_theme_v1', value), theme);
           await context.route('**/*', route => ['GET', 'HEAD'].includes(route.request().method()) ? route.continue() : route.abort());
@@ -189,21 +219,15 @@ export async function browserQA(host, name) {
             await footer.screenshot({ path: join(process.env.RUNNER_TEMP, 'ball46-mobile-footer-' + name + '-' + mode + '-' + theme + '.png') });
           }
           const checked = { mode, theme, footer: true, links: info.links.length, oddsReady: true };
-          if (mode !== 'desktop') checked.drawer = await drawerQA(page, mode === 'classic');
-          if (mode === 'mobile' && theme === 'dark') {
-            await page.goto(host + '/?view=signal', { waitUntil: 'domcontentloaded', timeout: 45_000 });
-            await page.waitForFunction(() => document.body.dataset.workspaceView === 'signal');
-            const rows = page.locator('[data-workspace-view="signal"] .match-row[data-match-id]:visible');
-            await rows.first().waitFor({ state: 'visible', timeout: 6_000 }).catch(() => {});
-            checked.livePredictions = { routeReady: true, visibleMatches: await rows.count() };
-            if (checked.livePredictions.visibleMatches) {
-              await rows.first().click();
-              await page.locator('.match-expanded[data-expanded-match]:visible').first().waitFor({ state: 'visible' });
-              checked.livePredictions.expanded = true;
+          if (mode === 'desktop') checked.featured = await checkDesktopFeatured(page, theme);
+          else checked.drawer = await drawerQA(page, mode === 'classic', theme);
+          if (mode === 'mobile') {
+            checked.livePredictions = await checkSignalOdds(page, host);
+            if (theme === 'dark') {
+              await page.goto(host + '/?view=statistics', { waitUntil: 'domcontentloaded', timeout: 45_000 });
+              await page.locator('.b46m-detail-toggle:visible').first().waitFor({ state: 'visible', timeout: 30_000 });
+              checked.statistics = true;
             }
-            await page.goto(host + '/?view=statistics', { waitUntil: 'domcontentloaded', timeout: 45_000 });
-            await page.locator('.b46m-detail-toggle:visible').first().waitFor({ state: 'visible', timeout: 30_000 });
-            checked.statistics = true;
           }
           assert.deepEqual(errors, []);
           cases.push(checked);

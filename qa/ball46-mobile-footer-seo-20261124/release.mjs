@@ -1,19 +1,20 @@
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
-import { active, canonical, cloudflare, DIRECT, DOMAIN, eventually, hash, SITE, version } from
+import { active, canonical, cloudflare, DIRECT, DOMAIN, eventually, get, hash, SITE, version } from
   '../default-odds-crossdevice-20261123/release/cloudflare.mjs';
 import { settingFields, settingsForSite, sourceHash } from '../ball46-seo-20261124/release/inspect.mjs';
+import { mobileDashboardHead } from '../ball46-seo-20261124/b46-mobile-footer-ui-20261124.mjs';
 import { browserQA, surfaces } from './smoke.mjs';
 
-const baselineVersion = 'e8c1821a-0bef-408e-af77-fa03e624c5ab';
-const baselineDeployment = '00cd0d8c-9cd4-4d0c-b59e-514fdf427a14';
-const baselineSource = 'ba8cef3f50034047848808e8c98600d2461e332a18f2b102b1d465684ae9e0ad';
+const baselineVersion = '1418e0a2-a276-43d7-889c-4916ef842a59';
+const baselineDeployment = '244a25fe-8c8d-4753-89a0-5891d6b79537';
+const baselineSource = '5e64504077858be983b9aab4c245fdee68ede0e67f2296446c54d1ada4c6b12f';
 const main = 'b46-frontend-seo-entry-20261124.mjs';
 const presentation = 'b46-mobile-footer-ui-20261124.mjs';
-const message = 'BALL46 mobile match drawer and footer SEO guide 20261124';
+const message = 'BALL46 PC featured cards and mobile match and Signal presentation 20261124';
 const mode = process.env.B46_MOBILE_FOOTER_MODE;
 assert(['stage', 'activate'].includes(mode));
-const report = { task: 'B46-FOOTER-SEO-BOTTOM-20261124', mode,
+const report = { task: 'B46-PC-FEATURED-MOBILE-DETAILS-20261124', mode,
   commit: process.env.GITHUB_SHA, rollbackVersion: baselineVersion, previousDeployment: baselineDeployment };
 const proof = async () => writeFile(process.env.RUNNER_TEMP + '/ball46-mobile-footer-release.json', JSON.stringify(report, null, 2));
 await proof();
@@ -29,19 +30,17 @@ const [starting, base, configuration, ...protectedVersions] = before;
 assert.deepEqual(starting, { deployment: baselineDeployment, version: baselineVersion }, 'The audited live deployment moved');
 assert.equal(sourceHash(base), baselineSource, 'Active Worker modules changed since inspection');
 assert.equal(base.main_module, main);
-assert.equal(base.modules.length, 104);
+assert.equal(base.modules.length, 105);
 assert.equal(base.bindings.length, 11);
 assert(configuration.subdomain.previews_enabled && base.assets?.config);
 const originals = new Map(base.modules.map(module => [module.name, module]));
-assert(originals.has('seo.mjs') && !originals.has(presentation));
-const changedModules = await Promise.all(['seo.mjs', presentation].map(async name => ({
-  name, content_type: 'application/javascript+module',
-  content_base64: (await readFile(new URL('../ball46-seo-20261124/' + name, import.meta.url))).toString('base64'),
-})));
-assert.notEqual(changedModules[0].content_base64, originals.get('seo.mjs').content_base64);
-const modules = base.modules.map(module => module.name === 'seo.mjs' ? changedModules[0] : module);
-modules.push(changedModules[1]);
-report.diff = { replaced: ['seo.mjs'], added: [presentation], sameModules: modules.length - 2 };
+assert(originals.has('seo.mjs') && originals.has(presentation));
+const updated = { ...originals.get(presentation),
+  content_base64: (await readFile(new URL('../ball46-seo-20261124/' + presentation, import.meta.url))).toString('base64'),
+};
+assert.notEqual(updated.content_base64, originals.get(presentation).content_base64);
+const modules = base.modules.map(module => module.name === presentation ? updated : module);
+report.diff = { replaced: [presentation], added: [], sameModules: modules.length - 1 };
 report.expectedSource = sourceHash({ modules });
 await proof();
 
@@ -119,10 +118,21 @@ function compareSurface(actual, expected) {
   }
 }
 
+async function verifySandbox() {
+  const sandbox = await get('https://ball46-mobile-expanded-theme-test-20261124.mccarey-supon.workers.dev/?view=live');
+  assert.equal(sandbox.headers.get('x-b46-preview'), 'b46-mobile-expanded-theme-20261124');
+  const html = await sandbox.text();
+  for (const [, id, css] of mobileDashboardHead.matchAll(/<style id="([^"]+)">([\s\S]*?)<\/style>/g)) {
+    const candidate = html.match(new RegExp('<style id="' + id + '">([\\s\\S]*?)<\\/style>'))?.[1];
+    assert.equal(hash(candidate?.trim() ?? ''), hash(css.trim()), 'CSS differs from the verified sandbox: ' + id);
+  }
+  report.sandboxCssVerified = true;
+}
+
 let candidate;
 let activationAttempted = false;
 try {
-  const [directBaseline, publicBaseline] = await Promise.all([surfaces(DIRECT, { preview: true }), surfaces(DOMAIN)]);
+  const [directBaseline, publicBaseline] = await Promise.all([surfaces(DIRECT, { preview: true }), surfaces(DOMAIN), verifySandbox()]);
   candidate = process.env.B46_MOBILE_FOOTER_CANDIDATE;
   if (mode === 'stage' && !candidate) candidate = await upload();
   assert.match(candidate ?? '', /^[0-9a-f-]{36}$/);
@@ -167,7 +177,7 @@ try {
     try {
       const live = await active();
       if (live.version === candidate) {
-        const rollback = await assign(baselineVersion, 'Restore the audited BALL46 version after failed mobile and footer QA');
+        const rollback = await assign(baselineVersion, 'Restore the audited BALL46 version after failed featured details QA');
         await eventually(async () => assert.equal((await active()).version, baselineVersion), 8, 1800);
         report.rollbackDeployment = rollback.id;
       }

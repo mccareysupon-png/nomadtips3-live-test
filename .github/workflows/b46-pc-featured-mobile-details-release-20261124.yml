@@ -1,0 +1,44 @@
+name: BALL46 PC Featured and Mobile Details Production
+on:
+  push:
+    branches: [release/ball46-pc-featured-mobile-details-20261124]
+    paths:
+      - '.github/workflows/b46-pc-featured-mobile-details-release-20261124.yml'
+      - 'qa/ball46-mobile-footer-seo-20261124/**'
+      - 'qa/ball46-seo-20261124/seo.mjs'
+      - 'qa/ball46-seo-20261124/seo.test.mjs'
+      - 'qa/ball46-seo-20261124/b46-mobile-footer-ui-20261124.mjs'
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      B46_MOBILE_FOOTER_MODE: stage
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify SEO, footer placement and application boundaries
+        working-directory: qa/ball46-seo-20261124
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+          npx playwright install chromium --only-shell
+      - name: Stage and verify the inactive presentation version
+        run: node qa/ball46-mobile-footer-seo-20261124/release.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: b46-pc-featured-mobile-details-proof-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/ball46-mobile-footer-*.json
+            ${{ runner.temp }}/ball46-mobile-footer-*.png
+          if-no-files-found: error
