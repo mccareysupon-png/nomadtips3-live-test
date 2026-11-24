@@ -167,6 +167,13 @@ try{
  let diff=0;while(diff<Math.min(a.length,b.length)&&a[diff]===b[diff])diff++;
  report.sourceComparison={direct:{status:d.status,size:a.length,sha:sha(d.body)},custom:{status:c.status,size:b.length,sha:sha(c.body)},module:moduleHtml?{size:moduleHtml.length,sha:sha(moduleHtml)}:null,firstMismatch:diff,aroundDirect:a.slice(Math.max(0,diff-170),diff+280),aroundCustom:b.slice(Math.max(0,diff-170),diff+280)};save();
  console.log('B46_FOOTER_SOURCE_COMPARISON '+JSON.stringify(report.sourceComparison));
+ const allModules=v.modules.map(m=>({name:m.name,size:m.content_base64?Buffer.from(m.content_base64,'base64').length:0}));
+ const markers={served:{seo:a.includes('data-b46-seo-guide="home"'),footer:a.includes('id="b46-site-footer-v1"'),head:a.includes('</head>')},module:{seo:moduleHtml?.toString('utf8').includes('data-b46-seo-guide="home"'),footer:moduleHtml?.toString('utf8').includes('id="b46-site-footer-v1"'),head:moduleHtml?.toString('utf8').includes('</head>')},mainSource:{rewriter:source.includes('HTMLRewriter'),footer:source.includes('b46-site-footer-v1')}};
+ const expectedFontEnd='<style>\\nbody .workspace.singlep';
+ const p1=a.indexOf('<!-- B46_SEARCH_CARD_INTER_DARK_20261007 START -->'),p2=b.indexOf('<!-- B46_SEARCH_CARD_INTER_DARK_20261007 START -->');
+ const e1=a.indexOf(expectedFontEnd,p1),e2=b.indexOf(expectedFontEnd,p2);
+ console.log('B46_FOOTER_ACTIVE_VERSION_DIAGNOSTIC '+JSON.stringify({moduleCount:allModules.length,modules:allModules.slice(0,15),markers,fontSegment:{startDirect:p1,startCustom:p2,endDirect:e1,endCustom:e2,prefixSame:p1>=0&&p1===p2&&a.slice(0,p1)===b.slice(0,p2),suffixSame:e1>=0&&e2>=0&&a.slice(e1)===b.slice(e2)}}));
+ throw new Error('DIAGNOSTIC_ONLY_BEFORE_DEPLOY');
  assert.equal(sha(d.body),sha(c.body),'CUSTOM_DIRECT_INDEX_DIFFER');
  const currentHtml=d.body.toString('utf8');
  const nextHtml=patch(currentHtml);
