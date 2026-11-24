@@ -217,6 +217,10 @@
   }
 
   html:root[data-theme] body[data-workspace-view="statistics"] .workspace.singlepage .b46m-hcard[data-expanded="true"] .b46m-extra {
+    --b46sc-muted: var(--b46-detail-muted);
+    --b46sc-ink: var(--b46-detail-ink);
+    --b46m-stat-dim: var(--b46-detail-muted);
+    --b46m-stat-ink: var(--b46-detail-ink);
     border: 0 !important;
     gap: 8px !important;
     padding: 0 var(--b46-detail-space) var(--b46-detail-space) !important;
@@ -226,13 +230,5 @@
     background: var(--b46-detail-well) !important;
     border-radius: 9px;
     padding: 8px 10px;
-  }
-
-  html:root[data-theme] body[data-workspace-view="statistics"] .workspace.singlepage .b46m-hcard[data-expanded="true"] .b46m-extra-item label {
-    color: var(--b46-detail-muted) !important;
-  }
-
-  html:root[data-theme] body[data-workspace-view="statistics"] .workspace.singlepage .b46m-hcard[data-expanded="true"] .b46m-extra-item span {
-    color: var(--b46-detail-ink) !important;
   }
 }

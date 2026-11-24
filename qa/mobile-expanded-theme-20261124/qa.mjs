@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { FLOW_ASSET, englishFlowCopy } from './mobile-flow-copy.mjs';
 
 const { chromium, devices } = await import(process.env.B46_PLAYWRIGHT_MODULE ?? 'playwright');
 const host = process.env.B46_PREVIEW ?? 'https://ball46-mobile-expanded-theme-test-20261124.mccarey-supon.workers.dev';
@@ -30,6 +31,12 @@ async function proofOfScope() {
   assert(liveHtml.includes('hreflang="x-default" href="https://www.ball46.com/"'));
   assert.equal(testHtml.split('id="' + styleId + '"').length, 2);
   assert(testHtml.includes('<style id="' + styleId + '">' + expectedStyle + '</style>'));
+  const [testFlow, liveFlow] = await Promise.all(
+    [host, 'https://ball46.com'].map(async origin => (await fetch(origin + FLOW_ASSET)).text()),
+  );
+  assert.equal(testFlow, englishFlowCopy(liveFlow));
+  assert(!/[\u0e00-\u0e7f]/.test(testFlow), 'Mobile Event Flow still has Thai labels');
+  assert(testFlow.includes('Tap a bar for its value or a signal for details'));
   for (const id of ['b46-sidebar-winrate-production', 'b46-odds-flash-runtime-production']) {
     const pattern = new RegExp('<script id="' + id + '">([\\s\\S]*?)</script>');
     assert(liveHtml.match(pattern)?.[1], id + ' missing in Production');
@@ -112,6 +119,7 @@ async function testMobile(browser, theme, device) {
     const plot = await visibleEventPlot(flow);
     assert(plot.every(color => color === colors[theme].plot), theme + ' Event Flow plot ' + plot.join(','));
     await assertFits(flow);
+    if (plot.length) assert(await flow.getByText('Tap a bar for its value or a signal for details').isVisible());
     await screenshot(page, theme + '-event-flow');
 
     await nav.getByRole('button', { name: 'Stats', exact: true }).click();
