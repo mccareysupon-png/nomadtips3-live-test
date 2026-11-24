@@ -9,7 +9,7 @@ const v=await read('/workers/'+worker+'/versions/'+id+'?include=modules');
 const main=Buffer.from(v.modules.find(m=>m.name===v.main_module).content_base64,'base64').toString();
 const cm=main.match(/var prematchClientScript = ("(?:\\.|[^"\\])*");/);assert(cm);
 const client=JSON.parse(cm[1]);
-const needles=['b46AdaptivePanel(content)','function draw(','function renderEmptyOuScreen','const finish=()=>','content.append(','.b46pm-stats-board','.b46pm-list','b46pm-scroll-region'];
+const needles=["b46AdaptivePanel(content)","function draw(","function renderEmptyOuScreen","const finish=()=>","content.append(",".b46pm-stats-board",".b46pm-list","b46pm-scroll-region"];
 const selected=[];
 for(const term of needles){
  for(const [file,src] of [['client',client],['main',main]]){
