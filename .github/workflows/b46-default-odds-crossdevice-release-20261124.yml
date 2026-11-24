@@ -1,0 +1,38 @@
+name: BALL46 Default Odds Movement Production 20261124
+on:
+  push:
+    branches: [release/ball46-default-odds-crossdevice-20261124]
+    paths:
+      - '.github/workflows/b46-default-odds-crossdevice-release-20261124.yml'
+      - 'qa/default-odds-crossdevice-20261123/release/**'
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Recheck the verified Odds Movement build
+        run: |
+          node --check qa/default-odds-crossdevice-20261123/release/production.mjs
+          npm install --no-save --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+          node qa/default-odds-crossdevice-20261123/qa.mjs
+      - name: Verify inactive Production candidate, activate, and verify public site
+        run: node qa/default-odds-crossdevice-20261123/release/deploy.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: b46-default-odds-release-proof-${{ github.run_id }}
+          path: ${{ runner.temp }}/default-odds-release-proof.json
+          if-no-files-found: warn
