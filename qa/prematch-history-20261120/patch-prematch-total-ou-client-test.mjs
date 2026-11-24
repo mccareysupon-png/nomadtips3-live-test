@@ -28,7 +28,7 @@ export function patchPrematchTotalOuClient(client){
   !legacyMerge.includes('predictionsDailyBook=baseDay?'))
   throw Error('UNEXPECTED_OLD_CLIENT_MERGE_BODY');
  out=out.slice(0,start)+
-  "// Total and Predictions use the SAME 3-market persisted backend snapshot; no client-side remerge.\\n        "+
+  "// Total and Predictions use the SAME 3-market persisted backend snapshot; no client-side remerge.\n        "+
   'predictionsDailyBook=marketDailyBooks?.all??null;\n        '+
   out.slice(end);
  if(out.includes('Pre-Match · Total (1X2 + BTTS)'))
