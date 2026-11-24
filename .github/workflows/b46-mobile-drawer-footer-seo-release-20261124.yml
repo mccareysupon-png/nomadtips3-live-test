@@ -6,6 +6,8 @@ on:
       - '.github/workflows/b46-mobile-drawer-footer-seo-release-20261124.yml'
       - 'qa/ball46-mobile-footer-seo-20261124/**'
       - 'qa/ball46-seo-20261124/seo.mjs'
+      - 'qa/ball46-seo-20261124/seo.test.mjs'
+      - 'qa/ball46-seo-20261124/b46-mobile-footer-ui-20261124.mjs'
 permissions:
   contents: read
 concurrency:
@@ -18,13 +20,20 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      B46_MOBILE_FOOTER_MODE: stage
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Inspect the active production source and rollback
-        run: node qa/ball46-mobile-footer-seo-20261124/audit.mjs
+      - name: Verify SEO, footer placement and application boundaries
+        working-directory: qa/ball46-seo-20261124
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+          npx playwright install chromium --only-shell
+      - name: Verify the inactive Worker version before release
+        run: node qa/ball46-mobile-footer-seo-20261124/release.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

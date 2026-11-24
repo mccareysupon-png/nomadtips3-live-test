@@ -14,7 +14,8 @@ const dashboard = '<!doctype html><html lang="und" data-theme="dark"><head><titl
   '<meta name="twitter:title" content="Old"><script type="application/ld+json">{}</script>' + oldCss +
   oldScript + '</head><body><main><h1>Today\'s Matches</h1>' +
   '<div data-workspace-panel="live">Live</div><div data-workspace-panel="statistics" hidden>Stats</div>' +
-  '</main>' + oldSidebar + '</body></html>';
+  '</main><footer id="b46-site-footer-v1"><div class="b46f-inner"><p>Existing footer</p></div></footer>' +
+  oldSidebar + '</body></html>';
 const upstream = async () => new Response(dashboard, {
   headers: { 'content-type': 'text/html; charset=utf-8', etag: '"old"', 'content-length': '100' },
 });
@@ -83,6 +84,8 @@ test('rewrites homepage and Statistics SEO while preserving the application runt
     assert(html.includes(oldScript) && html.includes(oldSidebar) && html.includes(oldCss));
     assert(html.includes('data-workspace-panel="statistics" hidden'));
     assert(html.includes('data-b46-seo-guide="statistics"') && html.includes('data-b46-seo-guide="home"'));
+    assert.match(html, /<footer id="b46-site-footer-v1"><div class="b46f-inner"><p>Existing footer<\/p><aside class="b46-seo-guide b46-seo-guide--footer-bottom" data-b46-seo-guide="home">[\s\S]*?<\/aside><\/div><\/footer>/);
+    assert.equal((html.match(/data-b46-seo-guide="home"/g) ?? []).length, 1);
     assert(html.includes('<h3>Real-time odds movement &amp; match pressure</h3>'));
     assert.equal(getAlt(html)['x-default'], canonical);
   }

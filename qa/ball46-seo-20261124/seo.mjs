@@ -1,4 +1,5 @@
 import { copy, ENGLISH, locales } from './copy.mjs';
+import { footerGuideHead, mobileDashboardHead } from './b46-mobile-footer-ui-20261124.mjs';
 
 export const ORIGIN = 'https://www.ball46.com';
 const BRAND_IMAGE = ORIGIN + '/favicon-192.png';
@@ -122,7 +123,8 @@ function sections(page, level) {
 
 function dashboardGuide(page) {
   const content = copy.en[page];
-  return '<aside class="b46-seo-guide" data-b46-seo-guide="' + page + '">' +
+  const className = page === 'home' ? 'b46-seo-guide b46-seo-guide--footer-bottom' : 'b46-seo-guide';
+  return '<aside class="' + className + '" data-b46-seo-guide="' + page + '">' +
     '<details><summary>' + escape(content.heading) + '</summary><h2>' +
     (page === 'statistics' ? 'Understanding BALL46 statistics' : 'Reading the live football dashboard') +
     '</h2>' + sections(content, 3) + '</details><nav class="b46-seo-links" aria-label="Football resources">' +
@@ -133,16 +135,19 @@ function dashboardGuide(page) {
 function rewriteDashboard(response, data, page, dashboard, Rewriter) {
   if (!response.ok || !response.headers.get('content-type')?.includes('text/html')) return response;
 
+  const mobilePage = dashboard || page === 'signal' || page === 'statistics';
+  const presentation = (dashboard ? footerGuideHead : '') + (mobilePage ? mobileDashboardHead : '');
   const rewriter = new Rewriter()
     .on('html', { element: element => element.setAttribute('lang', ENGLISH) })
     .on(managedMeta, { element: element => element.remove() })
-    .on('head', { element: element => element.append(head(data) + (dashboard || page === 'methodology' ? guideCss : ''), { html: true }) });
+    .on('head', { element: element => element.append(head(data) +
+      (dashboard || page === 'methodology' ? guideCss : '') + presentation, { html: true }) });
 
   if (dashboard) {
     rewriter.on('[data-workspace-panel="statistics"]', {
       element: element => element.append(dashboardGuide('statistics'), { html: true }),
     });
-    rewriter.on('[data-workspace-panel="live"]', {
+    rewriter.on('#b46-site-footer-v1 > .b46f-inner', {
       element: element => element.append(dashboardGuide('home'), { html: true }),
     });
   }
