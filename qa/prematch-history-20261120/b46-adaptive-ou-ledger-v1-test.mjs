@@ -67,14 +67,40 @@ export function recordAdaptiveOu(db,items,now){
  });
  return {added,duplicate,rejected,unitsSimulated:added,providerCalls:0,productionWrites:0};
 }
-function verifiedFt(db,p,now){
+// A finished fixture can be verified from the already-cached HUB snapshot even
+// when the scheduled HCR cargo has not yet imported its final-score record.
+// No new provider request, no archive write, no score based on the clock alone.
+function verifiedHubFt(snapshot,p,now){
+ if(snapshot?.ok!==true||snapshot?.cacheOnly!==true||snapshot.stale===true||
+  !Array.isArray(snapshot.fixtures))return null;
+ const ts=snapshot.fetchedAt;
+ const observed=Number.isFinite(ts)?(ts>1e12?Math.floor(ts/1000):Math.floor(ts)):
+  typeof ts==='string'?Math.floor(Date.parse(ts)/1000):NaN;
+ if(!Number.isSafeInteger(observed)||observed>now+60||observed>now+3600||
+  now-observed>3600||observed<=p.kickoff)return null;
+ const matching=snapshot.fixtures.filter(f=>Number(f?.fixtureId)===Number(p.fixture_id));
+ if(matching.length!==1)return null;
+ const f=matching[0];
+ if(f.status!=='finished'||f.boardState!=='finished'||f.statusCode!=='full'||
+  !whole(f.goals?.home)||!whole(f.goals?.away)||
+  Number(f.home?.id)!==p.home_id||Number(f.away?.id)!==p.away_id)return null;
+ const k=f.kickoffUtc??f.kickoffAt;
+ const kickoff=typeof k==='string'?Math.floor(Date.parse(k)/1000):
+  Number.isFinite(k)?(k>1e12?Math.floor(k/1000):Math.floor(k)):NaN;
+ if(!Number.isSafeInteger(kickoff)||kickoff!==p.kickoff||
+  kickoff<=p.picked_at||kickoff>=observed)return null;
+ return {fixture_id:p.fixture_id,home_id:p.home_id,away_id:p.away_id,
+  kickoff,hg:f.goals.home,ag:f.goals.away,observed,
+  source:'HUB_FINISHED_CACHED_VERIFIED'};
+}
+function verifiedFt(db,p,now,snapshot=null){
  const a=sql(db,"SELECT fixture_id,home_id,away_id,kickoff,hg,ag,observed FROM result_version WHERE fixture_id=? AND home_id=? AND away_id=? AND status='finished' AND observed<=? ORDER BY observed DESC LIMIT 1",p.fixture_id,p.home_id,p.away_id,now)[0];
  const b=a?null:sql(db,"SELECT fixture_id,home_id,away_id,kickoff,hg,ag,observed FROM b46_ou_target_history_ft_v1 WHERE fixture_id=? AND home_id=? AND away_id=? AND observed<=? ORDER BY observed DESC LIMIT 1",p.fixture_id,p.home_id,p.away_id,now)[0];
- const ft=a??b;
+ const ft=a??b??verifiedHubFt(snapshot,p,now);
  if(!ft||!whole(ft.hg)||!whole(ft.ag)||
   !Number.isSafeInteger(ft.observed)||ft.observed<ft.kickoff||
   ft.kickoff<=p.picked_at||ft.kickoff!==p.kickoff)return null;
- return {...ft,source:a?'HCR_FINISHED_FT':'OU_ARCHIVED_VERIFIED_FT'};
+ return {...ft,source:a?'HCR_FINISHED_FT':b?'OU_ARCHIVED_VERIFIED_FT':ft.source};
 }
 function settleSnapshot(db,formula,selection,net,won,now){
  const row=sql(db,"SELECT profit_loss,peak_units,max_drawdown FROM b46_adaptive_ou_research_v1_snapshot_test WHERE formula_id=? AND selection=?",formula,selection)[0];
@@ -85,13 +111,13 @@ function settleSnapshot(db,formula,selection,net,won,now){
  db.exec("UPDATE b46_adaptive_ou_research_v1_snapshot_test SET pending=pending-1,win=win+?,loss=loss+?,settled_units=settled_units+1,profit_loss=?,peak_units=?,max_drawdown=?,updated_at=? WHERE formula_id=? AND selection=?",
   Number(won),Number(!won),next,dollars(peak),dollars(drawdown),now,formula,selection);
 }
-export function settleAdaptiveOu(db,now){
+export function settleAdaptiveOu(db,now,{snapshot=null}={}){
  initAdaptiveOuLedger(db);initOuTargetHistoryFT(db);
  const pending=sql(db,"SELECT * FROM b46_adaptive_ou_research_v1_ledger_test WHERE status='PENDING' AND kickoff<? ORDER BY kickoff,fixture_id,formula_id,selection LIMIT 5000",now);
  let settled=0,win=0,loss=0,noFt=0;
  db.transaction(()=>{
   for(const p of pending){
-   const ft=verifiedFt(db,p,now);
+   const ft=verifiedFt(db,p,now,snapshot);
    if(!ft){noFt++;continue}
    const won=p.selection==='OVER'?ft.hg+ft.ag>=3:ft.hg+ft.ag<=2;
    const net=dollars(won?p.odds-1:-1);
