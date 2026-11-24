@@ -55,7 +55,7 @@ try{
   assert.equal(await page.locator('#b46pm-ou-history-public').count(),1,'NEW_RESEARCH_HISTORY_REMOVED');
   assert.equal(await page.locator('#b46pm-ou-history-public tbody tr').count(),10,'RESEARCH_TABLE_PAGINATION_CHANGED');
   assert.equal(await page.locator('#b46-adaptive-native table').count(),1,'42_FORMULA_ANALYTICS_MISSING');
-  const next=page.locator('#b46-prematch-panel .b46pm-pagination button[data-b46-pm-page="2"]');
+  const next=page.locator('#b46-prematch-panel .b46pm-pagination button[data-b46-pm-page="2"]').filter({hasText:/^2$/});
   await next.scrollIntoViewIfNeeded();
   const scrollBefore=await page.locator('#b46-prematch-panel').evaluate(e=>e.scrollTop);
   await next.click();
