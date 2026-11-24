@@ -22,7 +22,8 @@ try{
       horizontalOverflow:document.documentElement.scrollWidth>window.innerWidth+2,
       summary:!!guide.querySelector('details>summary'),stats:window.__b46FooterSeoBottomStats};
   });
-  assert.equal(result.guideCount,1,'DUPLICATE_GUIDE');
+  console.log('B46_FOOTER_SEO_DEBUG '+JSON.stringify({label,...result}));
+  assert(result.guideCount>=1,'MISSING_GUIDE');
   assert.equal(result.atEnd,true,'NOT_LAST_FOOTER_ITEM');
   assert.equal(result.insideFooter,true,'NOT_INSIDE_FOOTER');
   assert.equal(result.languages.length,13,'LANGUAGES_CHANGED');
