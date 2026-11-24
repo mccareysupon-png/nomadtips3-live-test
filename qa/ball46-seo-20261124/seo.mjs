@@ -14,6 +14,9 @@ const LOCAL_PATH = { home: '', statistics: 'statistics/', methodology: 'methodol
 const MATCH = /^\/match\/([1-9][0-9]{0,19})\/?$/;
 const LOCALE_PATH = /^\/([a-z][a-z0-9-]*)(?:\/(statistics|methodology))?\/?$/;
 const MAP_SIZE = 40_000;
+const DASHBOARD_PATHS = new Set(['/', '/index', '/index.html']);
+const EDITORIAL_PATHS = new Set(['/signal.html', '/statistics.html', '/methodology.html']);
+const MATCH_SITEMAP = /^\/sitemap-matches-([1-9][0-9]*)\.xml$/;
 const MATCHES_PER_PAGE = 100;
 const HTML_CONTENT = 'text/html; charset=utf-8';
 const XML_CONTENT = 'application/xml; charset=utf-8';
@@ -155,7 +158,9 @@ function rewriteDashboard(response, data, page, dashboard, Rewriter) {
     ) });
   }
   const headers = new Headers(response.headers);
-  for (const name of ['content-length', 'etag', 'content-md5', 'digest']) headers.delete(name);
+  for (const name of ['content-encoding', 'content-length', 'etag', 'last-modified', 'content-md5', 'digest']) {
+    headers.delete(name);
+  }
   return rewriter.transform(new Response(response.body, { status: response.status, headers }));
 }
 
@@ -295,7 +300,7 @@ function sitemap(path, fixtures) {
     return content(xmlHeader + '<sitemapindex xmlns="' + xmlNamespace + '">\n' + paths.map(file =>
       '<sitemap><loc>' + escape(absolute(file)) + '</loc></sitemap>').join('\n') + '\n</sitemapindex>', XML_CONTENT);
   }
-  const shard = Number(path.match(/^\/sitemap-matches-([1-9][0-9]*)\.xml$/)?.[1]);
+  const shard = Number(path.match(MATCH_SITEMAP)?.[1]);
   if (Number.isInteger(shard)) {
     if (!fixtures) return unavailable(503);
     if (shard > count) return unavailable(404);
@@ -317,6 +322,22 @@ export function indexFixtures(index) {
     byId: new Map(index.entries.map(match => [match.id, match])),
     directory: [...upcoming, ...recent],
   };
+}
+
+export function usesFixtureIndex(path) {
+  return path.startsWith('/match/') || path === '/matches' || path === '/matches/' ||
+    path === '/sitemap.xml' || path === '/sitemap-pages.xml' || MATCH_SITEMAP.test(path);
+}
+
+function localeRoute(path) {
+  const match = path.match(LOCALE_PATH);
+  const locale = match && Object.keys(locales).find(code => locales[code].prefix === match[1]);
+  return locale ? { locale, page: match[2] ?? 'home' } : null;
+}
+
+export function isSeoPath(path) {
+  return DASHBOARD_PATHS.has(path) || EDITORIAL_PATHS.has(path) ||
+    path === '/robots.txt' || usesFixtureIndex(path) || localeRoute(path) !== null;
 }
 
 export async function frontendSeo(request, { upstream, fixtures, Rewriter, now = Date.now() }) {
@@ -348,25 +369,26 @@ export async function frontendSeo(request, { upstream, fixtures, Rewriter, now =
     return path === matchPath(match) ? matchPage(match, now) : redirect(matchPath(match));
   }
 
-  const localized = path.match(LOCALE_PATH);
-  const locale = localized && Object.keys(locales).find(code => locales[code].prefix === localized[1]);
-  if (locale) {
-    const page = localized[2] ?? 'home';
+  const localized = localeRoute(path);
+  if (localized) {
+    const { locale, page } = localized;
     const canonicalPath = pagePath(locale, page);
     return path === canonicalPath ? localizedPage(locale, page) : redirect(canonicalPath);
   }
 
-  const dashboard = path === '/' || path === '/index.html';
+  const dashboard = DASHBOARD_PATHS.has(path);
   const kind = dashboard ? searchParams.get('view') : '';
   const legacyStats = path === '/statistics.html';
   const page = dashboard ? (kind === 'statistics' || kind === 'signal' ? kind : 'home') :
     legacyStats ? 'statistics' : path === '/methodology.html' ? 'methodology' : path === '/signal.html' ? 'signal' : null;
-  const headers = new Headers(request.headers);
-  if (page) {
+  let sourceRequest = request;
+  if (page && (request.headers.has('if-none-match') || request.headers.has('if-modified-since'))) {
+    const headers = new Headers(request.headers);
     headers.delete('if-none-match');
     headers.delete('if-modified-since');
+    sourceRequest = new Request(request, { headers });
   }
-  const response = await upstream(page ? new Request(request, { headers }) : request);
+  const response = await upstream(sourceRequest);
   if (!page || request.method === 'HEAD') return response;
 
   return rewriteDashboard(response, dataFor(page, ENGLISH, !legacyStats), page, dashboard, Rewriter);

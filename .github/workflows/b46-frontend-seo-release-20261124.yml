@@ -17,8 +17,9 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      B46_SEO_MODE: inspect
+      B46_SEO_MODE: activate
       B46_SEO_BASE_VERSION: a75a2a3e-bc0c-49c7-b707-9e25efcbac56
+      B46_SEO_BASE_SOURCE_HASH: 2ae943352828433935d15e79f1954b75ee0261c42d3ba1e095c3c765ac8a0546
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,6 +27,14 @@ jobs:
           node-version: '22'
       - name: Lock and record active Worker, source and rollback
         run: node qa/ball46-seo-20261124/release/inspect.mjs
+      - name: Recheck approved SEO and fixture refresh
+        working-directory: qa/ball46-seo-20261124
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+          npx playwright install chromium --only-shell
+      - name: Test inactive Worker, activate, verify public site
+        run: node qa/ball46-seo-20261124/release/deploy.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

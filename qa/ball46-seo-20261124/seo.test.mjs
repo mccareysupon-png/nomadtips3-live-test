@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildIndex } from './build-fixtures.mjs';
+import { buildIndex } from './fixture-index.mjs';
 import { copy, locales } from './copy.mjs';
 import { PreviewRewriter } from './preview.mjs';
 import { frontendSeo, indexFixtures, ORIGIN } from './seo.mjs';
@@ -163,4 +163,48 @@ test('passes API, asset and non-SEO requests through using the original request'
     });
     assert.equal(actual, original);
   }
+});
+
+test('production match refresh serves the seed immediately and keeps the last good index', async () => {
+  const { createFixtureCache } = await import('./fixture-cache.mjs');
+  let time = now + 1_000;
+  const load = createFixtureCache(index, { now: () => time });
+  let stored;
+  let reads = 0;
+  const tasks = [];
+  const parameters = {
+    cache: {
+      async match() { return stored?.clone(); },
+      async put(_key, response) { stored = response; },
+    },
+    key: new Request('https://ball46.com/internal-fixtures'),
+    waitUntil: task => tasks.push(task),
+    async getSnapshot() {
+      reads++;
+      const fixtureSnapshot = snapshot([fixture('5678', 'finished')], time);
+      return { ...fixtureSnapshot, fetchedAt: time, cacheOnly: true,
+        viewerRefreshEnabled: false, externalRequestsAdded: 0 };
+    },
+  };
+  assert(load(parameters).fixtures.byId.has('1234'));
+  assert(!load(parameters).fixtures.byId.has('5678'));
+  assert.equal(tasks.length, 1);
+  await tasks[0];
+  assert(load(parameters).fixtures.byId.has('5678'));
+  assert.equal(reads, 1);
+  assert(stored);
+
+  const restarted = createFixtureCache(index, { now: () => time });
+  assert(restarted(parameters).fixtures.byId.has('1234'));
+  await tasks.at(-1);
+  assert(restarted(parameters).fixtures.byId.has('5678'));
+  assert.equal(reads, 1);
+
+  time += 310_000;
+  load({ ...parameters, getSnapshot: async () => ({
+    cacheOnly: false, viewerRefreshEnabled: true, externalRequestsAdded: 1,
+  }) });
+  await tasks.at(-1);
+  assert(load(parameters).fixtures.byId.has('5678'));
+  assert.equal(reads, 1);
 });
