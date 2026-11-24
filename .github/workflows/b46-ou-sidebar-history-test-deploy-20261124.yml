@@ -2,7 +2,7 @@ name: BALL46 TEST O-U sidebar combined win rate and paginated history frontend 2
 on:
   push:
     branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
-    paths: [.github/workflows/b46-ou-sidebar-history-test-deploy-20261124.yml]
+    paths: [.github/workflows/b46-ou-sidebar-history-test-deploy-20261124.yml, qa/prematch-history-20261120/patch-ou-sidebar-history-test-v1-20261124.test.mjs]
 permissions: {contents: read}
 concurrency:
   group: ball46-prematch-frontend-test-20261120
