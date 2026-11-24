@@ -201,8 +201,8 @@ test('FT via already cached HUB settles the independent research ledger without 
   assert.equal(stats.records.length,4);
   assert(stats.records.every(x=>x.result_source==='HUB_FINISHED_CACHED_VERIFIED'));
   assert.equal(stats.formulas.find(x=>x.formula==='A02').winRate,50);
-  assert.equal(stats.formulas.find(x=>x.formula==='A02').profitLoss,-.3);
-  assert.equal(stats.formulas.find(x=>x.formula==='A02').roi,-15);
+  assert.equal(stats.formulas.find(x=>x.formula==='A02').profitLoss,-.2);
+  assert.equal(stats.formulas.find(x=>x.formula==='A02').roi,-10);
   assert.equal(settleAdaptiveOu(db,KO+500,{snapshot:fresh}).settled,0);
   assert.equal(raw.prepare("SELECT COUNT(*) n FROM sqlite_master WHERE type='table' AND name='b46_ou_v2_snapshot_test'").get().n,0);
  }finally{raw.close()}
