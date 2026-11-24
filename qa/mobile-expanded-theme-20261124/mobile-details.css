@@ -93,6 +93,66 @@
     outline-offset: 2px;
   }
 
+  /* Keep the original sticky brand header outside the animated detail panel. */
+  html[data-b46gn="1"] #b46gn-detail {
+    --b46-drawer-duration: 240ms;
+    --b46-drawer-toolbar: 52px;
+    inset-block-start: var(--b46-match-header-edge, 66px) !important;
+    align-items: stretch !important;
+    overflow: hidden;
+    overflow: clip;
+    transition: opacity var(--b46-drawer-duration) ease,
+      visibility 0s linear var(--b46-drawer-duration) !important;
+  }
+
+  html[data-b46gn="1"] #b46gn-detail[aria-hidden="false"] {
+    transition-delay: 0s !important;
+  }
+
+  html[data-b46gn="1"] #b46gn-detail[aria-hidden="true"],
+  html[data-b46gn="1"].b46gn-detail-open #b46m-teal-shell {
+    pointer-events: none;
+  }
+
+  html[data-b46gn="1"] #b46gn-detail#b46gn-detail .b46gn-sheet {
+    height: 100%;
+    max-height: none;
+    padding-block-start: 0 !important;
+    border-radius: 0 !important;
+    transform: translateX(100%);
+    transition: transform var(--b46-drawer-duration) cubic-bezier(.22, .75, .26, 1) !important;
+  }
+
+  html[data-b46gn="1"] #b46gn-detail[aria-hidden="false"]#b46gn-detail .b46gn-sheet {
+    transform: translateX(0);
+  }
+
+  html[data-b46gn="1"] #b46gn-detail .b46gn-handle {
+    display: none;
+  }
+
+  html[data-b46gn="1"][data-theme] #b46gn-detail#b46gn-detail .b46gn-sheethead {
+    position: sticky;
+    top: 0;
+    z-index: 13;
+    min-height: var(--b46-drawer-toolbar);
+    background: var(--b46-detail-sheet) !important;
+  }
+
+  html[data-b46gn="1"] #b46gn-detail .b46gn-sheetbody > .b46-suite-nav {
+    top: var(--b46-drawer-toolbar);
+  }
+
+  html[data-b46gn="1"] #b46gn-detail :is(#b46-suite-summary, #b46-suite-flow, #b46-suite-stats, #b46-suite-markets) {
+    scroll-margin-top: calc(var(--b46-drawer-toolbar) + 64px);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html[data-b46gn="1"] #b46gn-detail {
+      --b46-drawer-duration: 0ms;
+    }
+  }
+
   html[data-theme] body #b46gn-detail#b46gn-detail .b46gn-sheetbody :is(.b46gn-teams, .b46gn-event-flow),
   html[data-theme] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured] {
     background: linear-gradient(145deg, var(--b46-detail-card-top), var(--b46-detail-card)) !important;

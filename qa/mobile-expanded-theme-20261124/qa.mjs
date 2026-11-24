@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { FLOW_ASSET, prepareMobileFlowAsset } from './mobile-flow-copy.mjs';
+import { mobileMatchDrawerScript } from './mobile-match-drawer.mjs';
 
 const { chromium, devices } = await import(process.env.B46_PLAYWRIGHT_MODULE ?? 'playwright');
 const host = process.env.B46_PREVIEW ?? 'https://ball46-mobile-expanded-theme-test-20261124.mccarey-supon.workers.dev';
@@ -35,6 +36,7 @@ async function proofOfScope() {
   assert(liveHtml.includes('hreflang="x-default" href="https://www.ball46.com/"'));
   assert.equal(testHtml.split('id="' + styleId + '"').length, 2);
   assert(testHtml.includes('<style id="' + styleId + '">' + expectedStyle + '</style>'));
+  assert(testHtml.includes('<script id="b46-mobile-match-drawer">' + mobileMatchDrawerScript + '</script>'));
   const liveFlowScript = [...liveHtml.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)]
     .map(([, src]) => new URL(src, 'https://ball46.com/'))
     .find(src => src.pathname === FLOW_ASSET);
@@ -112,6 +114,27 @@ async function visibleEventPlot(flow) {
     elements.map(el => getComputedStyle(el).getPropertyValue('--plot').trim()));
 }
 
+const brandBounds = page => page.locator('#b46m-teal-shell .b46m-brand').evaluate(brand => {
+  const box = brand.getBoundingClientRect();
+  return [box.x, box.y, box.width, box.height, getComputedStyle(brand).fontSize];
+});
+
+async function recordDrawerMotion(page) {
+  await page.evaluate(() => {
+    const sheet = document.querySelector('#b46gn-detail .b46gn-sheet');
+    sheet.addEventListener('transitionrun', event => {
+      if (event.target !== sheet || event.propertyName !== 'transform') return;
+      const frame = new DOMMatrix(getComputedStyle(sheet).transform);
+      const brand = document.querySelector('#b46m-teal-shell .b46m-brand');
+      const logo = brand.getBoundingClientRect();
+      sheet.dataset.qaMotion = JSON.stringify({
+        x: frame.m41, y: frame.m42,
+        logo: [logo.x, logo.y, logo.width, logo.height, getComputedStyle(brand).fontSize],
+      });
+    });
+  });
+}
+
 async function testMobile(browser, theme, device) {
   const context = await browser.newContext(device);
   const page = await context.newPage();
@@ -127,7 +150,11 @@ async function testMobile(browser, theme, device) {
     await matches.first().waitFor({ state: 'visible', timeout: 30_000 });
     const live = matches.filter({ has: page.locator('.b46gn-cardhead[data-kind="live"]') });
     const match = (await live.count() ? live : matches).first();
+    await match.scrollIntoViewIfNeeded();
     const before = await palette(match);
+    const logo = await brandBounds(page);
+    const pageY = await page.evaluate(() => scrollY);
+    await recordDrawerMotion(page);
     await match.click();
     const dialog = page.locator('#b46gn-detail[aria-hidden="false"]');
     const sheet = dialog.locator('.b46gn-sheet');
@@ -135,6 +162,18 @@ async function testMobile(browser, theme, device) {
     const score = dialog.locator('.b46gn-teams');
     await score.waitFor({ state: 'visible' });
     await nav.waitFor({ state: 'visible' });
+    await dialog.locator('.b46gn-sheet[data-qa-motion]').waitFor({ state: 'attached' });
+    const motion = JSON.parse(await sheet.getAttribute('data-qa-motion'));
+    assert(motion.x > 100 && Math.abs(motion.y) < 1, 'Match details must enter horizontally from the right');
+    assert.deepEqual(motion.logo, logo);
+    await page.waitForFunction(() => Math.abs(new DOMMatrix(
+      getComputedStyle(document.querySelector('#b46gn-detail .b46gn-sheet')).transform,
+    ).m41) < .5);
+    const headerGap = await dialog.evaluate(node => Math.abs(node.getBoundingClientRect().top -
+      document.querySelector('#b46m-teal-shell').getBoundingClientRect().bottom));
+    assert(headerGap < 1, 'The detail drawer should start below the original logo header');
+    assert.deepEqual(await brandBounds(page), logo);
+    assert.equal(await page.evaluate(() => scrollY), pageY);
     assert.equal((await palette(sheet)).backgroundColor, colors[theme].sheet);
     assert.equal((await palette(sheet)).borderTopWidth, '0px');
     assert.match((await palette(score)).backgroundImage, /linear-gradient/);
@@ -146,6 +185,11 @@ async function testMobile(browser, theme, device) {
     assert.deepEqual(await palette(match), before, 'Collapsed match card changed');
     await assertFits(sheet);
     await screenshot(page, theme + '-match-details');
+    await sheet.evaluate(node => { node.scrollTop = 180; });
+    await page.waitForFunction(() => document.querySelector('#b46gn-detail .b46gn-sheet').scrollTop > 60);
+    assert.deepEqual(await brandBounds(page), logo);
+    assert.equal(await page.evaluate(() => scrollY), pageY);
+    await sheet.evaluate(node => { node.scrollTop = 0; });
 
     const flow = dialog.locator('.b46gn-event-flow');
     await nav.getByRole('button', { name: 'Event Flow', exact: true }).click();
@@ -191,6 +235,8 @@ async function testMobile(browser, theme, device) {
     assert.equal((await palette(native)).color, colors[theme].ink);
     await dialog.getByRole('button', { name: 'Close match details' }).click();
     await dialog.waitFor({ state: 'hidden' });
+    assert.deepEqual(await brandBounds(page), logo);
+    assert.equal(await page.evaluate(() => scrollY), pageY);
 
     await page.goto(host + '/?view=statistics', { waitUntil: 'domcontentloaded', timeout: 45_000 });
     const detailsButton = page.locator('.b46m-detail-toggle:visible').first();
@@ -277,6 +323,7 @@ async function testMobile(browser, theme, device) {
     if (replay.length) assert(signalExpanded && inlineMarketCells > 0 && signalDetailsOpened);
     assert.deepEqual(errors, []);
     return { viewport: device.viewport.width, theme, matchDetails: true, eventFlow: true,
+      opensFromRight: true, fixedLogo: true, headerGap, pageScrollPreserved: true,
       eventPlotData: plot.length > 0, matchStats: true, marketOpened, historyDetails: true,
       sharedNativeExpansion: true, signalExpanded, signalDetailsOpened, signalReplay: replay.length > 0,
       sheetMarketCells, inlineMarketCells, historyContrast: Number(detailsContrast.toFixed(2)),

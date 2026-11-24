@@ -1,5 +1,6 @@
 import styles from './mobile-details.css';
 import { prepareMobileFlowAsset, FLOW_ASSET } from './mobile-flow-copy.mjs';
+import { mobileMatchDrawerScript } from './mobile-match-drawer.mjs';
 
 const SITE = 'https://ball46.com';
 const ID = 'b46-mobile-expanded-theme-20261124';
@@ -54,7 +55,10 @@ export default {
       outgoing.set('cache-control', 'no-store');
       outgoing.set('x-b46-preview', ID);
       return new HTMLRewriter().on('head', {
-        element(head) { head.append('<style id="' + ID + '">' + styles + '</style>', { html: true }); },
+        element(head) {
+          head.append('<style id="' + ID + '">' + styles + '</style>' +
+            '<script id="b46-mobile-match-drawer">' + mobileMatchDrawerScript + '</script>', { html: true });
+        },
       }).transform(new Response(source.body, { status: source.status, headers: outgoing }));
     }
     return new Response(request.method === 'HEAD' ? null : source.body, { status: source.status, headers: outgoing });
