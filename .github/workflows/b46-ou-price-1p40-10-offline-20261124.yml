@@ -1,0 +1,21 @@
+name: BALL46 O/U inclusive 1.40 to 10 price gate offline QA 20261124
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-price-1p40-10-offline-20261124.yml]
+permissions: {contents: read}
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Test 1.40 and 10.00 inclusive, 1.39/10.01 rejected; EV, exact line, immutable ledger, prematch
+        run: |
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-value-screener-v2.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/prematch-ou-engine-v1.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-v3-history-math.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-target-history-ft-v1.test.mjs
+          echo B46_OU_1P40_TO_10_OFFLINE_PASS
