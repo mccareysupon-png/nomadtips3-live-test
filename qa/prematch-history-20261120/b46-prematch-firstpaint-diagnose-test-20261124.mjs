@@ -36,4 +36,25 @@ for(const path of urls){
  console.log('B46_UI_HTML_INSPECT '+JSON.stringify({path,status:resp.status,length:html.length,
   head:html.slice(0,1600),body:html.slice(-4000).replace(/<script[^>]*>[\s\S]*?<\/script>/gi,'<script REMOVED />').slice(-1400)}));
 }
+
+const focus=[
+ ['worker','data-b46-pm-boot',worker],
+ ['worker','prematchClientScript',worker],
+ ['worker','__b46_prematch_client.js',worker],
+ ['client','const start=()=>{',client],
+ ['client','function show(',client],
+ ['client','function restore(',client],
+ ['client','function draw(',client],
+ ['client','async function load(){',client],
+ ['client','function ensure(){',client],
+ ['client','const panel=',client],
+ ['client','function readRoute(',client],
+ ['client','function b46AdaptivePanel(',client],
+ ['client','function syncPrematchViewport(',client]
+];
+for(const [where,needle,src] of focus){
+ const index=src.indexOf(needle);
+ if(index>=0)console.log('B46_UI_FOCUS '+JSON.stringify({where,needle,index,sample:src.slice(Math.max(0,index-500),Math.min(src.length,index+5500))}));
+}
+
 console.log('B46_UI_INSPECTION_DONE '+JSON.stringify({id,clientSize:client.length,workerSize:worker.length}));
