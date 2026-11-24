@@ -1,0 +1,31 @@
+name: BALL46 Performance Summary Production 20261124
+on:
+  push:
+    branches: [release/ball46-performance-summary-20261124]
+    paths:
+      - '.github/workflows/b46-performance-summary-release-20261124.yml'
+      - 'qa/performance-summary-20261124/release/**'
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      EXPECTED_PRODUCTION_VERSION: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect and record active source and rollback
+        run: node qa/performance-summary-20261124/release/inspect.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: b46-performance-inspection-${{ github.run_id }}
+          path: ${{ runner.temp }}/performance-inspection.json
