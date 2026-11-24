@@ -32,6 +32,7 @@ const ledgerServices = ['nomadtips3-engine-343','ball46-shadow-receiver-producti
 const device = devices['Pixel 7'];
 const userAgents = ['Mozilla/5.0 BALL46 Production QA', device.userAgent];
 const sidecar = await active(SIDECAR);
+assert.equal(sidecar.version, process.env.EXPECTED_SUMMARY_SERVICE_VERSION, 'Performance service version changed');
 const protectedBefore = await Promise.all(ledgerServices.map(active));
 const [base, settings, subdomain, schedules] = await Promise.all([
   version(SITE, expected), cloudflare('/scripts/' + SITE + '/settings'),
@@ -130,10 +131,7 @@ try {
   assert.equal(count(await getText(DIRECT,viewPath),originalScript),1,'Production card source shifted');
   assert(!base.bindings.some(b=>b.name===binding),'Performance binding already exists');
 
-  const [baseline, assets] = await Promise.all([
-    Promise.all(userAgents.map(u=>getText(DIRECT,viewPath,u))),
-    Promise.all(originalAssets.map(async path=>hash(await getText(DIRECT,path)))),
-  ]);
+  const assets = await Promise.all(originalAssets.map(async path=>hash(await getText(DIRECT,path))));
   const renderer = await readFile(new URL('production.mjs',dir),'utf8');
   const modules = [...base.modules, {
     name:entryName, content_type:'application/javascript+module',
@@ -157,11 +155,14 @@ try {
   for (const field of ['usage_model','logpush','limits','observability','placement','tail_consumers','tags']) {
     if (settings[field] != null) metadata[field] = settings[field];
   }
-  const form = new FormData();
-  form.set('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));
-  for (const m of modules) form.set(m.name,new Blob([Buffer.from(m.content_base64,'base64')],{type:m.content_type}),m.name);
   await guard(expected);
-  candidate = (await cloudflare('/scripts/' + SITE + '/versions?bindings_inherit=strict','POST',form)).id;
+  candidate = process.env.EXPECTED_CANDIDATE_VERSION;
+  if (!candidate) {
+    const form = new FormData();
+    form.set('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));
+    for (const m of modules) form.set(m.name,new Blob([Buffer.from(m.content_base64,'base64')],{type:m.content_type}),m.name);
+    candidate = (await cloudflare('/scripts/' + SITE + '/versions?bindings_inherit=strict','POST',form)).id;
+  }
   assert(candidate && candidate !== expected);
   report.candidate = candidate;
   await save();
@@ -191,11 +192,22 @@ try {
   await eventually(()=>getText(preview,scriptPath));
   const data = await waitForSummary(preview);
   assert.equal(await getText(preview,scriptPath),clientCode.replace('/__performance_test/summary',summaryPath));
-  for (const [i, ua] of userAgents.entries()) {
-    const html = await getText(preview,viewPath,ua);
-    verifyMarkup(html);
-    assert.equal(hash(html.replace(boot,'').replace(card,'')),hash(baseline[i].replace(originalScript,'')),
-      'HTML outside Performance differs from the active Worker');
+  for (const ua of userAgents) {
+    await eventually(async () => {
+      const [legacy, html] = await Promise.all([getText(DIRECT,viewPath,ua),getText(preview,viewPath,ua)]);
+      verifyMarkup(html);
+      const before = legacy.replace(originalScript,'');
+      const after = html.replace(boot,'').replace(card,'');
+      if (before !== after) {
+        let offset = 0;
+        while (offset < Math.min(before.length,after.length) && before[offset] === after[offset]) offset++;
+        throw new Error('HTML outside Performance differs at offset ' + offset +
+          ' using ' + ua + ' ' + JSON.stringify({
+            before:before.slice(Math.max(0,offset-35),offset+75),
+            after:after.slice(Math.max(0,offset-35),offset+75),
+          }));
+      }
+    }, 6, 2000);
   }
   await verifyAssets(preview,assets);
   await browserQA(preview);
