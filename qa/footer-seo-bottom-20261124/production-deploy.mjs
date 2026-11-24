@@ -173,6 +173,9 @@ try{
  const p1=a.indexOf('<!-- B46_SEARCH_CARD_INTER_DARK_20261007 START -->'),p2=b.indexOf('<!-- B46_SEARCH_CARD_INTER_DARK_20261007 START -->');
  const e1=a.indexOf(expectedFontEnd,p1),e2=b.indexOf(expectedFontEnd,p2);
  console.log('B46_FOOTER_ACTIVE_VERSION_DIAGNOSTIC '+JSON.stringify({moduleCount:allModules.length,modules:allModules.slice(0,15),markers,fontSegment:{startDirect:p1,startCustom:p2,endDirect:e1,endCustom:e2,prefixSame:p1>=0&&p1===p2&&a.slice(0,p1)===b.slice(0,p2),suffixSame:e1>=0&&e2>=0&&a.slice(e1)===b.slice(e2)}}));
+ const aux=v.modules.filter(m=>m.name!=='index.js'&&!m.name.startsWith('assets/')).map(m=>({name:m.name,type:m.type,mime_type:m.mime_type,content_type:m.content_type,size:m.content_base64?Buffer.from(m.content_base64,'base64').length:0}));
+ const mainImports=source.slice(0,13000).split('\\n').filter(x=>/^\\s*import\\b/.test(x)).slice(0,30);
+ console.log('B46_FOOTER_MODULE_MANIFEST '+JSON.stringify({main:v.main_module,auxCount:aux.length,aux:aux.slice(0,100),bindingTypes:v.bindings.map(b=>({name:b.name,type:b.type})),assets:v.assets?.config,imports:mainImports}));
  throw new Error('DIAGNOSTIC_ONLY_BEFORE_DEPLOY');
  assert.equal(sha(d.body),sha(c.body),'CUSTOM_DIRECT_INDEX_DIFFER');
  const currentHtml=d.body.toString('utf8');
