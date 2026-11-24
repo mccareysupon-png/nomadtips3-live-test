@@ -43,8 +43,8 @@ jobs:
           }
           const endpoints=['/history-cargo-registry?detail=0','/history-round-state',
            '/history-state','/btts-bulk-v2-state','/btts-bulk-state',
-           '/btts-history-private-state','/btts-history-state',
-           '/prematch-ou-engine-state','/preview-data',
+           '/btts-history-private-state','/btts-history-state','/btts-history-private-test',
+           '/daily-mission-state','/prematch-ou-engine-state','/preview-data',
            '/prematch-stats-registry-test?days=90'];
           const entries=await Promise.all(endpoints.map(async path=>[path,await fetchJSON(path)]));
           for(const [p,z] of entries){
@@ -72,6 +72,23 @@ jobs:
               highestPriority:(planner.highestPriority??[]).slice(0,6),top20Histogram:histogram},
              rounds:recent
             }).slice(0,24500));
+           }else if(p==='/btts-bulk-v2-state'){
+            console.log('B46_HISTORY_PRIVATE_TRANSPORT '+JSON.stringify({
+             http:z.code,system:data.system,config:data.config,
+             transport:data.transport,providerCalls:data.providerCalls
+            }).slice(0,16000));
+           }else if(p==='/btts-history-private-test'){
+            console.log('B46_HISTORY_PRIVATE_ARCHIVE '+JSON.stringify({
+             http:z.code,keys:Object.keys(data),archive:data.archive,
+             coverage:data.coverage,totals:data.totals,
+             rawSource:data.source,providerCalls:data.providerCalls
+            }).slice(0,13000));
+           }else if(p==='/daily-mission-state'){
+            console.log('B46_HISTORY_MISSION '+JSON.stringify({
+             http:z.code,keys:Object.keys(data),state:data.state,
+             last:data.last,transport:data.transport,
+             history:data.history,mission:data.mission
+            }).slice(0,10000));
            }else if(p==='/prematch-ou-engine-state'){
             console.log('B46_HISTORY_OU_ENGINE '+JSON.stringify({http:z.code,keys:Object.keys(data),
              last:data.last,policy:data.policy,quota:data.quota,summary:data.summary
