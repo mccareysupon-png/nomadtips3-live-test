@@ -1,4 +1,5 @@
 // BALL46 History Cargo Registry (HCR V1) - TEST ONLY.
+import {bttsLastMatches} from './btts-history-private.mjs';
 // Exactly one lightweight JSON array of newly imported fixture IDs per history
 // round. Every detail is resolved from the canonical SQLite result_version on
 // an authenticated administrative GET, never copied during data intake.
@@ -59,23 +60,20 @@ export function historyCargoReport(db,now,{day=null,includeItems=true,upcoming=[
      manifestStatus:state,fixtureIds:state==='TRACKED'?ids:null,...(includeItems?{items}:{}),
      ...(state==='LEGACY_UNTRACKED'?{note:'Pre-HCR historical IDs cannot be attributed to a specific trip reliably'}:{})};
  });
- const upcomingRows=(Array.isArray(upcoming)?upcoming:[]).filter(x=>x?.status==='scheduled'&&positive(x?.id)&&Number.isSafeInteger(x.kickoff_ts)&&x.kickoff_ts>now);
- const teams=new Map();
- for(const x of archived)for(const id of [x.home_id,x.away_id]){
-   const key=Number(id);if(!teams.has(key))teams.set(key,[]);
-   teams.get(key).push(Number(x.kickoff));
- }
- for(const times of teams.values())times.sort((a,b)=>b-a);
- const coverage=upcomingRows.map(f=>{
+ const pendingStates=new Set(['scheduled','upcoming','waiting']);
+ const upcomingRows=(Array.isArray(upcoming)?upcoming:[]).filter(x=>pendingStates.has(String(x?.status??'').toLowerCase())&&positive(x?.id)&&Number.isSafeInteger(x.kickoff_ts)&&x.kickoff_ts>now);
+  const coverage=upcomingRows.map(f=>{
    const kickoff=f.kickoff_ts;
    const sides=['home','away'].map(side=>{
-     const team=f.teams?.[side]||{},teamId=Number(team.id),times=teams.get(teamId)||[];
-     const available=times.filter(k=>k<kickoff).length;
-     return {side,teamId,teamName:String(team.name||teamId),historyMatches:Math.min(available,10),missingTo10:Math.max(0,10-available)};
+     const team=f.teams?.[side]||{},teamId=Number(team.id);
+     const available=positive(teamId)?bttsLastMatches(db,teamId,kickoff,now,10).length:0;
+     return {side,teamId,teamName:String(team.name||teamId),historyMatches:available,
+      missingTo3:Math.max(0,3-available),missingTo10:Math.max(0,10-available)};
    });
    return {fixtureId:Number(f.id),kickoffUTC:new Date(kickoff*1000).toISOString(),
-      home:sides[0],away:sides[1],completeFor10:sides.every(s=>s.missingTo10===0),
-      totalTeamMatchGaps:sides[0].missingTo10+sides[1].missingTo10,
+      home:sides[0],away:sides[1],completeFor3:sides.every(s=>s.missingTo3===0),completeFor10:sides.every(s=>s.missingTo10===0),
+      totalTeamMatchGaps:sides[0].missingTo3+sides[1].missingTo3,
+      totalTeamMatchGapsTo10:sides[0].missingTo10+sides[1].missingTo10,
       leagueId:positive(f.league?.id)?Number(f.league.id):null,
       leagueName:String(f.league?.name||'')||null};
  }).sort((a,b)=>b.totalTeamMatchGaps-a.totalTeamMatchGaps||a.kickoffUTC.localeCompare(b.kickoffUTC));
@@ -88,12 +86,12 @@ export function historyCargoReport(db,now,{day=null,includeItems=true,upcoming=[
      if(!positive(key))continue;
      const prev=teamDemand.get(key);
      if(!prev)teamDemand.set(key,{teamId:key,teamName:v.teamName,
-       historyMatches:v.historyMatches,missingTo10:v.missingTo10,
+       historyMatches:v.historyMatches,missingTo3:v.missingTo3,missingTo10:v.missingTo10,
        upcomingFixtures:1,earliestKickoffUTC:fixture.kickoffUTC,exampleFixtureId:fixture.fixtureId});
      else{
        prev.upcomingFixtures++;
-       if(v.missingTo10>prev.missingTo10){
-         prev.missingTo10=v.missingTo10;prev.historyMatches=v.historyMatches;
+       if(v.missingTo3>prev.missingTo3){
+         prev.missingTo3=v.missingTo3;prev.missingTo10=v.missingTo10;prev.historyMatches=v.historyMatches;
        }
        if(fixture.kickoffUTC<prev.earliestKickoffUTC){
          prev.earliestKickoffUTC=fixture.kickoffUTC;
@@ -105,27 +103,29 @@ export function historyCargoReport(db,now,{day=null,includeItems=true,upcoming=[
      const group=leagueDemand.get(fixture.leagueId)||{leagueId:fixture.leagueId,
        leagueName:fixture.leagueName,incompleteFixtures:0,totalFixtures:0,fixtureTeamGaps:0};
      group.totalFixtures++;
-     if(!fixture.completeFor10)group.incompleteFixtures++;
+     if(!fixture.completeFor3)group.incompleteFixtures++;
      group.fixtureTeamGaps+=fixture.totalTeamMatchGaps;
      leagueDemand.set(fixture.leagueId,group);
    }
  }
- const priorityTeams=[...teamDemand.values()].filter(x=>x.missingTo10>0)
-   .sort((a,b)=>b.missingTo10-a.missingTo10||b.upcomingFixtures-a.upcomingFixtures||a.earliestKickoffUTC.localeCompare(b.earliestKickoffUTC));
+ const priorityTeams=[...teamDemand.values()].filter(x=>x.missingTo3>0)
+   .sort((a,b)=>b.missingTo3-a.missingTo3||b.upcomingFixtures-a.upcomingFixtures||a.earliestKickoffUTC.localeCompare(b.earliestKickoffUTC));
  const priorityLeagues=[...leagueDemand.values()].sort((a,b)=>b.incompleteFixtures-a.incompleteFixtures||b.fixtureTeamGaps-a.fixtureTeamGaps);
  const leagueCount=new Map();for(const x of archived)leagueCount.set(x.league_id,(leagueCount.get(x.league_id)||0)+1);
  const report={registry:{name:HCR_NAME,code:HCR_CODE,mode:'TEST_ONLY',source:'NORMAL_HUB_CACHED_FINISHED',providerCalls:0,viewerImpact:'NONE'},checkedAtUTC:new Date(now*1000).toISOString(),
   scope:{businessDay:day,rounds:records.length,trackedRounds:verified,legacyUntrackedRounds:legacy,reviewRounds:review,missingArchiveEntries:missingArchive},
   rounds:records,
   inventory:{finishedFixtures:archived.length,leagues:leagueCount.size,topLeagues:[...leagueCount].sort((a,b)=>b[1]-a[1]).slice(0,15).map(([leagueId,finishedFixtures])=>({leagueId,finishedFixtures}))},
-  supplyPlanning:{targetHistoryPerTeam:10,upcomingFixtures:coverage.length,readyFixtures:coverage.filter(f=>f.completeFor10).length,
-    incompleteFixtures:coverage.filter(f=>!f.completeFor10).length,
+  supplyPlanning:{targetHistoryPerTeam:3,historySource:'DEDUPED_1X2_AND_BTTS_FINISHED_FT_ASOF',
+    fixtureTargetStatuses:['scheduled','upcoming','waiting'],
+    upcomingFixtures:coverage.length,readyFixtures:coverage.filter(f=>f.completeFor3).length,
+    incompleteFixtures:coverage.filter(f=>!f.completeFor3).length,
     aggregateTeamMatchGaps:coverage.reduce((a,f)=>a+f.totalTeamMatchGaps,0),
     warning:'Gaps are per team/fixture, NOT distinct missing matches, provider API calls or purchasing quantity; cross-team duplicates are possible',
     upcomingLeagueIdsAvailable:coverage.filter(x=>x.leagueId!==null).length,
     upcomingLeagueIdsMissing:coverage.filter(x=>x.leagueId===null).length,
     uniqueTeams:teamDemand.size,uniqueTeamsNeedingHistory:priorityTeams.length,
-    deduplicatedTeamMatchGaps:priorityTeams.reduce((a,t)=>a+t.missingTo10,0),
+    deduplicatedTeamMatchGaps:priorityTeams.reduce((a,t)=>a+t.missingTo3,0),
     warningUnits:'deduplicatedTeamMatchGaps counts missing match histories across unique teams, NOT distinct fixtures or provider API calls',
     priorityTeams:priorityTeams.slice(0,50),
     priorityLeagues:priorityLeagues.slice(0,20),
