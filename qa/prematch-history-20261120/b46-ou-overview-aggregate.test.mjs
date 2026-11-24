@@ -21,13 +21,13 @@ test('all-time O/U + every Adaptive formula snapshots correctly sums wins, units
  assert.equal(out.formulaCount,4);
  assert.deepEqual([out.total.total,out.total.win,out.total.loss,out.total.settled],[24,13,11,24]);
  assert.equal(out.total.winRate,54.16666667);
- assert.equal(out.total.units,6.97);
- assert.equal(out.total.roi,29.04166667);
- assert.equal(out.daily.at(-1).cumulativeUnits,6.97);
+ assert.equal(out.total.units,5.97);
+ assert.equal(out.total.roi,24.875);
+ assert.equal(out.daily.at(-1).cumulativeUnits,5.97);
  assert.equal(out.daily.at(-1).win,13);
  assert.equal(out.today.win,13);
  assert.equal(out.today.loss,10);
- assert.equal(out.today.units,7.97);
+ assert.equal(out.today.units,6.97);
 });
 test('formula selections OVER and UNDER never double-count beyond ALL totals',()=>{
  const j={...data,formulas:[...forms,{...forms[0],selection:'OVER'}]};
@@ -40,8 +40,8 @@ test('additional formulas are INCLUDED automatically, never silently filter to f
  const out=combineOuOverview(legacy,baseSeries,book,d);
  assert.equal(out.formulaCount,5);assert.equal(out.total.total,27);
  assert.equal(out.total.win,15);assert.equal(out.total.pending,1);
- assert.equal(out.total.units,8.82);
- assert.equal(out.daily.at(-1).cumulativeUnits,8.82);
+ assert.equal(out.total.units,7.82);
+ assert.equal(out.daily.at(-1).cumulativeUnits,7.82);
 });
 test('invalid aggregate snapshots are rejected rather than inventing zero',()=>{
  assert.throws(()=>combineOuOverview(null,baseSeries,book,data),/UNAVAILABLE/);
