@@ -22,5 +22,5 @@ export function englishFlowCopy(script) {
       .replaceAll('"' + from + '"', '"' + to + '"')
       .replaceAll('>' + from + '<', '>' + to + '<');
   }
-  return script;
+  return script.replaceAll('class="empty-chart" x=', 'class="empty-chart" text-anchor="middle" fill="var(--muted)" font-size="10" x=');
 }

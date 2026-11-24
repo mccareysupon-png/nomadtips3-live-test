@@ -192,8 +192,13 @@
   }
 
   html:root[data-theme] body :is(#b46gn-detail#b46gn-detail, .match-expanded[data-expanded-match], dialog.b46-eventflow-top-layer)
-  :is(.expand-card-head small, .expand-flow-legend > small, .fmb-head small, .expand-empty, .expand-loading, .b46gn-flow-loading) {
+  :is(.expand-card-head small, .expand-flow-legend > small, .fmb-head small, .fmb-head [data-b46-fmb-copy], .expand-empty, .expand-loading, .b46gn-flow-loading) {
     color: var(--b46-detail-muted) !important;
+  }
+
+  html:root[data-theme] body :is(#b46gn-detail#b46gn-detail, .match-expanded[data-expanded-match]) .fmb-head [data-b46-fmb-copy] {
+    font-size: 11px !important;
+    white-space: normal !important;
   }
 
   html:root[data-theme] body :is(#b46gn-detail#b46gn-detail, .match-expanded[data-expanded-match], dialog.b46-eventflow-top-layer)

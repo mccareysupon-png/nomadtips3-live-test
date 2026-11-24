@@ -136,6 +136,11 @@ async function testMobile(browser, theme, device) {
     await nav.getByRole('button', { name: 'Markets', exact: true }).click();
     const markets = dialog.locator('.b46gn-full-market');
     await markets.waitFor({ state: 'visible' });
+    const marketHeader = markets.locator('.fmb-head');
+    const marketHint = marketHeader.locator('[data-b46-fmb-copy]');
+    if (await marketHint.count()) {
+      assert(contrast((await palette(marketHint)).color, (await palette(marketHeader)).backgroundColor) >= 4.5);
+    }
     const bookmaker = markets.locator('.fmb-tab.has-data').first();
     let marketOpened = false;
     if (await bookmaker.count()) {
