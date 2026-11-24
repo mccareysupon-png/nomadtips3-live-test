@@ -108,15 +108,18 @@ function stageQuotes(line,market,record,sourceName){
  }
  return quotes;
 }
-export function extractFullMarketOuOffers(entry,fixtureId,now,kickoff){
+export function extractFullMarketOuOffers(entry,fixtureId,now,kickoff,{researchHistorical=false}={}){
+ // Research-only replay of ACTUAL old pre-match quotes. Never misstate as fresh.
+ // Default remains the original strict 120-second cache gate for live issuance.
+ const maxAgeMs=researchHistorical?6*3600*1000:OU_VALUE_V2_POLICY.cacheMaxAgeMs;
  if(!validId(fixtureId)||!Number.isSafeInteger(now)||
   !Number.isSafeInteger(kickoff)||kickoff<=now+OU_VALUE_V2_POLICY.minSecondsBeforeKickoff||
-  !entry||entry.stale===true||!entry.fullOdds||typeof entry.fullOdds!=='object')
+  !entry||(entry.stale===true&&!researchHistorical)||!entry.fullOdds||typeof entry.fullOdds!=='object')
   return {status:'MISSING_OR_STALE_CACHE',offers:[]};
  const fetchedAt=Number(entry.fetchedAt),ageMs=now*1000-fetchedAt;
  if(!n(fetchedAt)||fetchedAt<1e12||ageMs<-10000||
-  ageMs>OU_VALUE_V2_POLICY.cacheMaxAgeMs||
-  (entry.ageMs!=null&&(!n(entry.ageMs)||entry.ageMs>OU_VALUE_V2_POLICY.cacheMaxAgeMs||entry.ageMs<0))||
+  ageMs>maxAgeMs||
+  (entry.ageMs!=null&&(!n(entry.ageMs)||entry.ageMs>maxAgeMs||entry.ageMs<0))||
   fetchedAt/1000>=kickoff-OU_VALUE_V2_POLICY.minSecondsBeforeKickoff)
   return {status:'MISSING_OR_STALE_CACHE',offers:[]};
  const data=entry.fullOdds.data??entry.fullOdds;
@@ -165,7 +168,9 @@ export function extractFullMarketOuOffers(entry,fixtureId,now,kickoff){
    offers.push({...q,bookmaker:name,fixtureId:Number(fixtureId),
     capturedAt:now,sourceObservedAt:Math.floor(fetchedAt/1000),
     providerQuoteTimestamp:null,stageHistoricalPossible:true,
-    source:'FULL_MARKET_CACHE_'+q.market.toUpperCase()+'_'+q.stage.toUpperCase()});
+    source:'FULL_MARKET_CACHE_'+q.market.toUpperCase()+'_'+q.stage.toUpperCase(),
+    researchHistoricalCache:researchHistorical&&ageMs>OU_VALUE_V2_POLICY.cacheMaxAgeMs,
+    quoteAgeSeconds:Math.max(0,Math.round(ageMs/1000))});
   }
  }
  return {status:offers.length?'PRICED':'NO_VERIFIED_OU_OFFERS',offers};

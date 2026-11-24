@@ -207,3 +207,33 @@ test('FT via already cached HUB settles the independent research ledger without 
   assert.equal(raw.prepare("SELECT COUNT(*) n FROM sqlite_master WHERE type='table' AND name='b46_ou_v2_snapshot_test'").get().n,0);
  }finally{raw.close()}
 });
+
+test('raw O/U 2.5 provider cache from 39 min ago is genuine historical research quote, not a live price',async()=>{
+ const {db,raw,add,fixture}=mk();
+ try{
+  add(101,501,2,2);add(102,501,3,1);add(103,502,1,0);add(104,502,0,2);
+  const oldQuoteAt=NOW-2340;
+  const payload={fullOdds:{data:{fixture_id:7001,bookmakers:[{
+   name:'Bet 365',slug:'bet365',odds:{goal_line_fixed:[{
+    line:2.5,opening:{over:1.40,under:2.75},
+    closing:{over:2.00,under:1.80}
+   }]}
+  }]}},stale:true,ageMs:2340000,fetchedAt:oldQuoteAt*1000};
+  const out=await runAdaptiveOu(db,{fixtures:[fixture()],now:NOW,
+   market:async()=>({ok:true,externalRequestsAdded:0,entries:{'7001':payload}})});
+  assert.equal(out.raw.counts.uniqueFixturesWithPatterns,1);
+  assert.equal(out.priced.fixtures,1);
+  assert.equal(out.record.added,4);
+  const entries=readAdaptiveStats(db,NOW).records;
+  assert.equal(entries.length,4);
+  assert(entries.every(p=>p.odds_source.endsWith('_HISTORICAL_RESEARCH_ONLY')));
+  assert(entries.every(p=>p.quote_observed_at===oldQuoteAt));
+  assert(entries.every(p=>p.odds>=1.40));
+  assert(entries.every(p=>p.status==='PENDING'));
+  const oldPrice=await runAdaptiveOu(db,{fixtures:[fixture(7002,501,502)],now:NOW,
+   market:async()=>({ok:true,externalRequestsAdded:0,entries:{
+    '7002':{...payload,ageMs:7*3600000,fetchedAt:(NOW-7*3600)*1000,
+     fullOdds:{data:{...payload.fullOdds.data,fixture_id:7002}}}}})});
+  assert.equal(oldPrice.record.added,0);
+ }finally{raw.close()}
+});

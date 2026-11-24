@@ -44,7 +44,7 @@ export function recordAdaptiveOu(db,items,now){
     row.kickoff<=now+300||!Number.isFinite(row.odds)||row.odds<1.4||row.odds>10||
     typeof row.bookmaker!=='string'||!row.bookmaker||
     !Number.isSafeInteger(row.quoteObservedAt)||
-    row.quoteObservedAt>now+10||now-row.quoteObservedAt>120||
+    row.quoteObservedAt>now+10||now-row.quoteObservedAt>21600||
     row.quoteObservedAt>=row.kickoff-300||
     row.historyUsed!==Number(row.formula.slice(1))||
     !Array.isArray(row.supportingTeams)||!row.supportingTeams.length||
@@ -178,7 +178,7 @@ export async function runAdaptiveOu(db,{fixtures,now,market}={}){
   for(const fixtureId of batch){
    const representative=raw.candidates.find(x=>x.fixtureId===fixtureId);
    const parsed=extractFullMarketOuOffers(reply.entries[String(fixtureId)]??null,
-    fixtureId,now,representative.kickoff);
+    fixtureId,now,representative.kickoff,{researchHistorical:true});
    const available=parsed.offers.filter(q=>q.line===2.5);
    if(available.length)pricedFixtures++;else unavailable++;
    const options={OVER:[],UNDER:[]};
@@ -202,8 +202,9 @@ export async function runAdaptiveOu(db,{fixtures,now,market}={}){
   const quote=offersByFixture.get(c.fixtureId+'/'+c.selection);
   if(!quote)continue;
   priced.push({...c,odds:quote.odds,bookmaker:quote.bookmaker,
-   oddsSource:quote.source,quoteObservedAt:quote.sourceObservedAt,
-   priceStage:quote.stage});
+   oddsSource:quote.source+(quote.researchHistoricalCache?'_HISTORICAL_RESEARCH_ONLY':''),
+   quoteObservedAt:quote.sourceObservedAt,priceStage:quote.stage,
+   quoteAgeSeconds:quote.quoteAgeSeconds,quoteFromHistoricalCache:!!quote.researchHistoricalCache});
   countPerFormula[c.formula]++;
   raw.formulaCounts[c.formula].pricedFixtures++;
  }
@@ -220,6 +221,7 @@ export async function runAdaptiveOu(db,{fixtures,now,market}={}){
   record,settlement,
   stats:{formulas:stats.formulas,bySelection:stats.bySelection,
    totalLedgerRows:stats.records.length},
-  maxPriceAgeMs:120000,priceRange:[1.4,10],
+  livePriceMaxAgeMs:120000,researchCacheMaxAgeMs:21600000,
+  staleResearchQuotesLabeled:true,priceRange:[1.4,10],
   providerCalls:0,productionWrites:0};
 }
