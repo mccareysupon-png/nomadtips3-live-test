@@ -1,9 +1,9 @@
 import test from 'node:test';
+import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {patchOuSidebarHistoryClient,patchOuSidebarHistoryWorker,
  B46_OU_SIDEBAR_HISTORY_V1} from './patch-ou-sidebar-history-test-v1-20261124.mjs';
 test('new TEST O/U UI keeps 10 kickoff-ordered records per page and portable frontend shell',()=>{
- const fs=await import('node:fs');
  const src=fs.readFileSync(new URL('./patch-ou-sidebar-history-test-v1-20261124.mjs',import.meta.url),'utf8');
  assert(src.includes('const pageSize=10,pages='));
  assert(src.includes('(Number(b.kickoff)||0)-(Number(a.kickoff)||0)'));
