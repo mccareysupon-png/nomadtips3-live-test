@@ -39,7 +39,7 @@
     background: var(--b46-detail-overlay) !important;
   }
 
-  html[data-theme] body #b46gn-detail .b46gn-sheet {
+  html[data-theme] body #b46gn-detail#b46gn-detail .b46gn-sheet {
     background: var(--b46-detail-sheet) !important;
     color: var(--b46-detail-ink) !important;
     padding-inline: var(--b46-detail-space) !important;
@@ -52,12 +52,12 @@
     opacity: .52;
   }
 
-  html[data-theme] body #b46gn-detail .b46gn-sheethead {
+  html[data-theme] body #b46gn-detail#b46gn-detail .b46gn-sheethead {
     background: transparent !important;
     color: var(--b46-detail-ink) !important;
   }
 
-  html[data-theme] body #b46gn-detail .b46gn-dismiss,
+  html[data-theme] body #b46gn-detail#b46gn-detail .b46gn-dismiss,
   html[data-theme] body #b46gn-detail .b46-suite-nav button {
     background: var(--b46-detail-well) !important;
     color: var(--b46-detail-ink) !important;
@@ -65,7 +65,7 @@
     border-radius: 9px !important;
   }
 
-  html[data-theme] body #b46gn-detail .b46gn-dismiss {
+  html[data-theme] body #b46gn-detail#b46gn-detail .b46gn-dismiss {
     inline-size: 44px;
     block-size: 44px;
     flex-shrink: 0;

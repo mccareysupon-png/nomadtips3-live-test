@@ -42,6 +42,18 @@ const palette = (loc) => loc.evaluate(node => {
   return { backgroundColor, backgroundImage, color, borderTopWidth, boxShadow };
 });
 
+function contrast(foreground, background) {
+  function luminance(rgb) {
+    const linear = rgb.match(/\d+/g).slice(0, 3).map(channel => {
+      const value = Number(channel) / 255;
+      return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+  }
+  const [dark, light] = [luminance(foreground), luminance(background)].sort((a, b) => a - b);
+  return (light + 0.05) / (dark + 0.05);
+}
+
 async function screenshot(page, file) {
   if (artifacts) await page.screenshot({ path: join(artifacts, file + '.png'), animations: 'disabled' });
 }
@@ -139,8 +151,11 @@ async function testMobile(browser, theme, device) {
     const extra = history.locator('.b46m-extra');
     await extra.waitFor({ state: 'visible' });
     const item = extra.locator('.b46m-extra-item').first();
-    assert.equal((await palette(item)).backgroundColor, colors[theme].well);
-    assert.equal((await palette(item.locator('span'))).color, colors[theme].ink);
+    const extraSurface = (await palette(item)).backgroundColor;
+    assert.equal(extraSurface, colors[theme].well);
+    const detailsContrast = contrast((await palette(item.locator('span'))).color, extraSurface);
+    assert(detailsContrast >= 4.5, theme + ' history detail text contrast ' + detailsContrast);
+    assert(contrast((await palette(item.locator('label'))).color, extraSurface) >= 4.5);
     assert.equal((await palette(extra)).borderTopWidth, '0px');
     await assertFits(extra);
     if (artifacts) await history.screenshot({ path: join(artifacts, theme + '-statistics-details.png'), animations: 'disabled' });
@@ -151,6 +166,7 @@ async function testMobile(browser, theme, device) {
     await page.waitForFunction(() => document.body.dataset.workspaceView === 'signal');
     const signalRow = page.locator('[data-workspace-view="signal"] .match-row[data-match-id]:visible').first();
     let signalExpanded = false;
+    await signalRow.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {});
     if (await signalRow.count()) {
       await signalRow.click();
       const detail = page.locator('.match-expanded[data-expanded-match]:visible').first();
@@ -161,7 +177,8 @@ async function testMobile(browser, theme, device) {
     assert.deepEqual(errors, []);
     return { viewport: device.viewport.width, theme, matchDetails: true, eventFlow: true,
       eventPlotData: plot.length > 0, matchStats: true, marketOpened, historyDetails: true,
-      sharedNativeExpansion: true, signalExpanded, language: 'en', javascriptErrors: errors };
+      sharedNativeExpansion: true, signalExpanded, historyContrast: Number(detailsContrast.toFixed(2)),
+      language: 'en', javascriptErrors: errors };
   } finally {
     await context.close();
   }
