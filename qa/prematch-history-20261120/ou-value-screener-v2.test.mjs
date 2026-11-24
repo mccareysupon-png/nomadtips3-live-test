@@ -150,6 +150,8 @@ test('full integrated history screen does not silently force 2.5 or probability 
    league:{id:12,name:'League'},teams:{home:{id:501,name:'Alpha'},away:{id:502,name:'Beta'}}}];
   const preview=buildOuValueModels(d,fs,now);
   assert.equal(preview.models.length,1);
+  assert.equal(OU_VALUE_V2_POLICY.minHistoryPerTeam,3);
+  assert.equal(OU_VALUE_V2_POLICY.minCombinedHistory,6);
   const m=preview.models[0];
   assert(m.expectedTotalGoals>0);
   let seenPath=null;
@@ -194,4 +196,19 @@ test('strict >1.50 and >=+5% precisely, not unrelated 64% fixed probability gate
  assert.equal(OU_VALUE_V2_POLICY.minimumEV,.05);
  assert.equal(OU_VALUE_V2_POLICY.legacyOuV1Unchanged,true);
  assert.equal(OU_VALUE_V2_POLICY.providerCalls,0);
+});
+
+test('O/U V2 only screens upcoming fixtures with three FINISHED games per team, not combined history',()=>{
+ const d=database();
+ try{
+  const fixture={id:7001,status:'scheduled',kickoff_ts:kickoff,league:{id:12},
+   teams:{home:{id:501,name:'Alpha'},away:{id:502,name:'Beta'}}};
+  assert.equal(buildOuValueModels(d,[fixture],now).models.length,1);
+  d.exec('DELETE FROM result_version WHERE fixture_id IN (9000,9002,9004)');
+  const missing=buildOuValueModels(d,[fixture],now);
+  assert.equal(missing.models.length,0);
+  assert.equal(missing.counts.insufficientHistory,1);
+  assert.equal(buildOuValueModels(d,[{...fixture,status:'live'}],now).models.length,0);
+  assert.equal(buildOuValueModels(d,[{...fixture,kickoff_ts:now-50}],now).models.length,0);
+ }finally{d.close()}
 });
