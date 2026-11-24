@@ -15,4 +15,5 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
+      - run: node --check qa/prematch-history-20261120/b46-native-price-ui-anchors-20261124.mjs
       - run: node qa/prematch-history-20261120/b46-native-price-ui-anchors-20261124.mjs
