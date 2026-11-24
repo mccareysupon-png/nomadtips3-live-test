@@ -1,0 +1,15 @@
+name: BALL46 two-over-streak under2.5 offline QA
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-two-over-then-under25-offline-20261124.yml]
+permissions: {contents: read}
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node --experimental-sqlite --test qa/prematch-history-20261120/ou-two-over-then-under25.test.mjs
+      - run: node --experimental-sqlite --test qa/prematch-history-20261120/ou-value-screener-v2.test.mjs
