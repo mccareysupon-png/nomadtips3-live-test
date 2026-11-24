@@ -199,13 +199,24 @@ async function testMobile(browser, theme, device) {
     await detailsButton.click();
     const extra = history.locator('.b46m-extra');
     await extra.waitFor({ state: 'visible' });
-    const item = extra.locator('.b46m-extra-item').first();
-    const extraSurface = (await palette(item)).backgroundColor;
+    // Real-time history can repaint the card. Sample its styles in one render.
+    const historyPaint = await page.waitForFunction(() => {
+      const detail = document.querySelector('.b46m-hcard[data-expanded="true"] .b46m-extra');
+      const item = detail?.querySelector('.b46m-extra-item');
+      if (!item || !item.getBoundingClientRect().width) return false;
+      return {
+        surface: getComputedStyle(item).backgroundColor,
+        value: getComputedStyle(item.querySelector('span')).color,
+        label: getComputedStyle(item.querySelector('label')).color,
+        border: getComputedStyle(detail).borderTopWidth,
+      };
+    });
+    const { surface: extraSurface, value, label, border } = await historyPaint.jsonValue();
     assert.equal(extraSurface, colors[theme].well);
-    const detailsContrast = contrast((await palette(item.locator('span'))).color, extraSurface);
+    const detailsContrast = contrast(value, extraSurface);
     assert(detailsContrast >= 4.5, theme + ' history detail text contrast ' + detailsContrast);
-    assert(contrast((await palette(item.locator('label'))).color, extraSurface) >= 4.5);
-    assert.equal((await palette(extra)).borderTopWidth, '0px');
+    assert(contrast(label, extraSurface) >= 4.5);
+    assert.equal(border, '0px');
     await assertFits(extra);
     await screenshot(page, theme + '-statistics-details');
     await detailsButton.click();

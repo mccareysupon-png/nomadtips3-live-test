@@ -251,6 +251,7 @@
   .expand-full-market-card .fmb-market {
     --text: var(--b46-detail-ink);
     --muted: var(--b46-detail-muted);
+    --quiet-muted: var(--b46-detail-muted);
     --b46-home: var(--b46-detail-ink-accent);
     --b46-away: var(--b46-detail-away);
     --b46-neutral: var(--b46-detail-muted);
@@ -276,6 +277,7 @@
 
   html:root[data-theme] body :is(#b46gn-detail#b46gn-detail, .match-expanded[data-expanded-match])
   .fmb-market .fmb-table-wrap th {
+    color: var(--b46-detail-muted) !important;
     font-size: 9px !important;
   }
 
