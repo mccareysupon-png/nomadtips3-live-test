@@ -39,14 +39,13 @@ jobs:
                 });
                 const p=await c.newPage(),errors=[];
                 p.on('pageerror',e=>errors.push(e.message));
-                await p.goto('https://'+host+'/?view=statistics',{waitUntil:'domcontentloaded',timeout:50000});
+                await p.goto('https://'+host+'/?b46pm=ou',{waitUntil:'domcontentloaded',timeout:50000});
                 assert.equal(new URL(p.url()).hostname,host);
-                const panel=p.getByRole('heading',{name:'Performance & Results'});
-                await panel.waitFor({timeout:35000});
+                await p.locator('#b46-prematch-panel').waitFor({timeout:18000});
                 const nav=p.getByRole('button',{name:'Open navigation'});
                 const target=(name)=>p.getByRole('button',{name:name==='1x2'?/^1X2 \d+\.\d+%$/:name==='total'?/^Total /:/^Waiting \d+/});
                 const reports=[];
-                for(const n of (label==='desktop'?['1x2','total','1x2','total','1x2']:['1x2','total','1x2','total','1x2','waiting'])){
+                for(const n of (label==='desktop'?['total','1x2','total','1x2','total','1x2']:['waiting'])){
                   if(label==='mobile'&&await nav.isVisible())await nav.click();
                   let b=target(n);
                   if(n==='1x2'&&await b.count()>1){
@@ -75,6 +74,7 @@ jobs:
                     rows:document.querySelectorAll('.workspace-panel tr').length
                   }));
                   reports.push({action:n,...obs});
+                  console.log('B46_UI_SAMPLE '+JSON.stringify({label,action:n,...obs}));
                 }
                 console.log('B46_UI_BASELINE '+JSON.stringify({label,reports,errors}));
                 await c.close();
