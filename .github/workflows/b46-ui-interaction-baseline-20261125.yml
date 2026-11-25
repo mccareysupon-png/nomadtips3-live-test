@@ -21,7 +21,7 @@ jobs:
           (async()=>{
             const browser=await chromium.launch();
             try {
-              for(const [label,width,height] of [['desktop',1440,900],['mobile',390,844]]){
+              for(const [label,width,height] of [['desktop',1440,900],['desktop-patch',1440,900]]){
                 const c=await browser.newContext({viewport:{width,height},serviceWorkers:'block'});
                 await c.addInitScript(()=>{
                   const logs=[]; let mark;
@@ -38,6 +38,20 @@ jobs:
                   }).observe({type:'longtask'});
                 });
                 const p=await c.newPage(),errors=[];
+                const pattern='**/dashboard-v2-stage3-featured-facts-20261013a.js*';
+                let served=0;
+                await p.route(pattern,async route=>{
+                  const res=await route.fetch();
+                  const s=await res.text();
+                  const anchor="const host=$('[data-board-sections]');if(!host)return;";
+                  const start=s.indexOf('function renderBoard(){');
+                  const idx=s.indexOf(anchor,start);
+                  if(start<0||idx<0||idx-start>180)throw Error('BOARD_SOURCE_DRIFT');
+                  if(label.endsWith('-patch')){
+                    const guard="if(document.body.dataset.workspaceView==='statistics')return;";
+                    served++;await route.fulfill({response:res,body:s.slice(0,idx)+guard+s.slice(idx)});
+                  }else await route.fulfill({response:res,body:s});
+                });
                 const cdp=await c.newCDPSession(p); await cdp.send('Profiler.enable');
                 p.on('pageerror',e=>errors.push(e.message));
                 await p.goto('https://'+host+'/?b46pm=ou',{waitUntil:'domcontentloaded',timeout:50000});
@@ -46,8 +60,9 @@ jobs:
                 const nav=p.getByRole('button',{name:'Open navigation'});
                 const target=(name)=>p.getByRole('button',{name:name==='1x2'?/^1X2 \d+\.\d+%$/:name==='total'?/^Total /:/^Waiting \d+/});
                 const reports=[];
-                for(const n of (label==='desktop'?['total','1x2','total','1x2','total','1x2']:['waiting'])){
+                for(const n of ['total','1x2','total','1x2','total','1x2']){
                   if(label==='mobile'&&await nav.isVisible())await nav.click();
+                  if(reports.length===1)await p.waitForFunction(()=>document.querySelectorAll('.workspace-panel tr').length>=40,{},{timeout:35000});
                   let b=target(n);
                   if(n==='1x2'&&await b.count()>1){
                     const live=p.locator('[data-stat-market="1x2"]');
@@ -62,6 +77,14 @@ jobs:
                   }
                   await p.evaluate(()=>{
                     window.b46Audit.start();
+                    const start=performance.now(),frames=[];
+                    window.b46Audit.frames=frames;
+                    const capture=()=>{
+                      const e=document.querySelector('#b46-finance-chart-card .f46-card');
+                      const q=e?.getBoundingClientRect(),t=performance.now()-start;
+                      frames.push(q?[Math.round(t),Math.round(q.x),Math.round(q.y),Math.round(q.width),Math.round(q.height),window.scrollY]:[Math.round(t)]);
+                      if(t<750)requestAnimationFrame(capture);
+                    };capture();
                     window.b46Audit.refs=Array.from(document.querySelectorAll('main,.workspace-panel,.workspace-stats-card,#b46-finance-chart-card,[data-stat-market]')).slice(0,24);
                   });
                   await cdp.send('Profiler.start');
@@ -82,11 +105,13 @@ jobs:
                     events:window.b46Audit.logs.filter(e=>e.start>=window.b46Audit.since()-2),
                     kept:window.b46Audit.refs?.filter(e=>e.isConnected).length,
                     observed:window.b46Audit.refs?.length,
-                    rows:document.querySelectorAll('.workspace-panel tr').length
+                    rows:document.querySelectorAll('.workspace-panel tr').length,
+                    frames:window.b46Audit.frames.filter((f,i,a)=>i===0||f.slice(1).join()!==a[i-1].slice(1).join()).slice(0,12)
                   }));
                   reports.push({action:n,...obs});
                   console.log('B46_UI_SAMPLE '+JSON.stringify({label,action:n,...obs}));
                 }
+                if(label.endsWith('-patch'))assert(served>0,'PATCH_NOT_EXERCISED');
                 console.log('B46_UI_BASELINE '+JSON.stringify({label,reports,errors}));
                 await c.close();
               }
