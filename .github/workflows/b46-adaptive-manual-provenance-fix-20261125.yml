@@ -23,3 +23,5 @@ jobs:
         run: node qa/prematch-history-20261120/deploy-adaptive-manual-provenance-test-20261125.mjs --dry-run
       - name: Deploy protected manual TEST page provenance fix
         run: node qa/prematch-history-20261120/deploy-adaptive-manual-provenance-test-20261125.mjs
+
+# Retry safe single TEST module deploy with edge propagation-aware readback verification.
