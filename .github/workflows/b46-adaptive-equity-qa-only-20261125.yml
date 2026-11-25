@@ -1,0 +1,25 @@
+name: BALL46 Adaptive Equity no-flicker TEST browser QA only
+on:
+  push:
+    branches: [fix/b46-adaptive-equity-no-flicker-20261125]
+    paths: ['.github/workflows/b46-adaptive-equity-qa-only-20261125.yml']
+permissions: {contents: read}
+jobs:
+  browser-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - run: node qa/adaptive-equity-no-flicker-20261125/qa.mjs
+      - name: QA artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b46-adaptive-no-flicker-qa-${{ github.run_id }}
+          path: qa/adaptive-equity-no-flicker-20261125/audit/
+          if-no-files-found: warn
