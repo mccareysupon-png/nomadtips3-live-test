@@ -35,8 +35,9 @@ function patch(s){
  assert(s.includes("DISABLED_ADAPTIVE_ONLY"),'EXPECTED_ADAPTIVE_ONLY_BASELINE');
  assert(s.includes("runAdaptiveOu(this.db,{fixtures,now,market})"),'ADAPTIVE_RUN_ANCHOR_MISSING');
  assert(!s.includes("B46_ADAPTIVE_FORMULA_CONTROL_TEST_V1"),'ALREADY_PATCHED');
- const imported="import {runAdaptiveOu,readAdaptiveStats} from './b46-adaptive-ou-ledger-v1-test.mjs';";
- s=once(s,imported,imported+
+ const imported=[...s.matchAll(/import\s*\{[^}]*runAdaptiveOu[^}]*\}\s*from\s*'\.\/b46-adaptive-ou-ledger-v1-test\.mjs';/g)].map(x=>x[0]);
+ assert.equal(imported.length,1,'ADAPTIVE_LEDGER_IMPORT_DRIFT');
+ s=once(s,imported[0],imported[0]+
   "\nimport {adaptiveControlOverview,adaptiveControlCommand,applyAdaptiveAutoStops,adaptiveActiveSelections} from './b46-adaptive-formula-control-risk-test.mjs';"+
   "\nimport {adaptiveControlHtml} from './b46-adaptive-manual-control-page-test.mjs';");
  const run="const result=await runAdaptiveOu(this.db,{fixtures,now,market});";
