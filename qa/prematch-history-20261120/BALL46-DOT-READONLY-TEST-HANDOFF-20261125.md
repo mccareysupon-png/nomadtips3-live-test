@@ -49,3 +49,54 @@ A formula without any observations is flagged `NO_OBSERVATIONS`; it must never b
 Monitor 42 formula states, age/health, FT-confirmed W/L and settled counts, research P/L, current DD, lifetime DD, after-pause shadow, and risk alerts. Report failures and changes, not routine noise. Do not make betting decisions or issue any RUN/PAUSE command.
 
 **Caveat:** Existing separate public TEST research views may display historical research observations for UI use; this NEW read-only Dot endpoint does not expose the full Ledger. Securing those pre-existing public views requires a separate coordinated UI access-control change and must not be claimed complete by this patch.
+
+---
+
+## 2026-11-25: Working Cloudflare-native transport for Dot (no custom GET or custom bearer)
+
+The earlier Dot profile reported `CONNECTION_NOT_CONFIGURED` because the connected Cloudflare plugin cannot make an arbitrary authenticated request to the Worker `workers.dev` URL. That blocker is bypassed by **private Cloudflare Workers KV account API access**.
+
+The existing TEST Worker saves the same sanitized 42-formula report to private KV on the **actual 15-minute scheduled Adaptive O/U run**, after both Risk Guard checks; no extra provider call, no owner session, and no public endpoint.
+
+- KV namespace: `BALL46_ADAPTIVE_DOT_RISK_TEST_READONLY_20261125`
+- Namespace ID (not a secret): `c3ce9ac5641a45cca03ec318a35c6872`
+- Key: `adaptive-risk-supervisor/latest-v1-test`
+- Account API: `GET /accounts/{account_id}/storage/kv/namespaces/c3ce9ac5641a45cca03ec318a35c6872/values/adaptive-risk-supervisor%2Flatest-v1-test`
+- Use the Dot's **Cloudflare Connector** normal authorized API request. **Do not provide an owner password or a bearer token in chat.**
+- Successful Cloudflare connector test: read JSON string directly through `cloudflare.request`. It returned 42 formulas, 115 FT-verified decisions, Risk Guard checked 42 before/after, and no raw fixture Ledger rows.
+- `snapshotRecordedAt`, `staleAfter`, `freshness.cronCompletedAt`, `freshness.cronInvocationId` provide cross-round proof and age limits. KV is eventually consistent; read-age validation is mandatory.
+- The reporting key expires after 2400 seconds without a replacement; a missing key, transport error, stale timestamp, or status other than OK means **UNAVAILABLE** or **STALE**, never 0.
+
+### Exact operation using existing Cloudflare Connector
+
+```js
+async () => {
+  const ns = 'c3ce9ac5641a45cca03ec318a35c6872';
+  const key = 'adaptive-risk-supervisor%2Flatest-v1-test';
+  const path = `/accounts/${accountId}/storage/kv/namespaces/${ns}/values/${key}`;
+  try {
+    // Cloudflare KV API returns raw JSON text, NOT a Cloudflare success/result envelope.
+    const raw = await cloudflare.request({method:'GET',path});
+    const data = JSON.parse(raw);
+    if(data.status!=='OK'||!Array.isArray(data.formulas)||
+       data.formulas.length!==42||Date.parse(data.staleAfter)<=Date.now()||
+       data.freshness?.cronSource!=='CLOUDFLARE_SCHEDULED_15M'||
+       data.freshness?.cronRiskGuardBefore?.checked!==42||
+       data.freshness?.cronRiskGuardAfter?.checked!==42)
+      return {status:'UNAVAILABLE_OR_STALE',reason:'missing/stale/invalid Risk Guard snapshot'};
+    return {status:'OK',freshness:data.freshness,summary:data.summary,formulas:data.formulas};
+  } catch(error) {
+    return {status:'UNAVAILABLE',reason:'Cloudflare KV data cannot be read'};
+  }
+}
+```
+
+### Permission boundary and Dot scheduling
+
+Cloudflare's native KV GET accepts a token with **Workers KV Storage Read**, ideally restricted to this namespace. Do not rely on an account-wide Worker-management credential for an enforceably read-only Dot identity. If the existing Dot connector is authorized for writes, it is technically broader than the requested monitor-only role. Reauthorize a *separate least-privilege* Cloudflare connection where the app supports it; otherwise leave scheduled Dot monitoring unconfigured and request explicit acceptance of the risk.
+
+After confirming a real automatic KV refresh from a new 15-minute cron (different `cronInvocationId`), and confirming Dot's own Cloudflare connection can make the KV GET with an appropriately scoped credential, the Dot may be authorized to monitor hourly and summarize at 06:05 Europe/London. Never call RUN or PAUSE. Do not configure Dot jobs from GitHub Actions or describe the ChatGPT assistant's connection as Dot's connection.
+
+### Free-tier footprint
+
+One KV `put` per 15-minute tick is nominally **96 writes per day**, within the documented 1,000 writes per day Workers KV Free allowance **if other KV writes on the same account remain within the total limit**. No extra odds provider calls are introduced. This does not guarantee zero billing if the account uses a paid tier or exceeds included allowances.
