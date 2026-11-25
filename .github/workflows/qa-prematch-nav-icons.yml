@@ -47,11 +47,22 @@ jobs:
                   paths.push(info.d);colors[route]=info.stroke;
                 }
                 assert.equal(new Set(paths).size,5);
-                assert.notEqual(colors.predictions,colors.ou,'selected route uses a distinct accent');
+                const expectedColors={predictions:'rgb(250, 89, 100)',all:'rgb(91, 219, 172)','1x2':'rgb(109, 181, 255)',ou:'rgb(242, 198, 108)',btts:'rgb(189, 152, 255)'};
+                assert.deepEqual(colors,expectedColors);
+                if(name==='desktop'){
+                  const lightColors=await group.evaluate(root=>{
+                    const html=document.documentElement, old=html.dataset.theme;html.dataset.theme='light';
+                    try{return Object.fromEntries([...root.querySelectorAll('[data-b46-prematch-route]')].filter(el=>el.querySelector('svg.b46pm-premium-nav-icon path')).map(el=>[el.dataset.b46PrematchRoute,getComputedStyle(el.querySelector('svg.b46pm-premium-nav-icon path')).stroke]));}finally{html.dataset.theme=old;}
+                  });
+                  assert.deepEqual(lightColors,{predictions:'rgb(191, 40, 69)',all:'rgb(22, 114, 87)','1x2':'rgb(36, 90, 168)',ou:'rgb(134, 85, 0)',btts:'rgb(103, 64, 162)'});
+                  console.log('Light palette PASS '+JSON.stringify(lightColors));
+                }
                 await market('ou').click({timeout:12000});
                 await page.waitForURL(u=>u.searchParams.get('b46pm')==='ou',{timeout:15000});
                 if(name==='mobile')await page.getByRole('button',{name:'Open navigation'}).click({timeout:10000});
                 await page.waitForFunction(s=>document.querySelector(s+' [data-b46-prematch-route="ou"]')?.classList.contains('active'),scope);
+                assert.equal(await market('ou').locator('svg.b46pm-premium-nav-icon path').evaluate(p=>getComputedStyle(p).stroke),expectedColors.ou);
+                assert.equal(await market('predictions').locator('svg.b46pm-premium-nav-icon path').evaluate(p=>getComputedStyle(p).stroke),expectedColors.predictions);
                 assert.deepEqual(errors,[]);
                 console.log(name+' PASS: five 18px icons, selection colors '+JSON.stringify(colors)+', Over/Under navigation intact');
                 await page.close();
