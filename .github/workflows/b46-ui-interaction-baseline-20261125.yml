@@ -38,6 +38,7 @@ jobs:
                   }).observe({type:'longtask'});
                 });
                 const p=await c.newPage(),errors=[];
+                const cdp=await c.newCDPSession(p); await cdp.send('Profiler.enable');
                 p.on('pageerror',e=>errors.push(e.message));
                 await p.goto('https://'+host+'/?b46pm=ou',{waitUntil:'domcontentloaded',timeout:50000});
                 assert.equal(new URL(p.url()).hostname,host);
@@ -63,10 +64,20 @@ jobs:
                     window.b46Audit.start();
                     window.b46Audit.refs=Array.from(document.querySelectorAll('main,.workspace-panel,.workspace-stats-card,#b46-finance-chart-card,[data-stat-market]')).slice(0,24);
                   });
+                  await cdp.send('Profiler.start');
                   await b.click({timeout:8000});
                   if(n==='waiting')await p.getByRole('heading',{name:'Waiting Matches'}).waitFor({timeout:10000});
                   else await p.waitForURL(u=>u.searchParams.get('view')==='statistics'&&(n==='1x2'?u.searchParams.get('market')==='1x2':!u.searchParams.get('market')),{timeout:10000});
                   await p.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+                  const {profile}=await cdp.send('Profiler.stop');
+                  const nodes=new Map(profile.nodes.map(x=>[x.id,x.callFrame]));
+                  const totals=new Map();
+                  for(const [i,id] of (profile.samples||[]).entries()){
+                    const node=nodes.get(id); if(!node||!node.url||!node.url.includes(host))continue;
+                    const k=node.functionName+' '+node.url.split('?')[0].split('/').pop()+':'+(node.lineNumber+1);
+                    totals.set(k,(totals.get(k)||0)+(profile.timeDeltas?.[i]||0));
+                  }
+                  console.log('B46_UI_HOT '+JSON.stringify({label,action:n,hot:[...totals].sort((a,b)=>b[1]-a[1]).slice(0,10).map(([frame,us])=>[frame,Math.round(us/1000)])}));
                   const obs=await p.evaluate(()=>({
                     events:window.b46Audit.logs.filter(e=>e.start>=window.b46Audit.since()-2),
                     kept:window.b46Audit.refs?.filter(e=>e.isConnected).length,
