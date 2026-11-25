@@ -5,7 +5,7 @@ const TYPES={'content-type':'application/json; charset=utf-8','cache-control':'p
 const maxBytes=2_000_000;
 function reject(status,message){return new Response(JSON.stringify({ok:false,error:message}),{status,headers:TYPES});}
 function sanitizeNum(value){return typeof value==='number'&&Number.isFinite(value)?value:null;}
-function project(source){
+export function project(source){
  if(source?.code!=='B46_ADAPTIVE_OU_RESEARCH_V1'||!Array.isArray(source.formulas)||source.formulas.length!==42||
    source.series30?.rangeDays!==30||source.series90?.rangeDays!==90)throw Error('Unexpected TEST research schema');
  const formulas=source.formulas.map(f=>{
