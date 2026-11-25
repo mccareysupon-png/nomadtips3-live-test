@@ -8,6 +8,7 @@ import {initOuTargetHistoryFT} from './ou-target-history-ft-v1-test.mjs';
 import {londonAccountingWindow} from './london-cutoff.mjs';
 import {adaptiveSnapshotSeries} from './b46-adaptive-ou-series-v2-test.mjs';
 import {initAdaptiveEventJournal,recordAdaptiveFirstOutcome,reconcileAdaptiveFtRevisions,readAdaptiveEventJournal} from './b46-adaptive-ou-events-v2-test.mjs';
+import {initActiveLedger,recordActiveIssuance} from './gptbusinesschat-active-ledger-v1-test.mjs';
 const sql=(db,q,...a)=>Array.from(db.exec(q,...a));
 const whole=x=>Number.isSafeInteger(x)&&x>=0;
 const dollars=x=>Math.round(x*100000000)/100000000;
@@ -36,7 +37,8 @@ function dayUp(db,formula,when,{selected=0,settled=0,win=0,loss=0,net=0}={}){
 export function recordAdaptiveOu(db,items,now){
  initAdaptiveOuLedger(db);
  if(!Array.isArray(items)||!Number.isSafeInteger(now))throw Error('ADAPTIVE_BAD_ISSUE');
- let added=0,duplicate=0,rejected=0;
+ initActiveLedger(db);
+ let added=0,duplicate=0,rejected=0,activeAdded=0;
  db.transaction(()=>{
   for(const row of items){
    if(!FORMULAS.includes(row.formula)||row.market!=='O/U 2.5'||
@@ -63,12 +65,13 @@ export function recordAdaptiveOu(db,items,now){
     row.supportCount,Number(row.hasContradictoryResearch));
    if(Number(sql(db,'SELECT changes() n')[0]?.n??0)===1){
     added++;
+    if(recordActiveIssuance(db,row,now))activeAdded++;
     for(const side of ['ALL',row.selection])statUp(db,row.formula,side,row.odds,now);
     dayUp(db,row.formula,now,{selected:1});
    }else duplicate++;
   }
  });
- return {added,duplicate,rejected,unitsSimulated:added,providerCalls:0,productionWrites:0};
+ return {added,duplicate,rejected,activeAdded,unitsSimulated:added,providerCalls:0,productionWrites:0};
 }
 // A finished fixture can be verified from the already-cached HUB snapshot even
 // when the scheduled HCR cargo has not yet imported its final-score record.
