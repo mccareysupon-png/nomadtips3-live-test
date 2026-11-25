@@ -30,3 +30,5 @@ jobs:
         run: node qa/prematch-history-20261120/deploy-adaptive-dot-risk-readonly-test-20261125.mjs
 
 # Retry after secure reader hash provisioned, record HTTP status diagnostics only (no secret output).
+
+# Retry after confirming legacy json(x) helper has no HTTP status parameter; private reader now uses Response.json with 503.
