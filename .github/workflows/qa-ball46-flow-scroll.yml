@@ -17,42 +17,43 @@ jobs:
           node <<'JS'
           const {chromium}=require('playwright');
           (async()=>{
-           const browser=await chromium.launch();
-           const page=await browser.newPage({viewport:{width:1440,height:900},serviceWorkers:'block'});
-           const errors=[];page.on('pageerror',e=>errors.push(e.message));
-           const targets=['https://www.ball46.com/','https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/'];
-           try{for(const url of targets){
+           const browser=await chromium.launch(),page=await browser.newPage({viewport:{width:1440,height:900},serviceWorkers:'block'});
            try{
-           await page.goto(url,{waitUntil:'domcontentloaded',timeout:22000});const rows=page.locator('.match-row[data-match-id]:visible');
-           await rows.first().waitFor({timeout:15000});
-           const odds=page.locator('[data-fmb-book]:visible');
-           for(let i=0;i<Math.min(5,await rows.count());i++){
-            await rows.nth(i).click();
-            if(await odds.first().waitFor({state:'visible',timeout:4200}).then(()=>true,()=>false))break;
+           await page.goto('https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/',{waitUntil:'domcontentloaded'});
+           const rows=page.locator('.match-row[data-match-id]:visible');
+           await rows.first().waitFor({timeout:20000});
+           const data=page.locator('.expand-full-market-card .fmb-market:visible');
+           let tested=0,picked;
+           for(let i=0;i<Math.min(6,await rows.count())&&!picked;i++){
+             const row=rows.nth(i); await row.click();
+             const books=page.locator('.expand-full-market-card [data-fmb-book]:visible');
+             if(!await books.first().waitFor({timeout:6500}).then(()=>true,()=>false))continue;
+             console.log('BOOK_AVAIL',await books.evaluateAll(es=>es.slice(0,6).map(e=>e.outerHTML.slice(0,280))));
+             for(let j=0;j<Math.min(6,await books.count());j++){
+              const b=books.nth(j),book=await b.textContent();if(!await b.isEnabled())continue;
+              await b.click();tested++;
+              if(await data.first().waitFor({timeout:850}).then(()=>true,()=>false)){picked={book,id:await row.getAttribute('data-match-id')};break;}
+             }
            }
-           console.log('OPEN',url,await page.evaluate(()=>({rowCount:document.querySelectorAll('.match-row[data-match-id]').length,flow:!!document.querySelector('.expand-flow-card'),bookCount:document.querySelectorAll('[data-fmb-book]').length,scrollNodes:[...document.querySelectorAll('[class*="scorebar"],[id*="scorebar"]')].filter(e=>{let r=e.getBoundingClientRect();return r.width&&r.height}).slice(0,25).map(e=>({tag:e.tagName,id:e.id,cls:e.getAttribute('class'),w:e.clientWidth,sw:e.scrollWidth,text:e.innerText?.slice(0,45)}))})));
-           if(await odds.count()===0)continue;
-           const books=await odds.count(); console.log('BOOKS',await odds.allTextContents());
-           await odds.first().click();
-           await page.waitForTimeout(800);
-           if(books>1)await odds.nth(1).click();
-           const scroller=page.locator('[class*="scorebar"]:visible,[id*="scorebar"]:visible');
-           const ix=await scroller.evaluateAll(els=>els.findIndex(e=>e.scrollWidth>e.clientWidth+10&&['auto','scroll'].includes(getComputedStyle(e).overflowX)));
-           console.log('HORIZONTAL_SCROLLER',ix);
-           if(ix>=0)await scroller.nth(ix).hover();
+           console.log('MARKET',picked,'attempts',tested);
+           const box=page.locator('.expand-full-market-card:visible').first();
+           await box.scrollIntoViewIfNeeded();
+           console.log('SCROLL DOM',await box.evaluate(e=>{const info=x=>({cls:x.className,id:x.id,h:x.clientHeight,sh:x.scrollHeight,w:x.clientWidth,sw:x.scrollWidth,x:getComputedStyle(x).overflowX,y:getComputedStyle(x).overflowY});const p=[];for(let a=e;a;a=a.parentElement)p.push(info(a));return {p,inner:[...e.querySelectorAll('.fmb-tabs,[data-fmb-panel],.fmb-market,.fmb-table-wrap')].slice(0,10).map(info),flow:[...document.querySelectorAll('.b46-flow-space,.b46-signal-ticker')].slice(0,12).map(info)}}));
            await page.evaluate(()=>{
-             const board=document.querySelector('.expand-full-market-card');
-             const data={mutations:0,score:[],flow:[],market:[],replaced:0};
-             window.__qa=data;
-             const rect=(s)=>{const node=document.querySelector(s);if(!node)return null;const r=node.getBoundingClientRect();return [Math.round(r.top),Math.round(r.left),Math.round(r.height),Math.round(r.width)]};
-             const m=new MutationObserver(rs=>{data.mutations+=rs.length});if(board)m.observe(board,{childList:true,subtree:true});
-             const start=performance.now();function frame(){data.score.push(rect('[class*="scorebar"]'));data.flow.push(rect('.expand-flow-card'));data.market.push(rect('.expand-full-market-card'));if(board&&!board.isConnected)data.replaced++;if(performance.now()-start<2500)requestAnimationFrame(frame);else m.disconnect()}
-             requestAnimationFrame(frame);
+            const b=document.querySelector('.expand-full-market-card'),scrolls=[],calls=[],r=[],l=[],mutationCounts={market:0,flow:0};let ts=performance.now();
+            const hook=window.scrollBy;window.scrollBy=function(...args){calls.push({args,t:Math.round(performance.now()-ts),stack:new Error().stack.split('\n')[2]});return hook.apply(this,args)};
+            document.addEventListener('scroll',e=>{const n=e.target;scrolls.push([Math.round(performance.now()-ts),n.className||n.nodeName,n.scrollTop??scrollY,n.scrollLeft??scrollX])},true);
+            const mo=(e,k)=>{if(e)new MutationObserver(a=>mutationCounts[k]+=a.length).observe(e,{childList:true,subtree:true})};mo(b,'market');mo(document.querySelector('.expand-flow-card'),'flow');
+            try{new PerformanceObserver(list=>{for(const e of list.getEntries())l.push(Math.round(e.duration))}).observe({type:'longtask'})}catch{}
+            window.__diag={scrolls,calls,r,l,mutationCounts};
+            let before=ts;const frame=t=>{r.push([Math.round(t-before),Math.round(b?.getBoundingClientRect().height??0),Math.round(document.querySelector('.expand-flow-card')?.getBoundingClientRect().height??0),Math.round(b?.getBoundingClientRect().top??0)]);before=t;if(t-ts<15000)requestAnimationFrame(frame)};requestAnimationFrame(frame);
            });
-           if(ix>=0){for(let i=0;i<8;i++){await page.mouse.wheel(i<4?150:-150,0);await page.waitForTimeout(120)}}else{await page.mouse.wheel(0,600);await page.waitForTimeout(250);await page.mouse.wheel(0,-600)}
-           await page.waitForTimeout(2550);
-           console.log('SCROLL',url,await page.evaluate(()=>{const d=window.__qa;if(!d)return {};return {frames:d.flow.length,mutations:d.mutations,replaced:d.replaced,heights:{flow:[...new Set(d.flow.map(x=>x?.[2]))],market:[...new Set(d.market.map(x=>x?.[2]))]},errors:[...document.querySelectorAll('.expand-empty')].map(e=>e.textContent?.trim()).slice(0,4)}}),errors.splice(0));
-           }catch(e){console.log('QA LIMIT',url,e.message,errors.splice(0));}
-           }}finally{await browser.close()}
+           const move=async(el,x,y)=>{const r=await el.boundingBox();if(r)await page.mouse.move(Math.max(10,Math.min(1430,r.x+r.width/2)),Math.max(10,Math.min(890,r.y+r.height/2)));for(let i=0;i<12;i++){await page.mouse.wheel(x,y);await page.waitForTimeout(110)}};
+           await move(box,0,110);await move(box,0,-110);
+           const bar=page.locator('.fmb-tabs:visible').first();if(await bar.count()){await bar.scrollIntoViewIfNeeded();await move(bar,105,0);await move(bar,-105,0);}
+           const flow=page.locator('.expand-flow-card .b46-flow-space:visible').first();if(await flow.count()){await flow.scrollIntoViewIfNeeded();await move(flow,110,0);await move(flow,-110,0);}
+           await page.waitForTimeout(5000);
+           console.log('TRACE',JSON.stringify(await page.evaluate(()=>{const d=window.__diag;return {calls:d.calls.slice(0,16),scrollCount:d.scrolls.length,events:d.scrolls.slice(0,18),maxFrameMs:Math.max(...d.r.map(x=>x[0])),marketHeights:[...new Set(d.r.map(x=>x[1]))],flowHeights:[...new Set(d.r.map(x=>x[2]))],longs:d.l,dom:d.mutationCounts};})));
+           }finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exitCode=1});
           JS
