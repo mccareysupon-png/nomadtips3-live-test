@@ -1,0 +1,36 @@
+name: gptbusinesschat-worker-trace
+on:
+  push:
+    paths: ['.github/workflows/gptbusinesschat-worker-trace.yml']
+    branches: [gptbusinesschat/ball46-owner-control-v1]
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'JS'
+          const base='https://api.cloudflare.com/client/v4/accounts/'+process.env.ACCOUNT+'/workers';
+          const get=async p=>{const r=await fetch(base+p,{headers:{authorization:'Bearer '+process.env.TOKEN}});const j=await r.json();if(!r.ok||!j.success)throw Error('HTTP '+r.status);return j.result};
+          for(const worker of ['ball46-prematch-only-test-20261120','ball46-premium-match-colors-test-20261120']){
+            const d=await get('/scripts/'+worker+'/deployments');
+            const id=d.deployments[0].versions[0].version_id;
+            const v=await get('/workers/'+worker+'/versions/'+id+'?include=modules');
+            console.log('TRACE_VERSION',worker,id);
+            for(const m of v.modules){
+              if(!m.content_base64)continue;
+              const lines=Buffer.from(m.content_base64,'base64').toString().split('\n');
+              const hits=[];
+              for(let i=0;i<lines.length;i++)if(/recordAdaptiveOu|runAdaptiveOu|readAdaptiveStats|ou-adaptive-research|b46AdaptiveOuResearchLastV1|__b46_prematch_data|BALL46_PREMATCH_ONLY_V1|ownerAuth|adaptive.*ledger|adaptive.*records/i.test(lines[i]))hits.push(i);
+              if(!hits.length)continue;
+              const selected=new Set();
+              for(const i of hits)for(let k=Math.max(0,i-3);k<=Math.min(lines.length-1,i+3);k++)selected.add(k);
+              console.log('TRACE_MODULE',m.name);
+              for(const k of [...selected].sort((a,b)=>a-b))console.log((k+1)+': '+lines[k].slice(0,1800));
+            }
+          }
+          JS
