@@ -8,7 +8,7 @@ import {patchCanonicalPredictionsLatest} from './b46-adaptive-canonical-predicti
 const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
 assert(token&&account,'NO_TEST_API_CREDENTIALS');
 const n='ball46-premium-match-colors-test-20261120';
-const oldVersion='7b1f4537-795a-467a-840f-088209277ebf';
+const oldVersion='0fccf0ff-1878-424a-be7b-1198e312dcca';
 const protectedNames=['ball46-production','nomadtips3-engine-343','nomadtips3-5usd-hub-343','nomadtips3-full-market-343-ball46','ball46-prematch-only-test-20261120'];
 const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
 async function cf(path,options={}){const res=await fetch(root+path,{...options,headers:{authorization:'Bearer '+token,...options.headers},signal:AbortSignal.timeout(60000)});const j=await res.json();assert(res.ok&&j.success,path+' '+res.status+' '+JSON.stringify(j.errors).slice(0,200));return j.result}
