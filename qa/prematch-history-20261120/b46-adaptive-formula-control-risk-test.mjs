@@ -55,7 +55,14 @@ export function adaptiveControlOverview(db,now){
  const ix=buildIndex(db),map=new Map(stats.formulas.map(x=>[x.formula,x]));
  const formulas=ix.saved.map(r=>viewOf(r,ix.byId.get(r.formula_id),map.get(r.formula_id)));
  const events=query(db,"SELECT id,formula_id,action,from_mode,to_mode,actor,reason,at,dd_at_action FROM b46_adaptive_formula_control_audit_test ORDER BY id DESC LIMIT 80");
- return {code:'B46_ADAPTIVE_FORMULA_CONTROL_TEST_V1',testOnly:true,updatedAt:now,source:'ADAPTIVE_RESEARCH_IMMUTABLE_LEDGER',formulas,events,
+ const recent=query(db,"SELECT fixture_id,formula_id,selection,line,home,away,kickoff,picked_at,odds,bookmaker,odds_source,status,hg,ag FROM b46_adaptive_ou_research_v1_ledger_test ORDER BY picked_at DESC,fixture_id,formula_id,selection LIMIT 150");
+ const latestPickedAt=recent.length?Number(recent[0].picked_at):null;
+ const modeByFormula=new Map(formulas.map(f=>[f.formula,f.mode]));
+ const latestSignals=recent.filter(r=>Number(r.picked_at)===latestPickedAt).map(r=>({...r,
+   eligible:modeByFormula.get(r.formula_id)==='RUN',
+   quoteResearchOnly:String(r.odds_source||'').includes('HISTORICAL_RESEARCH_ONLY')}));
+ const latestConflicting=new Set(latestSignals.map(r=>r.selection)).size>1;
+ return {code:'B46_ADAPTIVE_FORMULA_CONTROL_TEST_V1',testOnly:true,updatedAt:now,source:'ADAPTIVE_RESEARCH_IMMUTABLE_LEDGER',formulas,events,latestPickedAt,latestSignals,latestConflicting,
   summary:{total:formulas.length,running:formulas.filter(x=>x.mode==='RUN').length,pausedManual:formulas.filter(x=>x.mode==='PAUSED_MANUAL').length,pausedAuto:formulas.filter(x=>x.mode==='PAUSED_AUTO').length,autoEnabled:formulas.filter(x=>x.autoEnabled).length},
   activeFeedPolicy:'RUN_ONLY',shadowPolicy:'ALL_42_STILL_COLLECTED',dotConfigured:false,portfolioCombined:false,providerCalls:0,productionWrites:0};
 }
