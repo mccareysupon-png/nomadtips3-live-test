@@ -43,7 +43,10 @@ try{
    // On mobile, the old footer overlay can intercept physical pointer clicks.
    // Evaluate the native DOM click to verify the core renderer separately.
    await page.evaluate(r=>{document.querySelector('#b46-finance-chart-card [data-b46-range="'+r+'"]').click()},range);
-   await page.waitForTimeout(260);
+   await page.waitForFunction((r)=>{
+    const b=document.querySelector('#b46-finance-chart-card [data-b46-range="'+r+'"]');
+    return b?.getAttribute('aria-pressed')==='true';
+   },range,{timeout:14000});
    const state=await page.evaluate(r=>{
     const q=window.__statQA,card=document.querySelector('#b46-finance-chart-card');
     const shell=card?.querySelector('[data-b46-perf-shell]');
