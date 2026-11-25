@@ -59,3 +59,5 @@ jobs:
           name: b46-real-statistics-no-flicker-${{ github.run_id }}
           path: qa/statistics-no-flicker-20261125/audit/
           if-no-files-found: warn
+
+# retry stage after order-independent Worker module hash verification
