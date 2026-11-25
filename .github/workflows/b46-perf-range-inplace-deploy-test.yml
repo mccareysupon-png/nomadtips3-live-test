@@ -1,0 +1,37 @@
+name: BALL46 TEST PreMatch Performance ranges stable DOM deploy QA
+on:
+  push:
+    branches: [fix/b46-prematch-perf-range-inplace-20261125]
+    paths: ['.github/workflows/b46-perf-range-inplace-deploy-test.yml']
+permissions: {contents: read}
+concurrency:
+  group: ball46-premium-match-colors-test-20261120
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Check scripts and install browser
+        run: |
+          node --check qa/perf-range-inplace-20261125/patch.mjs
+          node --check qa/perf-range-inplace-20261125/deploy-test.mjs
+          node --check qa/perf-range-inplace-20261125/browser-qa.mjs
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Deploy isolated TEST client fix with active-version and protected-worker guards
+        run: node qa/perf-range-inplace-20261125/deploy-test.mjs
+      - name: Verify 7D/30D/90D/ALL controls keep Performance and Adaptive DOM
+        run: node qa/perf-range-inplace-20261125/browser-qa.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b46-perf-inplace-${{ github.run_id }}
+          path: qa/perf-range-inplace-20261125/audit/
+          if-no-files-found: warn
