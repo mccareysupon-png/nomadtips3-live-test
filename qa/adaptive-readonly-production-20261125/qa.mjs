@@ -2,6 +2,7 @@ import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 const origin='https://ball46-adaptive-readonly-page-test-20261125.mccarey-supon.workers.dev';
 const dat=await fetch(origin+'/research/adaptive-ou/data');
+if(dat.status!==200) console.log('B46_READONLY_STAGE_DATA_ERROR '+JSON.stringify({status:dat.status,body:(await dat.clone().text()).slice(0,1200)}));
 assert.equal(dat.status,200,'STAGE_SERVER_DATA_FAILED');
 const data=await dat.json();
 assert.equal(data.ok,true);
