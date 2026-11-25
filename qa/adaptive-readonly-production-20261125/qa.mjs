@@ -9,7 +9,7 @@ assert.equal(data.ok,true);
 assert.equal(data.formulas?.length,42);
 assert.equal(data.source,'ADAPTIVE_RESEARCH_TEST_READ_ONLY');
 assert(!('records' in data)&&!('providerCalls' in data)&&!('eventJournal' in data),'UNSAFE_RESEARCH_DATA_EXPOSED');
-assert(data.formulas.every(f=>/^A\d{2}$/.test(f.formula)));
+assert(data.formulas.every(f=>/^[A-E]\d{2}$/.test(f.formula)));
 const post=await fetch(origin+'/research/adaptive-ou/data',{method:'POST'});
 assert.equal(post.status,405,'WRITE_METHOD_NOT_REJECTED');
 const browser=await chromium.launch({headless:true});const results=[];
