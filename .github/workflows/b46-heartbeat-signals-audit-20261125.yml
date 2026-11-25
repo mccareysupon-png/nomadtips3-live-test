@@ -9,61 +9,51 @@ jobs:
   read-only:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    env:
-      CLOUDFLARE_API_TOKEN: \${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: \${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
-      - name: Read real Cron, Adaptive execution state and frontend data without writing
+      - name: Read public TEST frontend service-bound Adaptive and match signal snapshots
         run: |
           node --input-type=module <<'JS'
-          import {createHmac} from 'node:crypto';
-          const token=process.env.CLOUDFLARE_API_TOKEN;
-          const account=process.env.CLOUDFLARE_ACCOUNT_ID;
-          if(!token||!account)throw Error('CREDENTIALS_UNAVAILABLE');
-          const auth='Bearer '+createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
-          const host='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
           const frontend='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
-          const base='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers/scripts/ball46-prematch-only-test-20261120';
-          async function getJson(url,headers={}){
-            const res=await fetch(url,{headers:{accept:'application/json',...headers},signal:AbortSignal.timeout(26000),cache:'no-store'});
-            const json=await res.json().catch(()=>null);
-            return {http:res.status,data:json};
-          }
           const started=Date.now();
-          const checks=await Promise.allSettled([
-            getJson(base+'/schedules',{authorization:'Bearer '+token}),
-            getJson(base+'/deployments?per_page=1',{authorization:'Bearer '+token}),
-            getJson(host+'/ou-adaptive-research-state-test',{authorization:auth}),
-            getJson(host+'/adaptive-control-api-test',{authorization:auth}),
-            getJson(host+'/prematch-ou-engine-state',{authorization:auth}),
-            getJson(frontend+'/__b46_prematch_data'),
-            getJson(frontend+'/__b46_pm_adaptive_research')
-          ]);
-          const names=['cron','deployment','adaptiveState','riskControl','legacyOu','frontendData','frontendAdaptive'];
-          const x={};
-          checks.forEach((o,i)=>{x[names[i]]=o.status==='fulfilled'?o.value:{http:0,error:String(o.reason)}});
-          const state=x.adaptiveState.data||{},control=x.riskControl.data||{},front=x.frontendData.data||{},fa=x.frontendAdaptive.data||{};
-          const last=Date.parse(state.lastRunAt||'');
-          const age=Number.isFinite(last)?Math.round((started-last)/60000*100)/100:null;
-          const rows=state.formulas||[];
-          const records=state.records||[];
-          const chrono=records.filter(r=>Number.isFinite(Number(r.picked_at))).sort((a,b)=>Number(b.picked_at)-Number(a.picked_at));
-          const report={
-            nowUtc:new Date(started).toISOString(),
-            cron:{http:x.cron.http,rules:x.cron.data?.result?.schedules?.map(y=>y.cron)||[]},
-            deployment:{http:x.deployment.http,active:x.deployment.data?.result?.deployments?.[0]?.versions?.[0]?.version_id},
-            adaptive:{http:x.adaptiveState.http,code:state.code,formulas:rows.length,lastRunAt:state.lastRunAt||null,
-              ageMinutes:age,withinTwoRounds:age!==null&&age<33&&age>=0,legacyOuIssuance:state.legacyOuIssuance,
-              feed:state.fixtureFeed,screeningCounts:state.screeningCounts,priced:state.priced,
-              lastSelection:chrono[0]?{at:new Date(Number(chrono[0].picked_at)*1000).toISOString(),formula:chrono[0].formula_id,fixtureId:chrono[0].fixture_id}:null,
-              researchRecords:records.length,recordStatusCounts:records.reduce((o,r)=>(o[r.status]=(o[r.status]||0)+1,o),{})},
-            riskControl:{http:x.riskControl.http,summary:control.summary,formulaCount:control.formulas?.length},
-            legacyOu:{http:x.legacyOu.http,policyVersion:x.legacyOu.data?.policy?.version,keys:Object.keys(x.legacyOu.data||{}).slice(0,15)},
-            frontend:{http:x.frontendData.http,keys:Object.keys(front).slice(0,30),
-              ouLedger:{stats:front.ouLedger?.stats?{pending:front.ouLedger.stats.pending,settled:front.ouLedger.stats.settled}:null,rows:front.ouLedger?.rows?.length??null}},
-            frontendAdaptive:{http:x.frontendAdaptive.http,formulaCount:fa.formulas?.length,keys:Object.keys(fa).slice(0,12)},
-            readsOnly:true,providerRequestsMade:0,deploysMade:0
-          };
-          console.log('BALL46_HEARTBEAT_READONLY '+JSON.stringify(report));
-          if(x.cron.http!==200||x.adaptiveState.http!==200)process.exitCode=1;
+          async function read(path){
+            const r=await fetch(frontend+path,{headers:{accept:'application/json'},signal:AbortSignal.timeout(28000),cache:'no-store'});
+            const j=await r.json().catch(()=>null);
+            if(!r.ok||!j)throw Error('FRONT_DATA_NOT_AVAILABLE_'+path+'_HTTP_'+r.status);
+            return j;
+          }
+          const [fa,native]=await Promise.all([read('/__b46_pm_adaptive_research'),read('/__b46_prematch_data')]);
+          const lag=(value)=>{const time=Date.parse(value||'');return Number.isFinite(time)?Math.round((started-time)/60000*10)/10:null};
+          const record=fa.records||[];
+          const counts=record.reduce((a,r)=>(a[r.status]=(a[r.status]||0)+1,a),{});
+          const newest=record.filter(x=>x.picked_at).sort((a,b)=>b.picked_at-a.picked_at)[0];
+          console.log('BALL46_FRONTEND_LIVE_CHECK '+JSON.stringify({
+            timestampUtc:new Date(started).toISOString(),
+            adaptive:{
+              keys:Object.keys(fa),
+              formulaCount:fa.formulas?.length,
+              lastRunAt:fa.lastRunAt||null,
+              ageMinutes:lag(fa.lastRunAt),
+              cronUpToDate:lag(fa.lastRunAt)!==null&&lag(fa.lastRunAt)>=0&&lag(fa.lastRunAt)<33,
+              code:fa.code,legacyOuIssuance:fa.legacyOuIssuance,
+              screeningCounts:fa.screeningCounts,
+              priced:fa.priced,
+              fixtureFeed:fa.fixtureFeed,
+              recordCount:record.length,recordStatusCounts:counts,
+              newestPick:newest?{at:new Date(Number(newest.picked_at)*1000).toISOString(),formula:newest.formula_id}:null,
+              statsSample:fa.formulas?.slice(0,2).map(f=>({formula:f.formula,settled:f.settled,pending:f.pending}))
+            },
+            otherPrematch:{
+              keys:Object.keys(native),
+              system:native.system,
+              stored:native.stored,
+              monitor:native.testMonitor,
+              selection:native.selection,
+              testLedger:{keys:Object.keys(native.testLedger||{}),count:native.testLedger?.rows?.length},
+              bttsLedger:{keys:Object.keys(native.bttsLedger||{}),count:native.bttsLedger?.rows?.length},
+              allLedger:{keys:Object.keys(native.allLedger||{}),count:native.allLedger?.rows?.length},
+              ouLedger:{keys:Object.keys(native.ouLedger||{}),count:native.ouLedger?.rows?.length}
+            },
+            readOnly:true
+          }));
+          if(fa.formulas?.length!==42)process.exitCode=1;
           JS
