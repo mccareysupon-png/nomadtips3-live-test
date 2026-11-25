@@ -1,0 +1,25 @@
+name: BALL46 TEST Dot Risk KV native Cloudflare connector bridge 20261125
+on:
+  push:
+    branches: [feature/ball46-adaptive-manual-control-test-20261125]
+    paths: [.github/workflows/b46-adaptive-dot-kv-bridge-deploy-20261125.yml]
+permissions: {contents: read}
+jobs:
+  test-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Syntax validation
+        run: |
+          node --check qa/prematch-history-20261120/b46-adaptive-dot-kv-bridge-test-patch.mjs
+          node --check qa/prematch-history-20261120/deploy-adaptive-dot-kv-bridge-test-20261125.mjs
+      - name: Read-only preflight version, 15m cron, KV and protected Workers
+        run: node qa/prematch-history-20261120/deploy-adaptive-dot-kv-bridge-test-20261125.mjs --dry-run
+      - name: Deploy private KV export to TEST existing scheduled Adaptive Risk Guard
+        run: node qa/prematch-history-20261120/deploy-adaptive-dot-kv-bridge-test-20261125.mjs
