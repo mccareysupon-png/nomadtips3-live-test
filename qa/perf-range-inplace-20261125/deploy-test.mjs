@@ -55,8 +55,13 @@ try{
  for(let i=0;i<10;i++){if(await active(worker)===target)break;await new Promise(r=>setTimeout(r,1200))}
  assert.equal(await active(worker),target,'DEPLOY_NOT_ACTIVE');
  const host='https://'+worker+'.mccarey-supon.workers.dev';
- const js=await fetch(host+'/__b46_prematch_client.js',{signal:AbortSignal.timeout(30000)});
- assert(js.ok&&(await js.text()).includes(MARK),'CLIENT_MARKER_NOT_LIVE');
+ let markerLive=false;
+ for(let i=0;i<28;i++){
+   const js=await fetch(host+'/__b46_prematch_client.js?inplace='+Date.now(),{cache:'no-store',headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(30000)});
+   if(js.ok&&(await js.text()).includes(MARK)){markerLive=true;break;}
+   await new Promise(resolve=>setTimeout(resolve,1200));
+ }
+ assert(markerLive,'CLIENT_MARKER_NOT_LIVE_AFTER_PROPAGATION');
  assert.deepEqual(await protect(),frozen,'PROTECTED_WORKER_CHANGED_POST_DEPLOY');
  report.result='TEST_ACTIVE_PENDING_BROWSER_QA';save();
  console.log('B46_PERF_INPLACE_TEST_DEPLOYED '+JSON.stringify({previous:before,version:target,url:host+'/?b46pm=ou',modules:1,protectedUnchanged:true,productionWrites:0}));
