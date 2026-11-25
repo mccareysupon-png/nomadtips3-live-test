@@ -31,3 +31,5 @@ jobs:
           npx playwright install chromium --only-shell
       - name: QA read-only data, PC/mobile no-flicker, click speed, no POST
         run: node qa/adaptive-readonly-production-20261125/qa.mjs
+
+# patched verified A-E formula families, staging integration QA rerun
