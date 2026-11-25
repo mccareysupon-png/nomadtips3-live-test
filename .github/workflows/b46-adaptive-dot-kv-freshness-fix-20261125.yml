@@ -1,0 +1,25 @@
+name: BALL46 TEST private KV Dot Cron timestamp freshness fix 20261125
+on:
+  push:
+    branches: [feature/ball46-adaptive-manual-control-test-20261125]
+    paths: [.github/workflows/b46-adaptive-dot-kv-freshness-fix-20261125.yml]
+permissions: {contents: read}
+jobs:
+  deploy-test-freshness:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Syntax validation
+        run: |
+          node --check qa/prematch-history-20261120/b46-adaptive-dot-kv-freshness-fix-test.mjs
+          node --check qa/prematch-history-20261120/deploy-adaptive-dot-kv-freshness-fix-test-20261125.mjs
+      - name: Preflight exact active TEST version, preserved binding and risk Cron
+        run: node qa/prematch-history-20261120/deploy-adaptive-dot-kv-freshness-fix-test-20261125.mjs --dry-run
+      - name: Deploy protected TEST-only freshness deadline fix
+        run: node qa/prematch-history-20261120/deploy-adaptive-dot-kv-freshness-fix-test-20261125.mjs
