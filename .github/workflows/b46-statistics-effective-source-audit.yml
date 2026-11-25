@@ -1,0 +1,14 @@
+name: BALL46 statistics effective served JavaScript source read-only inspection
+on:
+  push:
+    branches: [fix/b46-production-statistics-range-no-flicker-20261125]
+    paths: ['.github/workflows/b46-statistics-effective-source-audit.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node qa/statistics-no-flicker-20261125/effective.mjs
