@@ -1,0 +1,12 @@
+name = "ball46-adaptive-readonly-page-test-20261125"
+main = "worker.mjs"
+compatibility_date = "2026-11-25"
+workers_dev = true
+
+[[services]]
+binding = "B46_ADAPTIVE_READ"
+service = "ball46-premium-match-colors-test-20261120"
+
+[[services]]
+binding = "B46_PRODUCTION_READ"
+service = "ball46-production"
