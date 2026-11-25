@@ -10,6 +10,7 @@ try{
  for(const [name,width,height] of [['desktop',1440,900],['mobile',390,844]]){
   const ctx=await browser.newContext({viewport:{width,height},serviceWorkers:'block'});
   const page=await ctx.newPage(),errors=[];
+  await page.addInitScript(()=>{window.__B46StoppedClickEvents=[];for(const method of ['stopPropagation','stopImmediatePropagation']){const original=Event.prototype[method];Event.prototype[method]=function(...args){if(this.type==='click')window.__B46StoppedClickEvents.push({method,target:this.target?.outerHTML?.slice(0,160),stack:new Error().stack?.slice(0,1000)});return original.apply(this,args)};}window.addEventListener('click',e=>{if(e.target?.dataset?.rangeDays)window.__B46StoppedClickEvents.push({method:'WINDOW_CAPTURE',target:e.target.outerHTML.slice(0,120)})},true);});
   page.on('pageerror',e=>errors.push(e.message));
   const response=await page.goto(host+'/?b46pm=ou&noFlickerTest='+Date.now(),{waitUntil:'domcontentloaded',timeout:75000});
   assert(response?.ok(),'HTTP_FAIL_'+name+'_'+response?.status());
@@ -44,6 +45,7 @@ try{
       tableRows:panel.querySelector('table')?.rows.length,removed:window.__B46NoFlickerObserver.removed.length,
       graphHeight:graph.getBoundingClientRect().height,overflow:document.documentElement.scrollWidth>innerWidth+3};
    },days);
+   const stopped=await page.evaluate(()=>window.__B46StoppedClickEvents);
    const hit=await page.evaluate(d=>{
     const button=document.querySelector('#b46-adaptive-research-equity button[data-range-days="'+d+'"]');
     const b=button.getBoundingClientRect(),at=document.elementFromPoint(b.left+b.width/2,b.top+b.height/2);
@@ -61,7 +63,7 @@ try{
      });
      console.log('B46_EQUITY_PROGRAMMATIC_CLICK '+JSON.stringify(programmatic));
    }
-   console.log('B46_EQUITY_RANGE_STATUS '+JSON.stringify({name,days,status,pageErrors:errors,hit}));
+   console.log('B46_EQUITY_RANGE_STATUS '+JSON.stringify({name,days,status,pageErrors:errors,hit,stopped}));
    assert(status.samePanel&&status.sameGraph&&status.sameTable&&status.sameSvg&&status.samePolyline&&status.sameSelector,'DOM_REPLACED_'+name+'_'+days);
    assert(status.pressed==='true'&&status.aria.includes(days+' days'),'BAD_RANGE_'+name+'_'+days);
    assert(status.caption.includes(days+'D'),'CAPTION_NOT_UPDATED_'+name+'_'+days);
