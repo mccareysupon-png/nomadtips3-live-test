@@ -12,4 +12,5 @@ for(const m of modules){if(!m.content_base64)continue;
  const found=terms.map(term=>{let n=0,p=0,a=[];while((p=code.indexOf(term,p))>=0){n++;if(a.length<5)a.push({at:p,excerpt:code.slice(Math.max(0,p-500),p+800)});p+=term.length;}return {term,n,samples:a}}).filter(x=>x.n);
  if(found.length)console.log('B46_STAT_MODULE_MATCH '+JSON.stringify({module:m.name,bytes:code.length,found}));
 }
+const entry=modules.find(m=>m.name===j.result.main_module);const entrySrc=Buffer.from(entry.content_base64,'base64').toString();console.log('B46_STAT_ENTRY '+JSON.stringify({main:j.result.main_module,bytes:entrySrc.length,head:entrySrc.slice(0,5400),tail:entrySrc.slice(-4400)}));
 console.log('B46_STAT_MODULE_TOTAL '+JSON.stringify({version,modules:modules.length}));
