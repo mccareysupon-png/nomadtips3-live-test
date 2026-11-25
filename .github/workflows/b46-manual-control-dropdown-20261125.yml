@@ -1,0 +1,39 @@
+name: BALL46 TEST Manual Control Win Loss formula dropdown 20261125
+on:
+  push:
+    branches: [feature/ball46-adaptive-manual-control-test-20261125]
+    paths: [.github/workflows/b46-manual-control-dropdown-20261125.yml]
+permissions: {contents: read}
+jobs:
+  deploy-and-browser-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Syntax check TEST-only patcher and guarded deploy script
+        run: |
+          node --check qa/prematch-history-20261120/b46-manual-control-formula-dropdown-test-patch.mjs
+          node --check qa/prematch-history-20261120/deploy-adaptive-control-dropdown-test-20261125.mjs
+          node --check qa/prematch-history-20261120/b46-adaptive-control-dropdown-browser-qa-20261125.mjs
+      - name: Preflight active Worker version and verify one HTML module change only
+        run: node qa/prematch-history-20261120/deploy-adaptive-control-dropdown-test-20261125.mjs --dry-run
+      - name: Deploy only Manual Control TEST HTML and verify protected Workers unchanged
+        run: node qa/prematch-history-20261120/deploy-adaptive-control-dropdown-test-20261125.mjs
+      - name: Install Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          npx playwright install chromium
+      - name: Verify actual 42-formula select and chart on desktop and mobile
+        run: node qa/prematch-history-20261120/b46-adaptive-control-dropdown-browser-qa-20261125.mjs
+      - name: Preserve browser screenshots for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-test-formula-dropdown-screenshots
+          path: /tmp/ball46-dropdown-qa-20261125/*.png
+          if-no-files-found: ignore
