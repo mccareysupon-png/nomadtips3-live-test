@@ -1,0 +1,26 @@
+name: BALL46 TEST Dot reader staged secure deploy 20261125
+on:
+  push:
+    branches: [feature/ball46-adaptive-manual-control-test-20261125]
+    paths: [.github/workflows/b46-adaptive-dot-risk-staged-test-20261125.yml]
+permissions: {contents: read}
+jobs:
+  stage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Static and in-memory 42-formula FT risk tests
+        run: |
+          node --check qa/prematch-history-20261120/deploy-adaptive-dot-risk-staged-test-20261125.mjs
+          node --check qa/prematch-history-20261120/b46-adaptive-dot-readonly-worker-patch-test.mjs
+          node --experimental-sqlite qa/prematch-history-20261120/b46-adaptive-dot-risk-readonly-v1.test.mjs
+      - name: Preflight source, secrets, bindings, risk Cron and all protected Workers
+        run: node qa/prematch-history-20261120/deploy-adaptive-dot-risk-staged-test-20261125.mjs --dry-run
+      - name: Publish isolated TEST Dot reader; require independent runner proof before using Dot
+        run: node qa/prematch-history-20261120/deploy-adaptive-dot-risk-staged-test-20261125.mjs
