@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
 import {mkdirSync,writeFileSync} from 'node:fs';
-const root='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+const root=process.env.B46_OU_QA_ORIGIN||'https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
 const file='qa/prematch-history-20261120/audit-original-20261122-route';
 mkdirSync(file,{recursive:true});
 const browser=await chromium.launch({headless:true}),reports=[];
