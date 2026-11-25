@@ -31,7 +31,7 @@ try{
  assert.equal(v.main_module,'worker.js');
  assert.equal(v.modules.length,1,'TEST_MODULE_LAYOUT_DRIFT');
  const src=Buffer.from(v.modules[0].content_base64,'base64').toString(),patched=patchWorker(src);
- assert(patched.client.includes(MARK)&&!patched.client.includes("draw();if(range)loadPerformanceGraph(true);return;"));
+ assert(patched.client.includes(MARK)&&patched.client.includes("if(!b46UpdatePerformanceOnly())draw();if(range)loadPerformanceGraph(true);return;"));
  assert(patched.client.includes('b46AdaptiveChartDays')&&patched.client.includes('B46_ADAPTIVE_EQUITY_RANGE_NO_FLICKER_20261125'));
  const settings=await api('/scripts/'+worker+'/settings');
  const meta={main_module:v.main_module,compatibility_date:v.compatibility_date,compatibility_flags:v.compatibility_flags||[],
