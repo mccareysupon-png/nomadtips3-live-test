@@ -1,0 +1,72 @@
+name: Test themed chart loader
+on:
+  push:
+    branches: [test/ball46-ui-interaction-baseline-20261125]
+    paths: ['.github/workflows/qa-themed-chart-loader.yml']
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - run: npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+      - run: npx playwright install chromium --only-shell
+      - name: Verify actual delays across viewports
+        shell: bash
+        run: |
+          node <<'JS'
+          const {chromium,devices}=require('playwright');
+          const url='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/?view=statistics';
+          (async()=>{
+            const browser=await chromium.launch();
+            try {
+              const cases=[
+                ['desktop', {viewport:{width:1440,height:900}}, true],
+                ['phone', devices['iPhone 13'], false],
+                ['tablet', devices['iPad Mini'], false],
+                ['reduced motion',{viewport:{width:390,height:844},reducedMotion:'reduce'},false],
+              ];
+              const results=await Promise.allSettled(cases.map(async ([label,opts,switchMarket])=>{
+                const page=await browser.newPage(opts);
+                const errors=[];page.on('pageerror',e=>errors.push(e.message));
+                let release;
+                const hold=()=>new Promise(r=>{release=r});
+                let gate=hold();
+                await page.route('**/b46-receiver-v1/graph?*',async route=>{await gate;await route.continue()});
+                const wait=page.locator('.b46-market-loading');
+                const card=page.locator('#b46-finance-chart-card');
+                try{
+                  await page.goto(url,{waitUntil:'domcontentloaded',timeout:25000});
+                  await wait.waitFor({state:'visible',timeout:18000});
+                  const style=await wait.evaluate(async el=>{
+                    const css=()=>getComputedStyle(el,'::before');
+                    const before=css().transform;
+                    await new Promise(r=>setTimeout(r,145));
+                    return {name:css().animationName,before,after:css().transform,role:el.getAttribute('role'),assetWidth:css().width,width:innerWidth,color:css().borderTopColor};
+                  });
+                  const isReduced=label==='reduced motion';
+                  if(style.role!=='status'||style.assetWidth!=='24px'||(isReduced?style.name!=='none':(style.name!=='b46-market-rotate'||style.before===style.after)))throw Error(JSON.stringify(style));
+                  release();
+                  await wait.waitFor({state:'hidden',timeout:18000});
+                  await card.locator('.f46-card').waitFor({state:'visible',timeout:18000});
+                  if(switchMarket){
+                    const height=await card.locator('[data-b46-perf-shell]').evaluate(e=>e.getBoundingClientRect().height);
+                    gate=hold();
+                    await page.locator('[data-stat-market="1x2"]:visible').first().click();
+                    await wait.waitFor({state:'visible',timeout:5000});
+                    const pending=await wait.getAttribute('data-held-height');
+                    if(!pending||Math.abs(+pending-height)>1)throw Error('chart height not preserved: '+height+' / '+pending);
+                    release();
+                    await page.waitForFunction(()=>document.querySelector('#b46-finance-chart-card')?.dataset.b46PaintedMarket==='1x2');
+                    await wait.waitFor({state:'hidden'});
+                  }
+                  if(errors.length)throw Error(errors.join('; '));
+                  console.log(label+' PASS '+JSON.stringify(style)+(switchMarket?' + market switch':''));
+                } finally {release();await page.close()}
+              }));
+              const failed=results.flatMap((r,i)=>r.status==='rejected'?[cases[i][0]+': '+r.reason.stack]:[]);
+              if(failed.length)throw Error(failed.join('\n'));
+            } finally {await browser.close()}
+          })().catch(e=>{console.error(e);process.exitCode=1});
+          JS
