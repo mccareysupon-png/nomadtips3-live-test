@@ -16,6 +16,7 @@ jobs:
         run: |
           node <<'JS'
           const {chromium}=require('playwright');
+          const assert=require('node:assert/strict');
           const url='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/';
           (async()=>{
            const browser=await chromium.launch();
@@ -33,11 +34,12 @@ jobs:
             for(let j=0;j<Math.min(6,await books.count());j++){
               const b=books.nth(j);if(!await b.isEnabled())continue;
               await b.click();
-              if(await market.first().waitFor({timeout:850}).then(()=>true,()=>false)){fit={id:await rows.nth(i).getAttribute('data-match-id'),book:await b.textContent(),markets:await market.count()};break}
+              if(await market.first().waitFor({timeout:850}).then(()=>true,()=>false)){fit={id:await row.getAttribute('data-match-id'),book:await b.textContent(),markets:await market.count()};break}
             }
            }
            if(!fit)throw Error('Could not find a populated market');
-           const tabs=page.locator('.expand-full-market-card .fmb-tabs:visible');
+           if(variant==='before'){benchmark=fit;assert.ok(fit.markets>=8,'need a dense market');}else{assert.deepEqual(fit,benchmark);}
+             const tabs=page.locator('.expand-full-market-card .fmb-tabs:visible');
            await tabs.scrollIntoViewIfNeeded();
            const box=await tabs.boundingBox();await page.mouse.move(box.x+box.width/2, Math.min(860,box.y+box.height+160));
            const cdp=await page.context().newCDPSession(page);await cdp.send('Profiler.enable');await cdp.send('Profiler.setSamplingInterval',{interval:2500});await cdp.send('Profiler.start');
