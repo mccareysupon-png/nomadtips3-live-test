@@ -25,6 +25,8 @@ jobs:
            assert.equal(await p.locator('#b46-full-market-scroll-v1').count(),1);
            const response=await asset;assert.equal(new URL(response.url()).searchParams.get('b46_flow'),'batch-v1');assert.ok((await response.text()).includes('B46_TEST_FLOW_BATCH_MARKERS_V1'),'patched event marker JS required');
            const desktop=name==='Desktop';
+           if(desktop){const routes=['https://5dece9e3-ball46-production.mccarey-supon.workers.dev/','https://16bb9ec1-ball46-production.mccarey-supon.workers.dev/','https://www.ball46.com/','https://ball46.com/'];
+           const checks=await Promise.all(routes.map(async root=>{const q=await p.request.get(new URL('/prematch/over-under/',root).href,{timeout:10000});const body=await q.text();return {root,status:q.status(),end:new URL(q.url()).pathname,bytes:body.length};}));console.log('ROUTE_COMPARE',JSON.stringify(checks));assert.equal(checks[0].status,checks[1].status,'version preview legacy route parity');assert.equal(checks[0].status,checks[2].status,'Production legacy route parity');}
            const rows=p.locator(desktop?'.match-row[data-match-id]:visible':'#b46gn-cards [data-b46gn-fixture]:visible');await rows.first().waitFor({timeout:20000});
            const ids=await rows.evaluateAll(es=>es.slice(0,12).map(e=>e.dataset.b46gnFixture||e.dataset.matchId));let fit, holder, tabs, books, market;
            for(const id of ids){
@@ -60,7 +62,7 @@ jobs:
            assert.equal(report.first.marketStyle,'visible');assert.equal(report.heights.length,1,'Full Market height must not change while scrolling');
            if(fit.available>1){const other=books.nth(fit.j===0?1:0);await (desktop?other.click():other.tap());assert.equal(await other.getAttribute('aria-pressed'),'true');await (desktop?books.nth(fit.j).click():books.nth(fit.j).tap());assert.equal(await books.nth(fit.j).getAttribute('aria-pressed'),'true');await p.waitForTimeout(250);assert.equal(await market.count(),fit.markets);}
            assert.deepEqual(errors,[]);
-           if(desktop){for(const route of ['/?view=statistics','/prematch/over-under/']){const check=await p.request.get(new URL(route,url).href,{timeout:10000});assert.equal(check.status(),200,'untouched route '+route);const html=await check.text();assert.ok(html.includes('<html')&&html.length>2000);assert.ok(!html.includes('B46_PM_NAV_INDEPENDENT_PALETTE_V1')&&!html.includes('B46_TEST_THEME_LOADING_V1'));console.log('UNCHANGED_ROUTE',route,check.status());}}
+           if(desktop){for(const route of ['/?view=statistics','/?b46pm=ou']){const check=await p.request.get(new URL(route,url).href,{timeout:10000});assert.equal(check.status(),200,'untouched route '+route);const html=await check.text();assert.ok(html.includes('<html')&&html.length>2000);assert.ok(!html.includes('B46_PM_NAV_INDEPENDENT_PALETTE_V1')&&!html.includes('B46_TEST_THEME_LOADING_V1'));console.log('UNCHANGED_ROUTE',route,check.status());}}
            await p.close();
            }
           }finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});
