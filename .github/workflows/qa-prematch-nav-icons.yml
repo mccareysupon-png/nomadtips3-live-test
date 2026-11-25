@@ -1,0 +1,61 @@
+name: QA pre-match icons
+on:
+  push:
+    branches: [test/ball46-ui-interaction-baseline-20261125]
+    paths: ['.github/workflows/qa-prematch-nav-icons.yml']
+permissions:
+  contents: read
+jobs:
+  sidebar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - run: npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+      - run: npx playwright install chromium --only-shell
+      - name: Verify the live TEST desktop rail and mobile drawer
+        shell: bash
+        run: |
+          node <<'JS'
+          const { chromium, devices } = require('playwright');
+          const assert=require('node:assert/strict');
+          const url='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/?b46pm=predictions';
+          (async()=>{
+            const browser=await chromium.launch();
+            try {
+              for(const [name,options,scope] of [
+                ['desktop',{viewport:{width:1440,height:900}},'aside.left-rail'],
+                ['mobile',devices['iPhone 13'],'#b46pm-mobile-navigation'],
+              ]){
+                const page=await browser.newPage({...options,serviceWorkers:'block'});
+                const errors=[];page.on('pageerror',e=>errors.push(e.message));
+                await page.goto(url,{waitUntil:'domcontentloaded',timeout:40000});
+                if(name==='mobile')await page.getByRole('button',{name:'Open navigation'}).click({timeout:15000});
+                const group=page.locator(scope);
+                const market=route=>group.locator('[data-b46-prematch-route="'+route+'"]');
+                const expected={predictions:'Predictions',all:'All Matches','1x2':'1X2',ou:'Over/Under',btts:'BTTS'};
+                const paths=[],colors={};
+                for(const [route,label] of Object.entries(expected)){
+                  const row=market(route);
+                  const icon=row.locator('svg.b46pm-premium-nav-icon');
+                  await icon.waitFor({state:'visible',timeout:16000});
+                  const info=await row.evaluate(el=>{
+                    const svg=el.querySelector('svg.b46pm-premium-nav-icon'),p=svg.querySelector('path');
+                    return {count:el.querySelectorAll('svg').length,label:el.querySelector('.b46pm-menu-label').textContent,d:p.getAttribute('d'),hidden:svg.getAttribute('aria-hidden'),width:svg.getBoundingClientRect().width,height:svg.getBoundingClientRect().height,stroke:getComputedStyle(p).stroke,fill:getComputedStyle(p).fill};
+                  });
+                  assert.equal(info.count,1);assert.equal(info.label,label);assert.equal(info.hidden,'true');
+                  assert.equal(info.width,18);assert.equal(info.height,18);assert.notEqual(info.stroke,'none');assert.equal(info.fill,'none');
+                  paths.push(info.d);colors[route]=info.stroke;
+                }
+                assert.equal(new Set(paths).size,5);
+                assert.notEqual(colors.predictions,colors.ou,'selected route uses a distinct accent');
+                await market('ou').click({timeout:12000});
+                await page.waitForURL(u=>u.searchParams.get('b46pm')==='ou',{timeout:15000});
+                if(name==='mobile')await page.getByRole('button',{name:'Open navigation'}).click({timeout:10000});
+                await page.waitForFunction(s=>document.querySelector(s+' [data-b46-prematch-route="ou"]')?.classList.contains('active'),scope);
+                assert.deepEqual(errors,[]);
+                console.log(name+' PASS: five 18px icons, selection colors '+JSON.stringify(colors)+', Over/Under navigation intact');
+                await page.close();
+              }
+            } finally {await browser.close()}
+          })().catch(e=>{console.error(e);process.exitCode=1});
+          JS
