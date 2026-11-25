@@ -16,3 +16,5 @@ jobs:
           npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
           npx playwright install chromium --only-shell
       - run: node qa/adaptive-readonly-production-20261125/qa.mjs
+
+# rerun QA with verified A-E formula groups
