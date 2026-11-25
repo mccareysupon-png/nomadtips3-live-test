@@ -1,0 +1,58 @@
+name: BALL46 flow and scorebar QA
+on:
+  push:
+    branches: [test/ball46-ui-interaction-baseline-20261125]
+    paths: ['.github/workflows/qa-ball46-flow-scroll.yml']
+permissions:
+  contents: read
+jobs:
+  scroll:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - run: npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+      - run: npx playwright install chromium --only-shell
+      - shell: bash
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{
+           const browser=await chromium.launch();
+           const page=await browser.newPage({viewport:{width:1440,height:900},serviceWorkers:'block'});
+           const errors=[];page.on('pageerror',e=>errors.push(e.message));
+           const targets=['https://www.ball46.com/','https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/'];
+           try{for(const url of targets){
+           try{
+           await page.goto(url,{waitUntil:'domcontentloaded',timeout:22000});const rows=page.locator('.match-row[data-match-id]:visible');
+           await rows.first().waitFor({timeout:15000});
+           const odds=page.locator('[data-fmb-book]:visible');
+           for(let i=0;i<Math.min(5,await rows.count());i++){
+            await rows.nth(i).click();
+            if(await odds.first().waitFor({state:'visible',timeout:4200}).then(()=>true,()=>false))break;
+           }
+           console.log('OPEN',url,await page.evaluate(()=>({rowCount:document.querySelectorAll('.match-row[data-match-id]').length,flow:!!document.querySelector('.expand-flow-card'),bookCount:document.querySelectorAll('[data-fmb-book]').length,scrollNodes:[...document.querySelectorAll('[class*="scorebar"],[id*="scorebar"]')].filter(e=>{let r=e.getBoundingClientRect();return r.width&&r.height}).slice(0,25).map(e=>({tag:e.tagName,id:e.id,cls:e.getAttribute('class'),w:e.clientWidth,sw:e.scrollWidth,text:e.innerText?.slice(0,45)}))})));
+           if(await odds.count()===0)continue;
+           const books=await odds.count(); console.log('BOOKS',await odds.allTextContents());
+           await odds.first().click();
+           await page.waitForTimeout(800);
+           if(books>1)await odds.nth(1).click();
+           const scroller=page.locator('[class*="scorebar"]:visible,[id*="scorebar"]:visible');
+           const ix=await scroller.evaluateAll(els=>els.findIndex(e=>e.scrollWidth>e.clientWidth+10&&['auto','scroll'].includes(getComputedStyle(e).overflowX)));
+           console.log('HORIZONTAL_SCROLLER',ix);
+           if(ix>=0)await scroller.nth(ix).hover();
+           await page.evaluate(()=>{
+             const board=document.querySelector('.expand-full-market-card');
+             const data={mutations:0,score:[],flow:[],market:[],replaced:0};
+             window.__qa=data;
+             const rect=(s)=>{const node=document.querySelector(s);if(!node)return null;const r=node.getBoundingClientRect();return [Math.round(r.top),Math.round(r.left),Math.round(r.height),Math.round(r.width)]};
+             const m=new MutationObserver(rs=>{data.mutations+=rs.length});if(board)m.observe(board,{childList:true,subtree:true});
+             const start=performance.now();function frame(){data.score.push(rect('[class*="scorebar"]'));data.flow.push(rect('.expand-flow-card'));data.market.push(rect('.expand-full-market-card'));if(board&&!board.isConnected)data.replaced++;if(performance.now()-start<2500)requestAnimationFrame(frame);else m.disconnect()}
+             requestAnimationFrame(frame);
+           });
+           if(ix>=0){for(let i=0;i<8;i++){await page.mouse.wheel(i<4?150:-150,0);await page.waitForTimeout(120)}}else{await page.mouse.wheel(0,600);await page.waitForTimeout(250);await page.mouse.wheel(0,-600)}
+           await page.waitForTimeout(2550);
+           console.log('SCROLL',url,await page.evaluate(()=>{const d=window.__qa;if(!d)return {};return {frames:d.flow.length,mutations:d.mutations,replaced:d.replaced,heights:{flow:[...new Set(d.flow.map(x=>x?.[2]))],market:[...new Set(d.market.map(x=>x?.[2]))]},errors:[...document.querySelectorAll('.expand-empty')].map(e=>e.textContent?.trim()).slice(0,4)}}),errors.splice(0));
+           }catch(e){console.log('QA LIMIT',url,e.message,errors.splice(0));}
+           }}finally{await browser.close()}
+          })().catch(e=>{console.error(e);process.exitCode=1});
+          JS
