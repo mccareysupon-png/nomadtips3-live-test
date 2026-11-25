@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+assert(account&&token);const name='ball46-premium-match-colors-test-20261120';
+const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+const res=await fetch(root+'/scripts/'+name+'/deployments?per_page=1',{headers:{authorization:'Bearer '+token}});
+const current=(await res.json()).result.deployments[0].versions[0].version_id;
+const rr=await fetch(root+'/workers/'+name+'/versions/'+current+'?include=modules',{headers:{authorization:'Bearer '+token}});
+const ver=(await rr.json()).result;
+const main=Buffer.from(ver.modules.find(x=>x.name===ver.main_module).content_base64,'base64').toString();
+const part=main.match(/var prematchClientScript = ("(?:\\.|[^"\\])*");/);
+assert(part);const client=JSON.parse(part[1]);
+const query=['const perf=e.target.closest','function loadPerformanceGraph','function draw(', 'const draw=','function performance','data-b46pm-perf-range', 'function b46AdaptivePanel'];
+const matches=query.map(term=>{const positions=[];let p=0;while((p=client.indexOf(term,p))>=0){positions.push(p);p+=term.length;if(positions.length>12)break;}return {term,positions,context:positions.map(p=>client.slice(Math.max(0,p-370),p+1700))}});
+console.log('B46_PREMATCH_PERFORMANCE_SOURCE '+JSON.stringify({version:current,mainBytes:main.length,clientBytes:client.length,matches}));
