@@ -1,0 +1,59 @@
+name: gptbusinesschat-stage-worker
+on:
+  push:
+    branches: [gptbusinesschat/ball46-owner-control-v1]
+    paths: ['.github/workflows/gptbusinesschat-stage-worker.yml']
+permissions:
+  contents: read
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {readFileSync,writeFileSync,mkdtempSync} from 'node:fs';
+          import {tmpdir} from 'node:os';
+          import {join} from 'node:path';
+          import {execFileSync} from 'node:child_process';
+          const target='ball46-prematch-only-test-20261120';
+          const expected='f5578fc9-672f-478f-ac86-e89f410b8058';
+          const base='https://api.cloudflare.com/client/v4/accounts/'+process.env.ACCOUNT+'/workers';
+          const cloud=async(p,o={})=>{const r=await fetch(base+p,{...o,headers:{authorization:'Bearer '+process.env.TOKEN,...o.headers}});const j=await r.json();assert(r.ok&&j.success,p+' HTTP '+r.status);return j.result};
+          const active=async()=> (await cloud('/scripts/'+target+'/deployments')).deployments[0].versions[0].version_id;
+          assert.equal(await active(),expected);
+          const v=await cloud('/workers/'+target+'/versions/'+expected+'?include=modules');
+          const settings=await cloud('/scripts/'+target+'/settings');
+          const modules=new Map(v.modules.map(m=>[m.name,Buffer.from(m.content_base64,'base64')]));
+          const root='qa/prematch-history-20261120/';
+          for(const name of ['gptbusinesschat-owner-control-v1-test.mjs','gptbusinesschat-active-ledger-v1-test.mjs'])modules.set(name,readFileSync(root+name));
+          const once=(s,a,b)=>{assert.equal(s.split(a).length,2,'Anchor '+a);return s.replace(a,b)};
+          const ledger='b46-adaptive-ou-ledger-v1-test.mjs';
+          let s=modules.get(ledger).toString();
+          s=once(s,'const sql=(db,q,...a)=>Array.from(db.exec(q,...a));',"import {initActiveLedger,recordActiveIssuance} from './gptbusinesschat-active-ledger-v1-test.mjs';\nconst sql=(db,q,...a)=>Array.from(db.exec(q,...a));");
+          s=once(s,'let added=0,duplicate=0,rejected=0;','initActiveLedger(db); let added=0,duplicate=0,rejected=0,activeAdded=0;');
+          s=once(s,'    added++;','    added++; if(recordActiveIssuance(db,row,now))activeAdded++;');
+          s=once(s,'return {added,duplicate,rejected,unitsSimulated:added','return {added,duplicate,rejected,activeAdded,unitsSimulated:added');
+          modules.set(ledger,Buffer.from(s));
+          let main=modules.get(v.main_module).toString();
+          // Capture exact routing and auth context without logging secrets.
+          const outer=main.lastIndexOf('async fetch(req,env)');
+          assert(outer>0);
+          console.log('OUTER_ROUTING',main.slice(outer,outer+16000));
+          const anchor="if(path==='/ou-adaptive-research-state-test'&&req.method==='GET'){";
+          const pos=main.indexOf(anchor);
+          assert(pos>0);
+          console.log('DO_ROUTING_CONTEXT',main.slice(Math.max(0,pos-1800),pos+600));
+          // Stage only after routing is explicitly verified; do not activate a partial integration.
+          const dir=mkdtempSync(join(tmpdir(),'gptbc-'));
+          for(const [name,bytes] of modules){if(!name.endsWith('.mjs')||name.includes('/'))continue;const f=join(dir,name);writeFileSync(f,bytes);execFileSync(process.execPath,['--check',f]);}
+          console.log('STAGING_PRECHECK_PASS',JSON.stringify({version:expected,modules:modules.size,bindings:settings.bindings.map(b=>({name:b.name,type:b.type}))}));
+          assert.equal(await active(),expected);
+          JS
