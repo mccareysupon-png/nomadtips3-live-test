@@ -13,7 +13,7 @@ const save=()=>writeFileSync(dirname+'/release.json',JSON.stringify(report,null,
 const sha=b=>createHash('sha256').update(b).digest('hex');
 const sleep=t=>new Promise(r=>setTimeout(r,t));
 function stable(x){if(Array.isArray(x))return x.map(stable);if(x&&typeof x==='object')return Object.fromEntries(Object.entries(x).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>[k,stable(v)]));return x}
-function moduleHash(mods){return sha(JSON.stringify(stable(mods.map(m=>[m.name,m.content_type,sha(Buffer.from(m.content_base64,'base64'))]))))}
+function moduleHash(mods){return sha(JSON.stringify(stable(mods.map(m=>[m.name,m.content_type,sha(Buffer.from(m.content_base64,'base64'))]).sort((a,b)=>a[0].localeCompare(b[0])))))}
 async function cf(path,method='GET',body){
  const opts={method,headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(90000)};
  if(body){if(body instanceof FormData)opts.body=body;else{opts.headers['content-type']='application/json';opts.body=JSON.stringify(body)}}
