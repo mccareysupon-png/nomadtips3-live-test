@@ -1,0 +1,63 @@
+name: BALL46 original Nov22 O-U path TEST-verified Production deployment
+on:
+  push:
+    branches: [release/b46-original-ou-path-production-20261125]
+    paths: ['.github/workflows/b46-original-ou-production-deploy.yml']
+permissions: {contents: read}
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  original-path:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 26
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Syntax and source preflight
+        run: |
+          node --check qa/original-ou-production-20261125/b46-original-ou-proxy.mjs
+          node --check qa/original-ou-production-20261125/release.mjs
+          node --check qa/original-ou-production-20261125/rollback.mjs
+          node --check qa/prematch-history-20261120/qa-restored-original-ou-test-20261125.mjs
+      - name: Browser environment
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Stage inactive Production version with original /?b46pm=ou route
+        id: stage
+        env:
+          B46_ORIGINAL_PRODUCTION_MODE: stage
+        run: node qa/original-ou-production-20261125/release.mjs
+      - name: QA exact original route on inactive preview Desktop and Mobile
+        env:
+          B46_OU_QA_ORIGIN: ${{ steps.stage.outputs.preview }}
+        run: node qa/prematch-history-20261120/qa-restored-original-ou-test-20261125.mjs
+      - name: Activate ONLY verified original route production version
+        env:
+          B46_ORIGINAL_PRODUCTION_MODE: activate
+          B46_ORIGINAL_CANDIDATE: ${{ steps.stage.outputs.candidate }}
+        run: node qa/original-ou-production-20261125/release.mjs
+      - name: QA exact original route on live BALL46 Desktop and Mobile
+        env:
+          B46_OU_QA_ORIGIN: https://ball46.com
+        run: node qa/prematch-history-20261120/qa-restored-original-ou-test-20261125.mjs
+      - name: Emergency rollback when release or browser QA fails
+        if: ${{ failure() && steps.stage.outputs.candidate != '' }}
+        env:
+          B46_ORIGINAL_CANDIDATE: ${{ steps.stage.outputs.candidate }}
+        run: node qa/original-ou-production-20261125/rollback.mjs
+      - name: Preserve release audit trail
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b46-original-ou-production-${{ github.run_id }}
+          path: |
+            qa/original-ou-production-20261125/audit/
+            qa/prematch-history-20261120/audit-original-20261122-route/
+          retention-days: 30
+          if-no-files-found: warn
