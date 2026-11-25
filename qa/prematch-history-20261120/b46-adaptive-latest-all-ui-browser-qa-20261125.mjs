@@ -43,7 +43,7 @@ try{
   page.on('pageerror',e=>errors.push(e.message));
   for(const entry of [
    {name:'ou-statistics',route:frontend+'/?b46pm=ou',selector:'#b46pm-adaptive-latest-statistics [data-b46-latest-adaptive-formula]'},
-   {name:'ou-predictions',route:frontend+'/?b46pm=ou-predictions',selector:'#b46pm-adaptive-latest-predictions-content [data-b46-latest-adaptive-formula]'},
+   {name:'canonical-predictions',route:frontend+'/?b46pm=predictions',selector:'#b46pm-adaptive-latest-predictions-content [data-b46-latest-adaptive-formula]'},
   ]){
    const snapshot=await latest();
    const response=await page.goto(entry.route,{waitUntil:'domcontentloaded',timeout:60000});
