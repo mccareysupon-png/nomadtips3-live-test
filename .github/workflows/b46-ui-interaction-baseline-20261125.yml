@@ -1,0 +1,84 @@
+name: BALL46 test-only UI interaction baseline
+on:
+  push:
+    branches: [test/ball46-ui-interaction-baseline-20261125]
+    paths: [.github/workflows/b46-ui-interaction-baseline-20261125.yml]
+permissions:
+  contents: read
+jobs:
+  baseline:
+    timeout-minutes: 8
+    runs-on: ubuntu-24.04
+    steps:
+      - run: npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+      - run: npx playwright install chromium --only-shell
+      - name: Record event timing and DOM replacement on the public TEST page
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          const assert=require('node:assert/strict');
+          const host='ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          (async()=>{
+            const browser=await chromium.launch();
+            try {
+              for(const [label,width,height] of [['desktop',1440,900],['mobile',390,844]]){
+                const c=await browser.newContext({viewport:{width,height},serviceWorkers:'block'});
+                await c.addInitScript(()=>{
+                  const logs=[]; let mark;
+                  window.b46Audit={logs,start:()=>{logs.length=0;mark=performance.now();},since:()=>mark};
+                  new PerformanceObserver(list=>{
+                    for(const e of list.getEntries())if(e.name==='click'||e.entryType==='longtask') logs.push({
+                      kind:e.entryType,start:Math.round(e.startTime),dur:e.duration,
+                      input:e.processingStart==null?null:Math.round(e.processingStart-e.startTime),
+                      processing:e.processingEnd==null?null:Math.round(e.processingEnd-e.processingStart)
+                    });
+                  }).observe({type:'event',durationThreshold:16,buffered:true});
+                  new PerformanceObserver(list=>{
+                    for(const e of list.getEntries())logs.push({kind:'longtask',start:Math.round(e.startTime),dur:Math.round(e.duration)});
+                  }).observe({type:'longtask'});
+                });
+                const p=await c.newPage(),errors=[];
+                p.on('pageerror',e=>errors.push(e.message));
+                await p.goto('https://'+host+'/?view=statistics',{waitUntil:'domcontentloaded',timeout:50000});
+                assert.equal(new URL(p.url()).hostname,host);
+                const panel=p.getByRole('heading',{name:'Performance & Results'});
+                await panel.waitFor({timeout:35000});
+                const nav=p.getByRole('button',{name:'Open navigation'});
+                const target=(name)=>p.getByRole('button',{name:name==='1x2'?/^1X2 \d+\.\d+%$/:name==='total'?/^Total /:/^Waiting \d+/});
+                const reports=[];
+                for(const n of (label==='desktop'?['1x2','total','1x2','total','1x2']:['1x2','total','1x2','total','1x2','waiting'])){
+                  if(label==='mobile'&&await nav.isVisible())await nav.click();
+                  let b=target(n);
+                  if(n==='1x2'&&await b.count()>1){
+                    const live=p.locator('[data-stat-market="1x2"]');
+                    if(await live.isVisible()) b=live;
+                    else {
+                      const candidates=await b.all();
+                      const onScreen=[];
+                      for(const x of candidates)if(await x.isVisible())onScreen.push(x);
+                      if(onScreen.length===1)b=onScreen[0];
+                      else b=b.first();
+                    }
+                  }
+                  await p.evaluate(()=>{
+                    window.b46Audit.start();
+                    window.b46Audit.refs=Array.from(document.querySelectorAll('main,.workspace-panel,.workspace-stats-card,#b46-finance-chart-card,[data-stat-market]')).slice(0,24);
+                  });
+                  await b.click({timeout:8000});
+                  if(n==='waiting')await p.getByRole('heading',{name:'Waiting Matches'}).waitFor({timeout:10000});
+                  else await p.waitForURL(u=>u.searchParams.get('view')==='statistics'&&(n==='1x2'?u.searchParams.get('market')==='1x2':!u.searchParams.get('market')),{timeout:10000});
+                  await p.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+                  const obs=await p.evaluate(()=>({
+                    events:window.b46Audit.logs.filter(e=>e.start>=window.b46Audit.since()-2),
+                    kept:window.b46Audit.refs?.filter(e=>e.isConnected).length,
+                    observed:window.b46Audit.refs?.length,
+                    rows:document.querySelectorAll('.workspace-panel tr').length
+                  }));
+                  reports.push({action:n,...obs});
+                }
+                console.log('B46_UI_BASELINE '+JSON.stringify({label,reports,errors}));
+                await c.close();
+              }
+            } finally {await browser.close();}
+          })().catch(e=>{console.error(e);process.exitCode=1});
+          JS
