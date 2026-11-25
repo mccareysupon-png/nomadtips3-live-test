@@ -1,0 +1,18 @@
+name: BALL46 performance in-place switch current TEST source audit
+on:
+  push:
+    branches: [fix/b46-prematch-perf-range-inplace-20261125]
+    paths: ['.github/workflows/b46-perf-inplace-source-audit.yml']
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node qa/adaptive-readonly-production-20261125/perf-inplace-source.mjs
