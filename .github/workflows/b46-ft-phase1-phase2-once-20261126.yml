@@ -1,0 +1,38 @@
+name: BALL46 FT Phase 1 and 2 guarded one-shot TEST 20261126
+on:
+  push:
+    branches:
+      - feature/ball46-adaptive-manual-control-test-20261125
+    paths:
+      - .github/workflows/b46-ft-phase1-phase2-once-20261126.yml
+permissions:
+  contents: read
+concurrency:
+  group: ball46-ft-phase1-phase2-guarded-oneoff-20261126
+  cancel-in-progress: false
+jobs:
+  guarded-history:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate targeted import implementation and read-only safeguards
+        run: |
+          node --check qa/prematch-history-20261120/b46-ou-3ft-targeted-backfill-oneoff-20261124.mjs
+          node --test qa/prematch-history-20261120/ou-target-history-ft-v1.test.mjs
+      - name: Run bounded verified FT import, TEST O/U history only, no retries
+        run: node qa/prematch-history-20261120/b46-ou-3ft-targeted-backfill-oneoff-20261124.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: b46-ft-phase1-phase2-guarded-20261126
+          path: evidence/b46-ou-upcoming-history-three-20261124/REPORT.json
+          if-no-files-found: warn
+          retention-days: 30
