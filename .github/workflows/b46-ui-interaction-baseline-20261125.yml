@@ -21,7 +21,7 @@ jobs:
           (async()=>{
             const browser=await chromium.launch();
             try {
-              for(const [label,width,height] of [['desktop',1440,900],['desktop-patch',1440,900]]){
+              for(const [label,width,height] of [['desktop',1440,900],['mobile',390,844]]){
                 const c=await browser.newContext({viewport:{width,height},serviceWorkers:'block'});
                 await c.addInitScript(()=>{
                   const logs=[]; let mark;
@@ -38,19 +38,9 @@ jobs:
                   }).observe({type:'longtask'});
                 });
                 const p=await c.newPage(),errors=[];
-                const pattern='**/dashboard-v2-stage3-featured-facts-20261013a.js*';
                 let served=0;
-                await p.route(pattern,async route=>{
-                  const res=await route.fetch();
-                  const s=await res.text();
-                  const anchor="const host=$('[data-board-sections]');if(!host)return;";
-                  const start=s.indexOf('function renderBoard(){');
-                  const idx=s.indexOf(anchor,start);
-                  if(start<0||idx<0||idx-start>180)throw Error('BOARD_SOURCE_DRIFT');
-                  if(label.endsWith('-patch')){
-                    const guard="if(document.body.dataset.workspaceView==='statistics')return;";
-                    served++;await route.fulfill({response:res,body:s.slice(0,idx)+guard+s.slice(idx)});
-                  }else await route.fulfill({response:res,body:s});
+                p.on('response',async res=>{
+                  if(new URL(res.url()).hostname===host&&new URL(res.url()).pathname==='/dashboard-v2-stage3-featured-facts-20261013a.js'&&res.headers()['x-b46-test-hidden-board']==='v1')served++;
                 });
                 const cdp=await c.newCDPSession(p); await cdp.send('Profiler.enable');
                 p.on('pageerror',e=>errors.push(e.message));
@@ -60,10 +50,10 @@ jobs:
                 const nav=p.getByRole('button',{name:'Open navigation'});
                 const target=(name)=>p.getByRole('button',{name:name==='1x2'?/^1X2 \d+\.\d+%$/:name==='total'?/^Total /:/^Waiting \d+/});
                 const reports=[];
-                for(const n of ['total','1x2','total','1x2','total','1x2']){
+                for(const n of (label==='desktop'?['total','1x2','total','1x2','total','1x2']:['waiting'])){
                   if(label==='mobile'&&await nav.isVisible())await nav.click();
                   if(reports.length===1)await p.waitForFunction(()=>document.querySelectorAll('.workspace-panel tr').length>=40,{},{timeout:35000});
-                  const b=p.locator('button[data-stat-market="'+(n==='total'?'all':'1x2')+'"]:visible');
+                  const b=n==='waiting'?p.getByRole('button',{name:/^Waiting [0-9]+/}):p.locator('button[data-stat-market="'+(n==='total'?'all':'1x2')+'"]:visible');
                   await p.evaluate(()=>{
                     window.b46Audit.start();
                     const start=performance.now(),frames=[];
@@ -100,7 +90,8 @@ jobs:
                   reports.push({action:n,...obs});
                   console.log('B46_UI_SAMPLE '+JSON.stringify({label,action:n,...obs}));
                 }
-                if(label.endsWith('-patch'))assert(served>0,'PATCH_NOT_EXERCISED');
+                assert(served>0,'DEPLOYED_TEST_HEADER_MISSING');
+                assert.equal(errors.length,0,'BROWSER_ERRORS_'+label);
                 console.log('B46_UI_BASELINE '+JSON.stringify({label,reports,errors}));
                 await c.close();
               }
