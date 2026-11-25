@@ -129,3 +129,21 @@ export function patchAdaptiveWorker(main){
  if(worker.replace(replacement,'')!==main.replace(original,''))throw Error('WORKER_CHANGED_OUTSIDE_CLIENT');
  return {worker,client:result.client,originalClient:before,oldGraphSize:result.oldGraphSize,newGraphSize:result.newGraphSize};
 }
+
+export function upgradeClickGuard(main){
+ const found=main.match(/var prematchClientScript = ("(?:\\.|[^"\\])*");/);
+ if(!found)throw Error('EMBEDDED_CLIENT_NOT_FOUND');
+ const before=JSON.parse(found[1]);
+ if(!before.includes(PATCH_MARK))throw Error('INITIAL_NO_FLICKER_PATCH_MISSING');
+ const oldButton="const button=mk('button',days+'D','b46pm-period-btn');";
+ const newButton="const button=mk('button',days+'D','b46pm-adaptive-range-btn');\n        button.style.cssText='padding:7px 12px;border:1px solid #35664b;background:#13251d;color:#e6fff0;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;';";
+ let client=exactlyOnce(before,oldButton,newButton,'RANGE_BUTTON_CLASS');
+ const oldActive="button.classList.toggle('active',active);\n          button.setAttribute('aria-pressed',String(active));";
+ const newActive="button.classList.toggle('active',active);\n          button.style.background=active?'#285e43':'#13251d';\n          button.style.borderColor=active?'#4aac79':'#35664b';\n          button.setAttribute('aria-pressed',String(active));";
+ client=exactlyOnce(client,oldActive,newActive,'RANGE_BUTTON_ACTIVE_STYLE');
+ const original=found[0],replacement='var prematchClientScript = '+JSON.stringify(client)+';';
+ const worker=exactlyOnce(main,original,replacement,'UPGRADE_EMBED_CLIENT_ONLY');
+ if(worker.replace(replacement,'')!==main.replace(original,''))throw Error('WORKER_CHANGED_OUTSIDE_EMBED');
+ if(client.includes("const button=mk('button',days+'D','b46pm-period-btn');"))throw Error('INTERCEPTED_CLASS_STILL_PRESENT');
+ return {worker,client,originalClient:before,oldGraphSize:before.length,newGraphSize:client.length};
+}
