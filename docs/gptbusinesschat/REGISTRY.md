@@ -16,3 +16,5 @@ Scope: TEST only; production deployment requires explicit owner approval.
 Manual ON/OFF for 42 Adaptive OU formulas; secure owner API, durable state, audit, real 30/90-day graphs. No automatic thresholds in V1. Preserve research shadow and settle existing pending records. Verify actual issuance gate before claiming operational control. Keep 1X2, BTTS and LIVE unchanged. Existing worker names remain unchanged.
 
 Status: baseline verified; implementation and rollback rehearsal pending. Update this registry with commits, test evidence, deployments and outstanding blockers as work progresses.
+
+Owner requirement: all 42 formulas default ON on first initialization; preserve subsequent manual states. Never reset existing states on restart. API module created; integration and deployment pending.
