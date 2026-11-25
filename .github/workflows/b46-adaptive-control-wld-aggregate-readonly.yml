@@ -1,0 +1,15 @@
+name: BALL46 Adaptive Formula Control real WLD read-only aggregate check
+on:
+  push:
+    branches: [feature/b46-adaptive-control-wld-totals-20261125]
+    paths: ['.github/workflows/b46-adaptive-control-wld-aggregate-readonly.yml']
+permissions: {contents: read}
+jobs:
+  aggregate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node qa/prematch-history-20261120/aggregate-adaptive-wld-readonly.mjs
