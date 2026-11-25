@@ -48,7 +48,14 @@ try{
    const snapshot=await latest();
    const response=await page.goto(entry.route,{waitUntil:'domcontentloaded',timeout:60000});
    assert(response?.ok(),entry.name+'_HTTP_'+response?.status());
-   await page.waitForSelector(entry.selector,{timeout:47000});
+   try{await page.waitForSelector(entry.selector,{timeout:12000})}
+   catch(e){
+    const diag=await page.evaluate(()=>({url:location.href,bodyText:document.body?.innerText.slice(-3500),
+      appNodes:[...document.querySelectorAll('[id*=adaptive],[id*=b46pm]')].slice(-18).map(x=>({id:x.id,children:x.children.length,visible:!!x.offsetParent})),
+      routeQuery:new URLSearchParams(location.search).get('b46pm')}));
+    console.log('B46_ADAPTIVE_BROWSER_SELECTOR_DIAGNOSTIC '+JSON.stringify({page:entry.name,device:device.name,error:String(e),diag,errors}));
+    throw e;
+   }
    const cards=page.locator(entry.selector);
    await page.waitForFunction(({selector,count})=>document.querySelectorAll(selector).length===count,{selector:entry.selector,count:snapshot.items.length},{timeout:35000});
    const textContent=await cards.allInnerTexts();
