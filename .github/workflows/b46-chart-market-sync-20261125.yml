@@ -1,0 +1,71 @@
+name: BALL46 TEST chart market sync
+on:
+  push:
+    branches: [test/ball46-ui-interaction-baseline-20261125]
+    paths: [.github/workflows/b46-chart-market-sync-20261125.yml]
+permissions:
+  contents: read
+jobs:
+  market-sync:
+    timeout-minutes: 6
+    runs-on: ubuntu-24.04
+    steps:
+      - run: npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+      - run: npx playwright install chromium --only-shell
+      - name: Test pending and rendered markets with a delayed receiver
+        run: |
+          node <<'JS'
+          const patch=(function patch(s){
+           const mark='B46_TEST_CHART_MARKET_SYNC_V1';
+           if(s.includes(mark))throw Error('MARKET_SYNC_ALREADY_PATCHED');
+           const edit=(old,next)=>{if(!s.includes(old)||s.indexOf(old)!==s.lastIndexOf(old))throw Error('MARKET_SYNC_SOURCE_DRIFT '+old);s=s.replace(old,()=>next)};
+           const helper=[
+           '/* B46_TEST_CHART_MARKET_SYNC_V1 */',
+           'let b46MarketHold=null;',
+           'function b46ReleaseMarketHold(){const h=b46MarketHold;if(!h)return;b46MarketHold=null;h.chart.style.visibility=h.visibility;h.shell.style.height=h.height;h.shell.style.position=h.position;h.status.remove();h.card.removeAttribute("aria-busy");}',
+           'function b46HoldMarket(market){const card=document.getElementById("b46-finance-chart-card");if(!card)return;if(card.dataset.b46PaintedMarket===market){b46ReleaseMarketHold();return}const shell=card.querySelector("[data-b46-perf-shell]"),chart=shell?.querySelector(".f46-card");if(!chart||b46MarketHold)return;const height=shell.getBoundingClientRect().height;if(height<=0)return;const status=document.createElement("div");status.setAttribute("role","status");status.dataset.b46MarketWait="1";status.textContent="Updating market data…";status.style.cssText="position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;font:inherit;text-align:center";b46MarketHold={chart,shell,status,card,height:shell.style.height,visibility:chart.style.visibility,position:shell.style.position};shell.style.height=height+"px";if(getComputedStyle(shell).position==="static")shell.style.position="relative";chart.style.visibility="hidden";shell.append(status);card.setAttribute("aria-busy","true");}',
+           'document.addEventListener("click",e=>{const b=e.target?.closest?.("[data-stat-market]");if(b&&active())b46HoldMarket(b.dataset.statMarket)},true);',
+           ].join('\n');
+           const r='function render(force=false){\n if(!active())return;';
+           edit(r,helper+'\n'+r+'\n b46HoldMarket(routeFilter().market);');
+           const c=";b46Inplace(shell,nextMarkup);card.dataset.b46StatisticsSource=source;";
+           edit(c,";b46Inplace(shell,nextMarkup);card.dataset.b46PaintedMarket=routeFilter().market;b46ReleaseMarketHold();card.dataset.b46StatisticsSource=source;");
+           const f='if(shell)shell.innerHTML=\'<div class="b46-perf-empty">Long-term performance data is incomplete or temporarily unavailable.</div>\'';
+           edit(f,'b46ReleaseMarketHold();'+f);
+           return s;
+          });
+          const {chromium}=require('playwright'),assert=require('node:assert/strict');
+          const origin='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          (async()=>{const browser=await chromium.launch();try{
+           for(const [mode,width,height] of [['desktop',1440,900],['mobile',390,844]]){
+           const ctx=await browser.newContext({viewport:{width,height},serviceWorkers:'block'}),p=await ctx.newPage(),errs=[];
+           p.on('pageerror',e=>errs.push(e.message));let patched=0;
+           await p.route(origin+'/longterm-performance-343.js*',async r=>{const res=await r.fetch();const body=patch(await res.text());patched++;await r.fulfill({response:res,body});});
+           let unblock;
+           await p.route('**/b46-receiver-v1/graph?*',async r=>{if(unblock){const wait=unblock;await wait.promise;}await r.continue();});
+           await p.goto(origin+'/?b46pm=ou',{waitUntil:'domcontentloaded',timeout:50000});
+           const click=async market=>{
+             if(await p.getByRole('button',{name:'Open navigation'}).isVisible())await p.getByRole('button',{name:'Open navigation'}).click();
+             const b=p.locator('button[data-stat-market="'+market+'"]:visible');
+             await b.click({timeout:12000});
+           };
+           await click('all');const card=p.locator('#b46-finance-chart-card'),bar=card.locator('.f46-heading h3');
+           await bar.getByText('Total',{exact:false}).waitFor({timeout:30000}).catch(async()=>{await p.waitForFunction(()=>document.querySelector('#b46-finance-chart-card .f46-heading h3')?.textContent.includes('Total'),{},{timeout:30000})});
+           await p.waitForFunction(()=>document.querySelector('#b46-finance-chart-card')?.dataset.b46PaintedMarket==='all');
+           const shell=card.locator('[data-b46-perf-shell]');
+           const before=await shell.boundingBox();
+           let resolve;unblock={promise:new Promise(r=>{resolve=r})};
+           try{
+             await click('1x2');
+             await card.getByText('Updating market data…').waitFor({timeout:10000});
+             assert.equal(await card.getAttribute('aria-busy'),'true');
+             assert.equal(await bar.isVisible(),false,'STALE_CHART_TITLE_VISIBLE');
+             const held=await shell.boundingBox();assert(Math.abs(held.height-before.height)<=2,'CHART_GEOMETRY_NOT_HELD');
+           }finally{unblock=null;resolve();}
+           await p.waitForFunction(()=>{const c=document.querySelector('#b46-finance-chart-card');return c?.dataset.b46PaintedMarket==='1x2'&&!c.hasAttribute('aria-busy')&&c.querySelector('.f46-heading h3')?.textContent.includes('1X2');},{},{timeout:25000});
+           assert(patched>0);assert.deepEqual(errs,[]);
+           console.log('B46_MARKET_SYNC_PASS '+JSON.stringify({mode,heldHeight:before.height,market:'1x2',errors:errs.length}));
+           await ctx.close();
+           }
+           } finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
+          JS
