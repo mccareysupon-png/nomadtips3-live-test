@@ -18,5 +18,45 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
-      - name: Deploy and verify Adaptive-only scheduling on the TEST Worker
-        run: node qa/prematch-history-20261120/deploy-adaptive-only-test-20261125.mjs
+      - name: Verify Adaptive-only scheduling on the TEST Worker
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {createHmac} from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          const id=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const worker='ball46-prematch-only-test-20261120';
+          assert(token && id);
+          const host='https://'+worker+'.mccarey-supon.workers.dev';
+          const api='https://api.cloudflare.com/client/v4/accounts/'+id+'/workers/scripts/'+worker;
+          async function read(url, auth, method='GET') {
+            const res=await fetch(url,{method,headers:{authorization:'Bearer '+auth,accept:'application/json'},signal:AbortSignal.timeout(30000)});
+            return {status:res.status, data:await res.json()};
+          }
+          const owner=createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const [schedules, deployment, before]=await Promise.all([
+            read(api+'/schedules',token),
+            read(api+'/deployments?per_page=1',token),
+            read(host+'/ou-adaptive-research-state-test',owner),
+          ]);
+          assert(schedules.data.result.schedules.some(x=>x.cron==='*/15 * * * *'));
+          assert.equal(before.data.legacyOuIssuance,'disabled');
+          assert.equal(before.data.formulas.length,42);
+          const stopped=await read(host+'/prematch-ou-engine-tick',owner,'POST');
+          assert.equal(stopped.status,410);
+          assert.equal(stopped.data.status,'DISABLED_ADAPTIVE_ONLY');
+          const tick=await read(host+'/ou-adaptive-research-run-test',owner,'POST');
+          assert.equal(tick.status,200);
+          assert.equal(tick.data.code,'B46_ADAPTIVE_OU_RESEARCH_V1');
+          assert.equal(tick.data.providerCalls,0);
+          const after=await read(host+'/ou-adaptive-research-state-test',owner);
+          assert.equal(after.data.lastRunAt,tick.data.at);
+          console.log('BALL46_ADAPTIVE_ONLY_TEST_CHECK '+JSON.stringify({
+            version:deployment.data.result.deployments[0].versions[0].version_id,
+            cron:schedules.data.result.schedules.map(s=>s.cron),
+            legacy:stopped.data.status, activeFormulas:after.data.formulas.length,
+            at:tick.data.at, feed:after.data.fixtureFeed, counts:tick.data.counts,
+            pricedFixtures:tick.data.priced?.fixtures, providerCalls:tick.data.providerCalls,
+          }));
+          assert.equal(after.data.fixtureFeed?.source,'hub_cached_upcoming_waiting');
+          NODE
