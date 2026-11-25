@@ -1,0 +1,28 @@
+name: BALL46 Original Nov22 O-U TEST path post-Deploy browser QA
+on:
+  push:
+    branches: [restore/b46-original-ou-test-deploy-lane-20261125]
+    paths: ['.github/workflows/b46-original-ou-path-postdeploy-qa.yml']
+permissions: {contents: read}
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Validate same old route QA
+        run: node --check qa/prematch-history-20261120/qa-restored-original-ou-test-20261125.mjs
+      - name: Install browser
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Verify original TEST URL on Desktop and Mobile, both chart groups
+        run: node qa/prematch-history-20261120/qa-restored-original-ou-test-20261125.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b46-original-ou-browser-${{ github.run_id }}
+          path: qa/prematch-history-20261120/audit-original-20261122-route/
+          if-no-files-found: warn
