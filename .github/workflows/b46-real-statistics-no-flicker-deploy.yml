@@ -1,0 +1,61 @@
+name: BALL46 real Production Statistics 7D 30D 90D No-Flicker Deploy
+on:
+  push:
+    branches: [fix/b46-production-statistics-range-no-flicker-20261125]
+    paths: ['.github/workflows/b46-real-statistics-no-flicker-deploy.yml']
+permissions: {contents: read}
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Check Statistics patch and syntax, verify real effective JS
+        run: |
+          node --check qa/statistics-no-flicker-20261125/b46-statistics-inplace.mjs
+          node --check qa/statistics-no-flicker-20261125/release.mjs
+          node --check qa/statistics-no-flicker-20261125/rollback.mjs
+          node --check qa/statistics-no-flicker-20261125/qa.mjs
+          node qa/statistics-no-flicker-20261125/patch-preflight.mjs
+      - name: Install headless Chromium
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Stage inactive version on SAME Production Worker
+        id: stage
+        env:
+          B46_STATISTICS_RELEASE_MODE: stage
+        run: node qa/statistics-no-flicker-20261125/release.mjs
+      - name: Real /?view=statistics Preview Desktop and Mobile no-DOM-teardown QA
+        env:
+          B46_STATISTICS_QA_ORIGIN: ${{ steps.stage.outputs.preview }}
+        run: node qa/statistics-no-flicker-20261125/qa.mjs
+      - name: Activate ONLY verified current BALL46 Production Statistics fix
+        env:
+          B46_STATISTICS_RELEASE_MODE: activate
+          B46_STATISTICS_CANDIDATE: ${{ steps.stage.outputs.candidate }}
+        run: node qa/statistics-no-flicker-20261125/release.mjs
+      - name: Verify same URL on ball46.com Desktop and Mobile
+        env:
+          B46_STATISTICS_QA_ORIGIN: https://ball46.com
+        run: node qa/statistics-no-flicker-20261125/qa.mjs
+      - name: Rollback original Production version after any failure
+        if: ${{ failure() && steps.stage.outputs.candidate != '' }}
+        env:
+          B46_STATISTICS_CANDIDATE: ${{ steps.stage.outputs.candidate }}
+        run: node qa/statistics-no-flicker-20261125/rollback.mjs
+      - name: Preserve QA proof and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b46-real-statistics-no-flicker-${{ github.run_id }}
+          path: qa/statistics-no-flicker-20261125/audit/
+          if-no-files-found: warn
