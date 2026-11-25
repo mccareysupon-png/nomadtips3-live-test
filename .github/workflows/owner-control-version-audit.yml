@@ -1,0 +1,24 @@
+name: Owner control Worker version audit
+on:
+  push:
+    branches: [audit/owner-control-worker-versions-20261125]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read active deployments
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'JS'
+          for (const worker of ['ball46-prematch-only-test-20261120','ball46-premium-match-colors-test-20261120','ball46-production']) {
+            const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+process.env.CF_ACCOUNT+'/workers/scripts/'+worker+'/deployments',{headers:{Authorization:'Bearer '+process.env.CF_TOKEN}});
+            const j=await r.json();
+            if(!r.ok||!j.success) throw Error(worker+' HTTP '+r.status);
+            const d=j.result.deployments[0];
+            console.log('ACTIVE_DEPLOYMENT',JSON.stringify({worker,id:d.id,created_on:d.created_on,versions:d.versions}));
+          }
+          JS
