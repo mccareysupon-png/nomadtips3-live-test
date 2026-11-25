@@ -39,8 +39,14 @@ try{
  assert.equal(await active(n),created);
  assert.deepEqual(await Promise.all(protectedWorkers.map(active)),protectedBefore);
  assert.deepEqual((await cf('/scripts/'+n+'/schedules')).schedules.map(x=>x.cron),cron.schedules.map(x=>x.cron));
- const html=await fetch('https://'+n+'.mccarey-supon.workers.dev/adaptive-control-test',{signal:AbortSignal.timeout(25000)});
- const body=await html.text();
- assert(html.ok&&body.includes("String(p.odds_source||'').includes('HISTORICAL_RESEARCH_ONLY')"),'MANUAL_HTML_STILL_WRONG');
+ let propagated=false;
+ for(let attempt=0;attempt<25;attempt++){
+  const html=await fetch('https://'+n+'.mccarey-supon.workers.dev/adaptive-control-test?qa='+attempt,{cache:'no-store',signal:AbortSignal.timeout(25000)});
+  const body=await html.text();
+  if(html.ok&&body.includes("String(p.odds_source||'').includes('HISTORICAL_RESEARCH_ONLY')")){propagated=true;break}
+  if(attempt===0||attempt===10||attempt===24)console.log('B46_MANUAL_PROPAGATION_CHECK '+JSON.stringify({attempt,http:html.status,hasNewLabel:body.includes("String(p.odds_source||'').includes"),hasResearchPanel:body.includes('b46-control-latest')}));
+  await new Promise(resolve=>setTimeout(resolve,2000));
+ }
+ assert(propagated,'MANUAL_HTML_NOT_VISIBLE_AFTER_PROPAGATION');
  console.log('B46_MANUAL_PROVENANCE_TEST_DEPLOY_PASS '+JSON.stringify({previous:base,version:created,changedOnly:target,modulesPreserved:modules.size,cronUnchanged:true,protectedWorkersUnchanged:true,productionWrites:0}));
 }catch(e){console.log('B46_MANUAL_PROVENANCE_TEST_FAIL '+String(e?.stack||e));if(deployed&&await active(n)===created)await deploy(base);throw e}
