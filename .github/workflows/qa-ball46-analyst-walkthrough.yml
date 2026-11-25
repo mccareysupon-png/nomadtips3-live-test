@@ -1,0 +1,46 @@
+name: BALL46 analyst walkthrough QA
+on:
+  push:
+    branches: [test/ball46-ui-interaction-baseline-20261125]
+    paths: ['.github/workflows/qa-ball46-analyst-walkthrough.yml']
+permissions:
+  contents: read
+jobs:
+  scroll:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - run: npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+      - run: npx playwright install chromium --only-shell
+      - shell: bash
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright'),assert=require('node:assert/strict');
+          (async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:1440,height:900},serviceWorkers:'block'});const errors=[];p.on('pageerror',e=>errors.push(e.message));
+          try{
+           await p.goto('https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/',{waitUntil:'domcontentloaded'});
+           const rows=p.locator('.match-row[data-match-id]:visible'),expanded=p.locator('.match-expanded:visible');
+           await rows.first().waitFor({timeout:17000});
+           const chosen=await rows.evaluateAll(es=>es.slice(0,3).map(e=>e.dataset.matchId));assert.equal(chosen.length,3);
+           for(const id of chosen){
+             await p.locator('.match-row[data-match-id="'+id+'"]:visible').click();
+             await expanded.filter({has:p.locator('.expand-flow-card')}).first().waitFor({state:'visible',timeout:9000});
+             const active=p.locator('.match-expanded[data-expanded-match="'+id+'"]:visible');
+             await active.waitFor({timeout:8000});
+             const tabs=active.locator('.fmb-tabs'),book=tabs.locator('[data-fmb-book].has-data');
+             await tabs.waitFor({timeout:8500});
+             if(await book.count()){
+              await book.first().click();await p.waitForTimeout(180);
+              assert.equal(await book.first().getAttribute('aria-pressed'),'true');
+             }
+             const d=await tabs.evaluate(el=>({width:el.clientWidth,total:el.scrollWidth,left:el.scrollLeft,max:el.scrollWidth-el.clientWidth}));
+             await tabs.hover();
+             await p.mouse.wheel(1300,0);
+             await p.waitForTimeout(250);
+             const right=await tabs.evaluate(el=>el.scrollLeft);
+             if(d.max>100)assert.ok(right>d.left+100||d.left>d.max-120,'bookmaker strip must scroll');
+             console.log('WALKTHROUGH',JSON.stringify({id,visibleDetails:await expanded.count(),availableBooks:await book.count(),scrollTrack:d,right}));
+           }
+           assert.deepEqual(errors,[]);
+          }finally{await b.close()}})().catch(e=>{console.error(e);process.exitCode=1});
+          JS
