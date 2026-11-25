@@ -30,6 +30,7 @@ try{
   assert(baseline.tableRows>=2,'FORMULA_TABLE_EMPTY_'+name);
   assert(baseline.svgHeight>=155,'CHART_FRAME_MISSING_'+name);
   assert(baseline.scrollWidth<=baseline.viewport+3,'HORIZONTAL_OVERFLOW_'+name);
+  await page.evaluate(()=>{ window.__B46ClickProbe=[];document.addEventListener('click',e=>{if(e.target?.dataset?.rangeDays)window.__B46ClickProbe.push({phase:'document-capture',value:e.target.dataset.rangeDays})},true);for(const button of document.querySelectorAll('#b46-adaptive-research-equity button[data-range-days]'))button.addEventListener('click',()=>window.__B46ClickProbe.push({phase:'target-after',value:button.dataset.rangeDays}));});
   const states=[];
   for(const days of [90,7,30,7,90,30,90,7,30]){
    await page.locator('#b46-adaptive-research-equity button[data-range-days="'+days+'"]').click();
@@ -43,7 +44,7 @@ try{
       tableRows:panel.querySelector('table')?.rows.length,removed:window.__B46NoFlickerObserver.removed.length,
       graphHeight:graph.getBoundingClientRect().height,overflow:document.documentElement.scrollWidth>innerWidth+3};
    },days);
-   console.log('B46_EQUITY_RANGE_STATUS '+JSON.stringify({name,days,status}));
+   console.log('B46_EQUITY_RANGE_STATUS '+JSON.stringify({name,days,status,pageErrors:errors,probe:await page.evaluate(()=>window.__B46ClickProbe)}));
    assert(status.samePanel&&status.sameGraph&&status.sameTable&&status.sameSvg&&status.samePolyline&&status.sameSelector,'DOM_REPLACED_'+name+'_'+days);
    assert(status.pressed==='true'&&status.aria.includes(days+' days'),'BAD_RANGE_'+name+'_'+days);
    assert(status.caption.includes(days+'D'),'CAPTION_NOT_UPDATED_'+name+'_'+days);
