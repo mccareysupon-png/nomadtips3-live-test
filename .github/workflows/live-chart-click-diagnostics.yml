@@ -1,0 +1,46 @@
+name: LIVE chart click QA diagnostics
+on:
+  push:
+    branches: [fix/ball46-live-statistics-inplace-20261125]
+    paths: [.github/workflows/live-chart-click-diagnostics.yml]
+permissions: {contents: read}
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+      - name: Click QA
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+          for(const width of [1440,390]){
+          const page=await browser.newPage({viewport:{width,height:900}});
+          await page.goto('https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/index.html?view=statistics&market=1x2');
+          page.on('pageerror',e=>console.log('PAGE_ERROR',e.message));page.on('response',r=>{if(r.url().includes('/graph?'))console.log('GRAPH_RESPONSE',r.status(),r.url())});
+          const card=page.locator('#b46-finance-chart-card .f46-card');
+          await card.waitFor({timeout:45000});
+          await page.waitForTimeout(1500);
+          await page.evaluate(()=>{window.qaCard=document.querySelector('.f46-card');window.qaPlot=document.querySelector('[data-f46-plot]');});
+          for(const range of ['d7','d30','d90','all']){
+          console.log('CLICK_RANGE',width,range);
+          await page.locator('[data-b46-range="'+range+'"]').click();
+          await page.waitForTimeout(1000);
+          console.log('STATE',await page.evaluate(()=>({buttons:[...document.querySelectorAll('[data-b46-range]')].map(x=>[x.dataset.b46Range,x.className]),source:document.querySelector('#b46-finance-chart-card')?.dataset.b46StatisticsSource,scripts:[...document.scripts].map(s=>s.src).filter(s=>s.includes('performance'))})));
+          await page.waitForFunction(r=>document.querySelector('[data-b46-range="'+r+'"]')?.classList.contains('active'),range,{timeout:20000});
+          assert(await page.evaluate(()=>window.qaCard===document.querySelector('.f46-card')&&window.qaPlot===document.querySelector('[data-f46-plot]')));
+          }
+          for(const metric of await page.locator('[data-b46-mode]').evaluateAll(xs=>xs.map(x=>x.dataset.b46Mode))){
+          await page.locator('[data-b46-mode="'+metric+'"]').click();
+          await page.waitForFunction(m=>document.querySelector('[data-b46-mode="'+m+'"]')?.classList.contains('active'),metric);
+          assert(await page.evaluate(()=>window.qaCard===document.querySelector('.f46-card')));
+          }
+          console.log('CLICK_QA_PASS',width);await page.close();
+          }await browser.close();
+          JS
