@@ -32,3 +32,5 @@ jobs:
 # Retry after secure reader hash provisioned, record HTTP status diagnostics only (no secret output).
 
 # Retry after confirming legacy json(x) helper has no HTTP status parameter; private reader now uses Response.json with 503.
+
+# Retry after distinguishing old PoP 404 during propagation from expected new API 401/405.
