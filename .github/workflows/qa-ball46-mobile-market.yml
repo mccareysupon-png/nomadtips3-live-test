@@ -1,0 +1,64 @@
+name: BALL46 mobile market QA
+on:
+  push:
+    branches: [test/ball46-ui-interaction-baseline-20261125]
+    paths: ['.github/workflows/qa-ball46-mobile-market.yml']
+permissions:
+  contents: read
+jobs:
+  touch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - run: npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+      - run: npx playwright install chromium --only-shell
+      - run: |
+          node <<'JS'
+          const {chromium,devices}=require('playwright'),assert=require('node:assert/strict');
+          const url='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/';
+          (async()=>{const browser=await chromium.launch();try{
+           for(const name of ['Pixel 7','iPhone 13']){
+           const p=await browser.newPage({...devices[name],defaultBrowserType:'chromium',serviceWorkers:'block'});
+           const errors=[];p.on('pageerror',e=>errors.push(e.message));const asset=p.waitForResponse(r=>new URL(r.url()).pathname==='/ui-sync-fixes-343-v2.js',{timeout:28000});
+           await p.goto(url,{waitUntil:'domcontentloaded',timeout:32000});const headers=(await asset).headers();assert.equal(headers['x-b46-test-flow-markers'],'batch-v1');
+           const rows=p.locator('.match-row[data-match-id]:visible');await rows.first().waitFor({timeout:20000});
+           const ids=await rows.evaluateAll(es=>es.slice(0,10).map(e=>e.dataset.matchId));let fit, holder, tabs, books, market;
+           for(const id of ids){
+            const row=rows.and(p.locator('[data-match-id="'+id+'"]'));await row.tap();
+            const expand=p.locator('.match-expanded[data-expanded-match="'+id+'"]:visible');await expand.waitFor({timeout:6500}).catch(()=>{});
+            if(!(await expand.count())){console.log('DETAILS',name,id,await p.locator('[class*="full-market"]:visible').evaluateAll(es=>es.slice(0,5).map(e=>e.className)));continue;}
+            holder=expand.locator('.expand-full-market-card:visible,.b46gn-full-market:visible').first();
+            if(!await holder.waitFor({timeout:3000}).then(()=>true,()=>false))continue;
+            tabs=holder.locator('.fmb-tabs:visible').first();books=holder.locator('[data-fmb-book].has-data:visible');market=holder.locator('.fmb-market:visible');
+            if(!await books.first().waitFor({timeout:4500}).then(()=>true,()=>false))continue;
+            const available=await books.count();
+            for(let j=0;j<Math.min(available,4);j++){const book=books.nth(j);await book.tap();if(await market.first().waitFor({timeout:1200}).then(()=>true,()=>false)&&await market.count()>=6){fit={id,j,available,book:(await book.textContent()).trim(),markets:await market.count()};break;}}
+            if(fit)break;
+           }
+           assert.ok(fit,'no populated mobile market');await tabs.scrollIntoViewIfNeeded();await p.waitForTimeout(450);
+           await p.screenshot({path:name.replace(/\W/g,'-')+'.png'});
+           const snap=()=>holder.evaluate(el=>({height:Math.round(el.getBoundingClientRect().height),top:Math.round(el.getBoundingClientRect().top),scroll:window.scrollY,viewport:innerWidth,pageWidth:document.documentElement.scrollWidth,marketStyle:getComputedStyle(el.querySelector('.fmb-market')).contentVisibility,icons:document.querySelectorAll('.expand-flow-card [data-b46-event-icon]').length}));
+           const cdp=await p.context().newCDPSession(p);const vp=p.viewportSize();const x=Math.round(vp.width*0.5);const observed=[await snap()];
+           for(const sign of [1,1,-1,1,-1,-1]){
+            const y=sign>0?Math.round(vp.height*.80):Math.round(vp.height*.31);
+            await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});
+            for(let i=1;i<=10;i++){await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y-sign*i*29}]});await p.waitForTimeout(25);observed.push(await snap());}
+            await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await p.waitForTimeout(250);observed.push(await snap());
+           }
+           const report={name,fit,heights:[...new Set(observed.map(o=>o.height))],scrollMin:Math.min(...observed.map(o=>o.scroll)),scrollMax:Math.max(...observed.map(o=>o.scroll)),first:observed[0],errors};
+           console.log('MOBILE',JSON.stringify(report));
+           assert.ok(report.scrollMax-report.scrollMin>235,'vertical touch scroll must move');
+           assert.ok(report.first.pageWidth<=report.first.viewport+2,'page must not overflow horizontally');
+           assert.equal(report.heights.length,1,'Full Market height must not change while scrolling');
+           if(fit.available>1){const other=books.nth(fit.j===0?1:0);await other.tap();assert.equal(await other.getAttribute('aria-pressed'),'true');await books.nth(fit.j).tap();assert.equal(await books.nth(fit.j).getAttribute('aria-pressed'),'true');await p.waitForTimeout(250);assert.equal(await market.count(),fit.markets);}
+           assert.deepEqual(errors,[]);await p.close();
+           }
+          }finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-market-screens
+          path: '*.png'
+          if-no-files-found: ignore
+          retention-days: 3
