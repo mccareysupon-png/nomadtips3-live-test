@@ -48,13 +48,15 @@ try{
     const button=document.querySelector('#b46-adaptive-research-equity button[data-range-days="'+d+'"]');
     const b=button.getBoundingClientRect(),at=document.elementFromPoint(b.left+b.width/2,b.top+b.height/2);
     return {button:button.outerHTML,rect:{x:b.x,y:b.y,w:b.width,h:b.height},at:at?.outerHTML.slice(0,450),
-      pointer:getComputedStyle(button).pointerEvents,disabled:button.disabled,buttonClicks:window.__B46ClickProbe};
+      pointer:getComputedStyle(button).pointerEvents,disabled:button.disabled,effectivelyDisabled:button.matches(':disabled'),fieldset:button.closest('fieldset[disabled]')?.outerHTML.slice(0,300),inert:button.closest('[inert]')?.outerHTML.slice(0,300),buttonClicks:window.__B46ClickProbe};
    },days);
    if(days===90&&states.length===0){
      const programmatic=await page.evaluate(()=>{
        const button=document.querySelector('#b46-adaptive-research-equity button[data-range-days="90"]');
        button.click();
-       return {probe:window.__B46ClickProbe,pressed:button.getAttribute('aria-pressed'),
+       const afterNative={pressed:button.getAttribute('aria-pressed'),events:window.__B46ClickProbe.slice()};
+       button.dispatchEvent(new Event('click',{bubbles:true,cancelable:true}));
+       return {afterNative,probe:window.__B46ClickProbe,pressed:button.getAttribute('aria-pressed'),
          caption:document.querySelector('#b46-adaptive-research-equity p.b46pm-stats-cutoff')?.textContent};
      });
      console.log('B46_EQUITY_PROGRAMMATIC_CLICK '+JSON.stringify(programmatic));
