@@ -45,7 +45,18 @@ jobs:
            await p.route('**/b46-receiver-v1/graph?*',async r=>{if(unblock){const wait=unblock;await wait.promise;}await r.continue();});
            await p.goto(origin+'/?b46pm=ou',{waitUntil:'domcontentloaded',timeout:50000});
            const click=async market=>{
-             if(await p.getByRole('button',{name:'Open navigation'}).isVisible())await p.getByRole('button',{name:'Open navigation'}).click();
+             if(mode==='mobile'){
+               const drawer=p.locator('#b46m-drawer');
+               if(await drawer.getAttribute('aria-hidden')!=='false')await p.getByRole('button',{name:'Open navigation'}).click();
+               const base=market==='all'?/^Total(?:\s|$)/i:/^1X2(?:\s|$)/i;
+               const options=drawer.locator('button,a').filter({hasText:base});
+               const visible=[];
+               for(const x of await options.all())if(await x.isVisible())visible.push(x);
+               if(visible.length===1){await visible[0].click({timeout:5500});return;}
+               console.log('B46_MOBILE_BUTTONS '+JSON.stringify(await drawer.locator('button,a').evaluateAll(nodes=>nodes.slice(0,55).map(n=>[n.innerText.trim(),Array.from(n.attributes).filter(a=>a.name.startsWith('data-')).map(a=>[a.name,a.value])]))));
+               await p.locator('button[data-stat-market="'+market+'"]').evaluate(e=>e.click());
+               return;
+             }
              const raw=p.locator('button[data-stat-market="'+market+'"]');
              const b=raw.filter({visible:true});
              if(await b.count()===1){await b.click({timeout:5000});return;}
