@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {mkdirSync,writeFileSync} from 'node:fs';
-import {patchAdaptiveWorker,PATCH_MARK} from './patch.mjs';
+import {patchAdaptiveWorker,upgradeClickGuard,PATCH_MARK} from './patch.mjs';
 const name='ball46-premium-match-colors-test-20261120';
 const protectedNames=['ball46-production','ball46-prematch-only-test-20261120','nomadtips3-engine-343','nomadtips3-5usd-hub-343','nomadtips3-full-market-343-ball46'];
 const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
@@ -43,9 +43,10 @@ try{
  const modules=new Map(installed.modules.map(x=>[x.name,{buffer:Buffer.from(x.content_base64,'base64'),type:x.content_type||'application/javascript+module'}]));
  const source=modules.get(installed.main_module)?.buffer?.toString('utf8');
  assert(source,'MAIN_MISSING');
- const patched=patchAdaptiveWorker(source);
+ const patched=source.includes(PATCH_MARK)?upgradeClickGuard(source):patchAdaptiveWorker(source);
  assert(patched.client.includes(PATCH_MARK),'MARKER_MISSING');
  assert(patched.client.includes('for(const days of [7,30,90])'),'PERIOD_BUTTONS_MISSING');
+ assert(patched.client.includes('b46pm-adaptive-range-btn'),'UNIQUE_RANGE_CLASS_MISSING');
  assert(!patched.client.includes("b46AdaptiveChartDays=days;b46AdaptivePanel(content);"),'OLD_FLICKER_HANDLER_SURVIVES');
  modules.set(installed.main_module,{buffer:Buffer.from(patched.worker),type:'application/javascript+module'});
  report.patch={previousModuleSha:sha(Buffer.from(source)),candidateModuleSha:sha(Buffer.from(patched.worker)),originalClientSize:patched.originalClient.length,patchedClientSize:patched.client.length,oldGraphSize:patched.oldGraphSize,newGraphSize:patched.newGraphSize,moduleCount:modules.size};
