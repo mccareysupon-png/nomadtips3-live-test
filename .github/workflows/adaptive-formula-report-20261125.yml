@@ -1,0 +1,29 @@
+name: Adaptive formula report
+on:
+  push:
+    branches: [audit/adaptive-formulas-20261125]
+permissions:
+  contents: read
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read existing TEST state
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node --input-type=module <<'JS'
+          import {createHmac} from 'node:crypto';
+          import assert from 'node:assert/strict';
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          assert(token);
+          const auth='Bearer '+createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const r=await fetch('https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev/ou-adaptive-research-state-test',{headers:{authorization:auth,accept:'application/json'},signal:AbortSignal.timeout(30000)});
+          assert(r.ok,'HTTP '+r.status);
+          const j=await r.json();
+          assert.equal(j.formulas?.length,42);
+          console.log('FORMULAS '+JSON.stringify(j.formulas));
+          console.log('SIDES '+JSON.stringify(j.bySelection));
+          console.log('DAILY '+JSON.stringify(j.daily));
+          console.log('RECORDS '+JSON.stringify(j.records));
+          JS
