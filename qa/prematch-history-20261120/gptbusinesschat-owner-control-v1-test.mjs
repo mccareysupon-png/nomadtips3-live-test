@@ -4,7 +4,7 @@ const rows=(db,q,...a)=>Array.from(db.exec(q,...a));
 export function initOwnerControl(db){
  db.exec("CREATE TABLE IF NOT EXISTS gptbc_ou_control_test(formula TEXT PRIMARY KEY, enabled INTEGER NOT NULL CHECK(enabled IN (0,1)), revision INTEGER NOT NULL, updated_at INTEGER NOT NULL)");
  db.exec("CREATE TABLE IF NOT EXISTS gptbc_ou_audit_test(id INTEGER PRIMARY KEY AUTOINCREMENT, formula TEXT NOT NULL, old_enabled INTEGER NOT NULL, new_enabled INTEGER NOT NULL, revision INTEGER NOT NULL, at INTEGER NOT NULL)");
- for(const f of FORMULAS) db.exec("INSERT OR IGNORE INTO gptbc_ou_control_test VALUES(?,0,0,0)",f);
+ for(const f of FORMULAS) db.exec("INSERT OR IGNORE INTO gptbc_ou_control_test VALUES(?,1,0,0)",f);
 }
 export function listOwnerControl(db){
  initOwnerControl(db);
