@@ -1,0 +1,19 @@
+name: BALL46 TEST 25 Nov after-cutoff actual O-U cron code read only
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-nov25-current-cron-code-audit.yml]
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Read current deployed Cloudflare Worker entry only, no writes or provider calls
+        run: node qa/prematch-history-20261120/b46-ou-nov25-current-cron-code-audit.mjs
