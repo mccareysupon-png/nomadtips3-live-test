@@ -1,0 +1,26 @@
+name: LIVE Statistics TEST diagnostic
+on:
+  push:
+    branches: [fix/ball46-live-statistics-inplace-20261125]
+    paths: ['.github/workflows/live-statistics-inplace-diagnostic.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect public TEST renderer
+        run: |
+          node --input-type=module <<'NODE'
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          const r=await fetch(base+'/longterm-performance-343.js',{cache:'no-store'});
+          if(!r.ok) throw Error('HTTP '+r.status);
+          const s=await r.text();
+          if(!s.includes('b46-perf')) throw Error('Renderer not found');
+          console.log('SOURCE_BYTES',s.length);
+          console.log(s);
+          NODE
