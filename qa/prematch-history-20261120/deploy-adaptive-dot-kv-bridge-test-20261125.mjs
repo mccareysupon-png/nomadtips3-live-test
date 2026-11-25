@@ -12,7 +12,8 @@ const oldVersion='da5793ff-3d7b-49f9-a7d7-0aa9d9952d02';
 const guarded=['ball46-production','nomadtips3-engine-343','nomadtips3-5usd-hub-343','nomadtips3-full-market-343-ball46','ball46-premium-match-colors-test-20261120'];
 const base='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
 async function cf(path,opts={}){
- const resp=await fetch(base+path,{...opts,headers:{authorization:'Bearer '+token,...opts.headers},signal:AbortSignal.timeout(70000)});
+ const url=path.startsWith('/storage/')?'https://api.cloudflare.com/client/v4/accounts/'+account+path:base+path;
+ const resp=await fetch(url,{...opts,headers:{authorization:'Bearer '+token,...opts.headers},signal:AbortSignal.timeout(70000)});
  const json=await resp.json().catch(()=>null);
  assert(resp.ok&&json?.success,path+'_HTTP_'+resp.status+' '+JSON.stringify(json?.errors).slice(0,250));
  return json.result;
