@@ -20,21 +20,26 @@ jobs:
           const url='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/';
           (async()=>{
            const browser=await chromium.launch();
-           try {for(const variant of ['before','stable geometry']){
+           let baseline,benchmark;
+           try {for(const variant of ['before','deployed TEST']){
            const page=await browser.newPage({viewport:{width:1440,height:900},serviceWorkers:'block'});const err=[];page.on('pageerror',e=>err.push(e.message));
+           const asset='/ui-sync-fixes-343-v2.js';
+           if(variant==='before'){const res=await page.request.get('https://www.ball46.com'+asset);assert.equal(res.status(),200);const body=await res.text();assert.ok(body.includes('function pointAtX'));await page.route('**'+asset+'*',r=>r.fulfill({status:200,contentType:'application/javascript',body}));}
+           const assetRes=page.waitForResponse(r=>new URL(r.url()).pathname===asset,{timeout:22000});
            await page.goto(url,{waitUntil:'domcontentloaded',timeout:25000});
-           if(variant!=='before')await page.addStyleTag({content:'.expand-full-market-card .fmb-market{content-visibility:visible!important;contain-intrinsic-size:none!important}'});
+           const assetHeaders=(await assetRes).headers(); if(variant!=='before')assert.equal(assetHeaders['x-b46-test-flow-markers'],'batch-v1');
+           if(variant==='before')await page.addStyleTag({content:'.expand-full-market-card .fmb-market{content-visibility:auto!important;contain-intrinsic-size:auto 230px!important}'});
            const rows=page.locator('.match-row[data-match-id]:visible');await rows.first().waitFor({timeout:15000});
            const market=page.locator('.expand-full-market-card .fmb-market:visible');
            let fit=null;
            for(let i=0;i<Math.min(6,await rows.count())&&!fit;i++){
-            await rows.nth(i).click();
+            const row=benchmark?page.locator('.match-row[data-match-id="'+benchmark.id+'"]:visible'):rows.nth(i);await row.click();
             const books=page.locator('.expand-full-market-card [data-fmb-book]:visible');
             if(!await books.first().waitFor({timeout:5000}).then(()=>true,()=>false))continue;
             for(let j=0;j<Math.min(6,await books.count());j++){
-              const b=books.nth(j);if(!await b.isEnabled())continue;
+              const b=benchmark?books.filter({hasText:benchmark.book}).first():books.nth(j);if(!await b.isEnabled())continue;
               await b.click();
-              if(await market.first().waitFor({timeout:850}).then(()=>true,()=>false)){fit={id:await row.getAttribute('data-match-id'),book:await b.textContent(),markets:await market.count()};break}
+              if(await market.first().waitFor({timeout:850}).then(()=>true,()=>false)&&await market.count()>=8){fit={id:await row.getAttribute('data-match-id'),book:await b.textContent(),markets:await market.count()};break}
             }
            }
            if(!fit)throw Error('Could not find a populated market');
@@ -54,6 +59,11 @@ jobs:
            const {profile}=await cdp.send('Profiler.stop');const names={};for(const n of profile.nodes){if(!n.hitCount)continue;const f=n.callFrame;const name=(f.functionName||'(anonymous)')+' '+(f.url?f.url.split('/').pop().split('?')[0]+':'+f.lineNumber:'');names[name]=(names[name]||0)+n.hitCount;}
            const diag=await page.evaluate(()=>{const d=window.qa;return {heights:[...new Set(d.geometry.map(x=>x[1]))],maxFrame:Math.max(...d.geometry.map(x=>x[0])),long:d.long,flow:d.flow}});
            console.log('AB',JSON.stringify({variant,fit,diag,top:Object.entries(names).sort((a,b)=>b[1]-a[1]).slice(0,24),err}));
+           const iconCount=await page.locator('.expand-flow-card [data-b46-event-icon]').count();
+           console.log('ICONS',variant,iconCount);
+           if(variant==='before'){baseline={diag,iconCount};}
+           else {assert.equal(diag.heights.length,1,'market height while scrolling');assert.ok(iconCount>0,'event markers still present');assert.ok(diag.maxFrame<Math.max(190,baseline.diag.maxFrame*0.8),'expected a lower worst-frame gap');assert.deepEqual(err,[]);
+           const books=page.locator('.expand-full-market-card [data-fmb-book]:visible');const other=books.filter({hasText:'Pinnacle'}).first();if(benchmark.book.trim()!=='Pinnacle')await other.click();await books.filter({hasText:benchmark.book}).first().click();await market.first().waitFor({timeout:5000});assert.equal(await market.count(),benchmark.markets);console.log('PASS: stable market height, markers and bookmaker switching.');}
            await page.close();
            }}finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exitCode=1});
