@@ -57,12 +57,16 @@ jobs:
                   await wait.waitFor({state:'hidden',timeout:18000});
                   await card.locator('.f46-card').waitFor({state:'visible',timeout:18000});
                   if(switchMarket){
-                    const height=await card.locator('[data-b46-perf-shell]').evaluate(e=>e.getBoundingClientRect().height);
+                    const market=page.locator('[data-stat-market="1x2"]:visible').first();
+                    await market.scrollIntoViewIfNeeded();
+                    await page.waitForFunction(()=>window.__B46_FAST_DETAILS_REQUESTED===true);
                     gate=hold();
-                    await page.locator('[data-stat-market="1x2"]:visible').first().click();
+                    await market.click();
                     await wait.waitFor({state:'visible',timeout:5000});
                     const pending=await wait.getAttribute('data-held-height');
-                    if(!pending||Math.abs(+pending-height)>1)throw Error('chart height not preserved: '+height+' / '+pending);
+                    const shell=card.locator('[data-b46-perf-shell]');
+                    const height=await shell.evaluate(e=>e.getBoundingClientRect().height);
+                    if(!pending||Math.abs(+pending-height)>1)throw Error('reserved chart height mismatches actual layout: '+height+' / '+pending);
                     release();
                     await page.waitForFunction(()=>document.querySelector('#b46-finance-chart-card')?.dataset.b46PaintedMarket==='1x2');
                     await wait.waitFor({state:'hidden'});
