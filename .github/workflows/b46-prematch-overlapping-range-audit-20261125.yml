@@ -1,0 +1,18 @@
+name: BALL46 PreMatch overlapping period controls source audit
+on:
+  push:
+    branches: [release/b46-adaptive-readonly-page-20261125]
+    paths: ['.github/workflows/b46-prematch-overlapping-range-audit-20261125.yml']
+permissions: {contents: read}
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node qa/adaptive-readonly-production-20261125/prematch-source-audit.mjs
