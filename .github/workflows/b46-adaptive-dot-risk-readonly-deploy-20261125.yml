@@ -1,0 +1,30 @@
+name: BALL46 Adaptive Dot separate read-only Risk Supervisor TEST deploy 20261125
+on:
+  push:
+    branches: [feature/ball46-adaptive-manual-control-test-20261125]
+    paths: [.github/workflows/b46-adaptive-dot-risk-readonly-deploy-20261125.yml]
+permissions: {contents: read}
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Check Dot data projection and TEST Worker deploy source
+        run: |
+          node --check qa/prematch-history-20261120/b46-adaptive-dot-risk-readonly-v1-test.mjs
+          node --check qa/prematch-history-20261120/b46-adaptive-dot-readonly-worker-patch-test.mjs
+          node --check qa/prematch-history-20261120/deploy-adaptive-dot-risk-readonly-test-20261125.mjs
+      - name: Unit proof read-only FT metrics, Shadow, stale handling and original risk controls
+        run: |
+          node --experimental-sqlite qa/prematch-history-20261120/b46-adaptive-formula-control-risk.test.mjs
+          node --experimental-sqlite qa/prematch-history-20261120/b46-adaptive-dot-risk-readonly-v1.test.mjs
+      - name: Read-only preflight exact active TEST version
+        run: node qa/prematch-history-20261120/deploy-adaptive-dot-risk-readonly-test-20261125.mjs --dry-run
+      - name: Create dedicated secret hash and deploy read-only Dot path in TEST Worker
+        run: node qa/prematch-history-20261120/deploy-adaptive-dot-risk-readonly-test-20261125.mjs
