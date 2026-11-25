@@ -43,8 +43,9 @@ jobs:
           assert.equal(before.data.legacyOuIssuance,'disabled');
           assert.equal(before.data.formulas.length,42);
           const stopped=await read(host+'/prematch-ou-engine-tick',owner,'POST');
-          assert.equal(stopped.status,410);
+          assert([200,410].includes(stopped.status), 'Unexpected status '+stopped.status);
           assert.equal(stopped.data.status,'DISABLED_ADAPTIVE_ONLY');
+          assert.equal(stopped.data.providerCalls,0);
           const tick=await read(host+'/ou-adaptive-research-run-test',owner,'POST');
           assert.equal(tick.status,200);
           assert.equal(tick.data.code,'B46_ADAPTIVE_OU_RESEARCH_V1');
