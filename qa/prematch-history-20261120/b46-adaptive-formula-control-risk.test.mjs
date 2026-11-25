@@ -42,6 +42,13 @@ db.exec('INSERT INTO b46_adaptive_ou_research_v1_ledger_test('+columns+') VALUES
 const feed=adaptiveActiveSelections(db,now+6);
 assert.equal(feed.selected.some(x=>x.formula_id==='B02'),false);
 assert.equal(feed.suppressedShadowCount,1);
+const latest=adaptiveControlOverview(db,now+6);
+assert.equal(latest.latestSignals.length,1,'LATEST_LEDGER_SIGNAL_MISSING');
+assert.equal(latest.latestPickedAt,now-10,'LATEST_PICK_AT_MISMATCH');
+assert.equal(latest.latestSignals[0].formula_id,'B02');
+assert.equal(latest.latestSignals[0].eligible,false,'PAUSED_LATEST_SIGNAL_WRONG');
+assert.equal(latest.latestSignals[0].quoteResearchOnly,true);
+
 assert.equal(db.exec("SELECT COUNT(*) n FROM b46_adaptive_ou_research_v1_ledger_test WHERE formula_id='B02'")[0].n,7);
 assert.ok(overview.events.some(e=>e.action==='AUTO_PAUSE_DD'));
 console.log('B46_ADAPTIVE_CONTROL_TEST_PASS '+JSON.stringify({formulas:overview.formulas.length,autoStopped:'B02',manualPause:'B02',riskReset:true,shadowPreserved:true,dotCannotRun:true,providerCalls:0,productionWrites:0}));
