@@ -15,13 +15,13 @@ jobs:
       - run: |
           node <<'JS'
           const {chromium,devices}=require('playwright'),assert=require('node:assert/strict');
-          const url='https://16bb9ec1-ball46-production.mccarey-supon.workers.dev/';
+          const url='https://www.ball46.com/';
           (async()=>{const browser=await chromium.launch();try{
            for(const name of ['Desktop','Pixel 7','iPhone 13']){
            const p=await browser.newPage({...(devices[name]??{viewport:{width:1440,height:900}}),defaultBrowserType:'chromium',serviceWorkers:'block'});
            const errors=[];p.on('pageerror',e=>errors.push(e.message));const asset=p.waitForResponse(r=>new URL(r.url()).pathname==='/ui-sync-fixes-343-v2.js',{timeout:28000});
            const doc=await p.goto(url,{waitUntil:'domcontentloaded',timeout:32000});
-           assert.equal(new URL(p.url()).origin,new URL(url).origin,'wrong entry origin');assert.equal(doc.headers()['x-b46-flow-scroll'],'batch-v1');
+           assert.ok(['ball46.com','www.ball46.com'].includes(new URL(p.url()).hostname),'Production origin expected');assert.equal(doc.headers()['x-b46-flow-scroll'],'batch-v1');
            assert.equal(await p.locator('#b46-full-market-scroll-v1').count(),1);
            const response=await asset;assert.equal(new URL(response.url()).searchParams.get('b46_flow'),'batch-v1');assert.ok((await response.text()).includes('B46_TEST_FLOW_BATCH_MARKERS_V1'),'patched event marker JS required');
            const desktop=name==='Desktop';
@@ -59,14 +59,16 @@ jobs:
            assert.ok(report.first.pageWidth<=vp.width+2,'page must not overflow horizontally');
            assert.equal(report.first.marketStyle,'visible');assert.equal(report.heights.length,1,'Full Market height must not change while scrolling');
            if(fit.available>1){const other=books.nth(fit.j===0?1:0);await (desktop?other.click():other.tap());assert.equal(await other.getAttribute('aria-pressed'),'true');await (desktop?books.nth(fit.j).click():books.nth(fit.j).tap());assert.equal(await books.nth(fit.j).getAttribute('aria-pressed'),'true');await p.waitForTimeout(250);assert.equal(await market.count(),fit.markets);}
-           assert.deepEqual(errors,[]);await p.close();
+           assert.deepEqual(errors,[]);
+           if(desktop){for(const route of ['/?view=statistics','/prematch/over-under/']){const check=await p.request.get(new URL(route,url).href,{timeout:10000});assert.equal(check.status(),200,'untouched route '+route);const html=await check.text();assert.ok(html.includes('<html')&&html.length>2000);assert.ok(!html.includes('B46_PM_NAV_INDEPENDENT_PALETTE_V1')&&!html.includes('B46_TEST_THEME_LOADING_V1'));console.log('UNCHANGED_ROUTE',route,check.status());}}
+           await p.close();
            }
           }finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});
           JS
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: release-market-screens
+          name: production-market-screens
           path: '*.png'
           if-no-files-found: ignore
           retention-days: 3
