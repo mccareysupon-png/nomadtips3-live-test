@@ -1,0 +1,19 @@
+name: BALL46 TEST O-U status 25 Nov after 13 ICT read-only audit
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-nov25-after-cutoff-live-audit.yml]
+permissions: {contents: read}
+jobs:
+  read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Current read-only TEST O-U engine, adaptive, quota and latest picks
+        run: node qa/prematch-history-20261120/b46-ou-nov25-19h-no-new-picks-audit.mjs
