@@ -1,0 +1,24 @@
+name: BALL46 Performance no-flicker existing TEST browser QA only
+on:
+  push:
+    branches: [fix/b46-prematch-perf-range-inplace-20261125]
+    paths: ['.github/workflows/b46-perf-range-inplace-browser-only.yml']
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - run: node qa/perf-range-inplace-20261125/browser-qa.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b46-perf-inplace-browser-${{ github.run_id }}
+          path: qa/perf-range-inplace-20261125/audit/
+          if-no-files-found: warn
