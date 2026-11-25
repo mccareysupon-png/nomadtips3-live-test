@@ -44,7 +44,13 @@ try{
       tableRows:panel.querySelector('table')?.rows.length,removed:window.__B46NoFlickerObserver.removed.length,
       graphHeight:graph.getBoundingClientRect().height,overflow:document.documentElement.scrollWidth>innerWidth+3};
    },days);
-   console.log('B46_EQUITY_RANGE_STATUS '+JSON.stringify({name,days,status,pageErrors:errors,probe:await page.evaluate(()=>window.__B46ClickProbe)}));
+   const hit=await page.evaluate(d=>{
+    const button=document.querySelector('#b46-adaptive-research-equity button[data-range-days="'+d+'"]');
+    const b=button.getBoundingClientRect(),at=document.elementFromPoint(b.left+b.width/2,b.top+b.height/2);
+    return {button:button.outerHTML,rect:{x:b.x,y:b.y,w:b.width,h:b.height},at:at?.outerHTML.slice(0,450),
+      pointer:getComputedStyle(button).pointerEvents,disabled:button.disabled,buttonClicks:window.__B46ClickProbe};
+   },days);
+   console.log('B46_EQUITY_RANGE_STATUS '+JSON.stringify({name,days,status,pageErrors:errors,hit}));
    assert(status.samePanel&&status.sameGraph&&status.sameTable&&status.sameSvg&&status.samePolyline&&status.sameSelector,'DOM_REPLACED_'+name+'_'+days);
    assert(status.pressed==='true'&&status.aria.includes(days+' days'),'BAD_RANGE_'+name+'_'+days);
    assert(status.caption.includes(days+'D'),'CAPTION_NOT_UPDATED_'+name+'_'+days);
