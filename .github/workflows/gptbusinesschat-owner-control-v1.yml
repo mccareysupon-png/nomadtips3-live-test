@@ -1,0 +1,39 @@
+name: gptbusinesschat-owner-control-v1
+on:
+  push:
+    branches: [gptbusinesschat/ball46-owner-control-v1]
+permissions:
+  contents: read
+jobs:
+  api-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test manual control
+        working-directory: qa/prematch-history-20261120
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {DatabaseSync} from 'node:sqlite';
+          import {handleOwnerControl,ownerControlEnabled} from './gptbusinesschat-owner-control-v1-test.mjs';
+          const s=new DatabaseSync(':memory:');
+          const db={exec(q,...a){const p=s.prepare(q);return p.columns().length?p.all(...a):(p.run(...a),[]);},transaction(fn){s.exec('BEGIN');try{fn();s.exec('COMMIT')}catch(e){s.exec('ROLLBACK');throw e}}};
+          const call=(path,body,authorized=true)=>handleOwnerControl(new Request('https://test.invalid'+path,{method:body===undefined?'GET':'POST',headers:{'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)}),db,{authorized});
+          assert.equal((await call('/owner/api/formulas',undefined,false)).status,401);
+          const list=await (await call('/owner/api/formulas')).json();
+          assert.equal(list.formulas.length,42);
+          assert(list.formulas.every(f=>!f.enabled));
+          for(const f of list.formulas){
+            assert.equal((await call('/owner/api/formulas/state',{formula:f.formula,enabled:true,revision:0})).status,200);
+            assert(ownerControlEnabled(db,f.formula));
+            assert.equal((await call('/owner/api/formulas/state',{formula:f.formula,enabled:false,revision:0})).status,409);
+            assert.equal((await call('/owner/api/formulas/state',{formula:f.formula,enabled:false,revision:1})).status,200);
+            assert(!ownerControlEnabled(db,f.formula));
+          }
+          assert.equal((await call('/owner/api/formulas/state',{formula:'INVALID',enabled:true,revision:0})).status,400);
+          assert.equal((await (await call('/owner/api/audit')).json()).audit.length,84);
+          console.log('PASS: 42 formulas, 84 transitions, authorization, revision conflicts, audit');
+          JS
