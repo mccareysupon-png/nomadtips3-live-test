@@ -1,0 +1,141 @@
+name: LIVE chart production guarded deploy
+on:
+  push:
+    branches: [fix/ball46-live-statistics-inplace-20261125]
+    paths: [.github/workflows/live-chart-production-deploy.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Deploy isolated chart asset
+        id: release
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          import {execFileSync} from 'node:child_process';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&account,'CLOUDFLARE_TEST_SECRETS_MISSING');
+          const name='ball46-production',host='https://ball46.com';
+          const api='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const protectedWorkers=['ball46-prematch-only-test-20261120','ball46-premium-match-colors-test-20261120',
+           'nomadtips3-engine-343','nomadtips3-5usd-hub-343','nomadtips3-full-market-343-ball46'];
+          async function cf(path,opt={}){
+           const r=await fetch(api+path,{...opt,headers:{authorization:'Bearer '+token,...opt.headers},signal:AbortSignal.timeout(55000)});
+           const j=await r.json();assert(r.ok&&j.success,'CF_'+path+'_'+r.status+'_'+JSON.stringify(j.errors??[]).slice(0,250));return j.result;
+          }
+          const ver=async n=>(await cf('/scripts/'+n+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+          const frozen=Object.fromEntries(await Promise.all(protectedWorkers.map(async n=>[n,await ver(n)])));
+          const current=await ver(name);
+          const [v,settings]=await Promise.all([
+           cf('/workers/'+name+'/versions/'+current+'?include=modules'),
+           cf('/scripts/'+name+'/settings')]);
+          const modules=Object.fromEntries(v.modules.map(m=>[m.name,Buffer.from(m.content_base64,'base64').toString()]));
+          const main=v.main_module,source=modules[main];
+          
+          assert.equal(current,'ed321803-bc3c-488e-9552-62a464fa79cf','PRODUCTION_VERSION_DRIFT');
+          assert.equal(v.modules.length,1,'MULTI_MODULE_ABORT');
+          const client=fs.readFileSync('qa/live-statistics-20261125/longterm-performance-test.js','utf8');
+          const test=await fetch('https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/longterm-performance-343.js?qa='+Date.now());
+          assert.equal(await test.text(),client,'TEST_ASSET_MISMATCH');
+          const old=await fetch(host+'/longterm-performance-343.js?qa='+Date.now());assert(old.ok);const original=await old.text();
+          const candidates=[JSON.stringify(original),JSON.stringify(original.trimEnd())];
+          const matches=candidates.filter(x=>source.split(x).length===2);
+          assert.equal(matches.length,1,'PRODUCTION_ASSET_NOT_UNIQUELY_EMBEDDED_ABORT');
+          const worker=source.replace(matches[0],()=>JSON.stringify(client));
+          assert.equal(worker.replace(JSON.stringify(client),()=>matches[0]),source,'UNRELATED_CODE_CHANGED');
+          for(const [n,t] of [['worker',worker],['client',client]]){fs.writeFileSync('/tmp/'+n+'.mjs',t);execFileSync(process.execPath,['--check','/tmp/'+n+'.mjs']);}
+          const mods={...modules,[main]:worker};
+          assert.equal(await ver(name),current,'CONCURRENT_FRONTEND_UPDATE_ABORT');
+          const metadata={main_module:main,compatibility_date:v.compatibility_date||'2026-11-20',
+           bindings:settings.bindings.map(b=>({name:b.name,type:'inherit'})),
+           ...(v.compatibility_flags?.length?{compatibility_flags:v.compatibility_flags}:{})};
+          const form=new FormData();
+          form.append('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}),'metadata.json');
+          for(const [moduleName,t] of Object.entries(mods))
+           form.append(moduleName,new Blob([t],{type:'application/javascript+module'}),moduleName);
+          console.log('PRODUCTION_PREVIOUS',current);
+          try {
+          await cf('/scripts/'+name+'?bindings_inherit=strict',{method:'PUT',body:form});
+          let target=null;
+          for(let i=0;i<45;i++){
+           const next=await ver(name);
+           if(next!==current){
+            const raw=await cf('/workers/'+name+'/versions/'+next+'?include=modules');
+            const got=Object.fromEntries(raw.modules.map(m=>[m.name,Buffer.from(m.content_base64,'base64').toString()]));
+            if(Object.keys(got).length===Object.keys(mods).length&&
+             Object.entries(mods).every(([k,v])=>got[k]===v)){target=next;break}
+           }
+           await new Promise(resolve=>setTimeout(resolve,900));
+          }
+          assert(target,'NEW_TEST_FRONTEND_BINARY_NOT_VERIFIED');
+          await cf('/scripts/'+name+'/deployments',{method:'POST',headers:{'content-type':'application/json'},
+           body:JSON.stringify({strategy:'percentage',versions:[{version_id:target,percentage:100}],code_update_strategy:{mode:'immediate'}})});
+          
+          console.log('PRODUCTION_DEPLOY',target,'ROLLBACK',current);
+          const response=await fetch(host+'/longterm-performance-343.js?qa='+Date.now());assert.equal(await response.text(),client);
+          assert.deepEqual(Object.fromEntries(await Promise.all(protectedWorkers.map(async n=>[n,await ver(n)]))),frozen);
+          
+          }catch(e){if(await ver(name)!==current){await cf('/scripts/'+name+'/deployments',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:current,percentage:100}]})});assert.equal(await ver(name),current);console.log('ROLLBACK_VERIFIED',current)}throw e}
+          JS
+      - name: Install browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+      - name: Click QA
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+          for(const width of [1440,390]){
+          const page=await browser.newPage({viewport:{width,height:900}});
+          await page.goto('https://ball46.com/index.html?view=statistics&market=1x2');
+          page.on('pageerror',e=>console.log('PAGE_ERROR',e.message));page.on('response',r=>{if(r.url().includes('/graph?'))console.log('GRAPH_RESPONSE',r.status(),r.url())});
+          const card=page.locator('#b46-finance-chart-card .f46-card');
+          await card.waitFor({timeout:45000});
+          await page.waitForTimeout(1500);
+          await page.evaluate(()=>{window.qaCard=document.querySelector('.f46-card');window.qaPlot=document.querySelector('[data-f46-plot]');});
+          for(const range of ['d7','d30','d90','all']){
+          console.log('CLICK_RANGE',width,range);
+          await page.locator('button[data-b46-range="'+range+'"]').click();
+          await page.waitForTimeout(1000);
+          console.log('STATE',await page.evaluate(()=>({buttons:[...document.querySelectorAll('button[data-b46-range]')].map(x=>[x.dataset.b46Range,x.className]),source:document.querySelector('#b46-finance-chart-card')?.dataset.b46StatisticsSource,scripts:[...document.scripts].map(s=>s.src).filter(s=>s.includes('performance'))})));
+          await page.waitForFunction(r=>document.querySelector('button[data-b46-range="'+r+'"]')?.classList.contains('active')&&document.querySelector('#b46-finance-chart-card')?.dataset.b46Range===r&&document.querySelector('#b46-finance-chart-card')?.dataset.b46StatisticsSource==='receiver',range,{timeout:20000});
+          assert(await page.evaluate(()=>window.qaCard===document.querySelector('.f46-card')&&window.qaPlot===document.querySelector('[data-f46-plot]')));
+          }
+          for(const metric of await page.locator('button[data-b46-mode]').evaluateAll(xs=>xs.map(x=>x.dataset.b46Mode))){
+          await page.locator('button[data-b46-mode="'+metric+'"]').click();
+          await page.waitForFunction(m=>document.querySelector('button[data-b46-mode="'+m+'"]')?.classList.contains('active'),metric);
+          assert(await page.evaluate(()=>window.qaCard===document.querySelector('.f46-card')));
+          }
+          console.log('CLICK_QA_PASS',width);await page.close();
+          }await browser.close();
+          JS
+
+      - name: Rollback on failed QA
+        if: failure() && steps.release.outcome == 'success'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const base='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers/scripts/ball46-production/deployments';
+          const headers={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'content-type':'application/json'};
+          const previous='ed321803-bc3c-488e-9552-62a464fa79cf';
+          const r=await fetch(base+'?per_page=1',{headers});const j=await r.json();assert(j.success);
+          const current=j.result.deployments[0].versions[0].version_id;
+          if(current!==previous){const rr=await fetch(base,{method:'POST',headers,body:JSON.stringify({strategy:'percentage',versions:[{version_id:previous,percentage:100}]})});assert((await rr.json()).success);const check=await (await fetch(base+'?per_page=1',{headers})).json();assert.equal(check.result.deployments[0].versions[0].version_id,previous);console.log('ROLLBACK_VERIFIED',previous)}
+          JS
