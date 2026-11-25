@@ -92,6 +92,7 @@ try{
   await page.locator('#key').fill(auth.slice(7));await page.locator('#signin').click();
   await page.waitForSelector('#dashboard:not([hidden])',{timeout:35000});
   assert.equal(await page.locator('#rows tr').count(),42,'MANUAL_42_FORMULA_REGRESSION');
+  await page.waitForFunction(count=>document.querySelectorAll('#b46-control-latest-rows .latest-item').length===count,controlSnapshot.items.length,{timeout:25000});
   const controlRows=await page.locator('#b46-control-latest-rows .latest-item').allInnerTexts();
   assert.equal(controlRows.length,controlSnapshot.items.length,'MANUAL_LATEST_COUNT_WRONG');
   for(const row of controlSnapshot.items){
