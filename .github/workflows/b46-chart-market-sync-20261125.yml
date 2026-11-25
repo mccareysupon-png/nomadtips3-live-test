@@ -46,8 +46,12 @@ jobs:
            await p.goto(origin+'/?b46pm=ou',{waitUntil:'domcontentloaded',timeout:50000});
            const click=async market=>{
              if(await p.getByRole('button',{name:'Open navigation'}).isVisible())await p.getByRole('button',{name:'Open navigation'}).click();
-             const b=p.locator('button[data-stat-market="'+market+'"]:visible');
-             await b.click({timeout:12000});
+             const raw=p.locator('button[data-stat-market="'+market+'"]');
+             const b=raw.filter({visible:true});
+             if(await b.count()===1){await b.click({timeout:5000});return;}
+             if(mode!=='mobile'||await raw.count()!==1)throw Error('MARKET_CONTROL_MISSING '+mode+' '+market);
+             console.log('B46_MARKET_MOBILE_INTERNAL_CONTROL '+market);
+             await raw.evaluate(e=>e.click());
            };
            await click('all');const card=p.locator('#b46-finance-chart-card'),bar=card.locator('.f46-heading h3');
            await bar.getByText('Total',{exact:false}).waitFor({timeout:30000}).catch(async()=>{await p.waitForFunction(()=>document.querySelector('#b46-finance-chart-card .f46-heading h3')?.textContent.includes('Total'),{},{timeout:30000})});
