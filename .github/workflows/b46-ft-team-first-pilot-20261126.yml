@@ -1,0 +1,100 @@
+name: BALL46 FT team-first pilot, single real call TEST only
+on:
+  push:
+    branches: [feature/ball46-adaptive-manual-control-test-20261125]
+    paths: ['.github/workflows/b46-ft-team-first-pilot-20261126.yml']
+permissions:
+  contents: read
+concurrency:
+  group: ball46-ft-phase1-phase2-guarded-oneoff-20261126
+  cancel-in-progress: false
+jobs:
+  one-team:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Check only one eligible team, validate FT and read back from TEST
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          import fs from 'node:fs';
+          const {CLOUDFLARE_API_TOKEN:token,CLOUDFLARE_ACCOUNT_ID:account,FIVEDOLLAR_API_KEY:key}=process.env;
+          const out={status:'NOT_STARTED',providerRequests:0,http429:0,productionWrites:0,import:null};
+          const save=()=>fs.writeFileSync('team-first-pilot.json',JSON.stringify(out,null,2));
+          const sec=()=>Math.floor(Date.now()/1000);
+          const base='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          const hub='https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/health';
+          const neverReplay=new Set([167913,173176,792,30127,9076,7749,171296,52924]);
+          const expectTest='777a95ab-719a-495d-9d84-7f88c4afae4b';
+          const names=['ball46-prematch-only-test-20261120','ball46-production','nomadtips3-5usd-hub-343','nomadtips3-engine-343'];
+          async function json(url,opts={}){
+           const r=await fetch(url,{...opts,signal:AbortSignal.timeout(25000),redirect:'error',cache:'no-store'});
+           if(!r.ok)throw Error(new URL(url).pathname+' HTTP '+r.status);
+           return r.json();
+          }
+          function headers(v){return {authorization:'Bearer '+v,accept:'application/json'}}
+          const ownerAuth=token&&crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const get=path=>json(base+path,{headers:headers(ownerAuth)});
+          async function versions(){return Object.fromEntries(await Promise.all(names.map(async n=>{const x=await json('https://api.cloudflare.com/client/v4/accounts/'+account+'/workers/scripts/'+n+'/deployments',{headers:headers(token)});const v=x.result.deployments[0].versions;assert(v.length===1&&v[0].percentage===100,'MULTIPLE_DEPLOYED_VERSIONS');return [n,v[0].version_id]})))}
+          function health(h){return {ok:h.ok===true,stale:h.stale===true,ageMs:h.ageMs,liveRate:h.estimatedBulkRequestsPerMinute,quotaObserved:h.bulkSpeedV3?.quotaObserved===true,headroomGate:h.bulkSpeedV3?.accelerationAvailable===true,retryAfter:h.retryAfterSec??null,last429:h.lastRateLimitAt??null,hasError:!!h.lastError}}
+          function safe(h){return h.ok&&!h.stale&&!h.hasError&&!h.retryAfter&&h.quotaObserved&&h.headroomGate&&Number.isFinite(h.ageMs)&&h.ageMs<=25000&&Number.isFinite(h.liveRate)&&h.liveRate<=10&&(!h.last429||Date.now()-Number(h.last429)>600000)}
+          const validId=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
+          try{
+           assert.equal(process.env.GITHUB_RUN_ATTEMPT,'1','NO_PROVIDER_REPLAY');
+           assert(token&&account&&key,'APPROVED_GITHUB_SECRETS_NOT_AVAILABLE');
+           const [pre,plan,audit,state]=await Promise.all([versions(),get('/history-cargo-registry?detail=0'),get('/ou-history-per-fixture-audit-test'),get('/ou-history-ft-state')]); out.versionsBefore=pre;
+           assert.equal(pre[names[0]],expectTest,'TEST_CHANGED_NO_PROVIDER_CALL');
+           const p=plan.supplyPlanning??{};
+           assert.equal(p.targetHistoryPerTeam,3,'TEST_HISTORY_GATE_CHANGED');assert.equal(state.code,'B46_OU_TARGET_FT_HISTORY_V1_TEST','EXPECTED_IMPORT_STORE_MISSING');
+           assert(Number.isInteger(p.uniqueTeams)&&Number.isInteger(p.uniqueTeamsNeedingHistory),'UPCOMING_TEAM_COUNTS_MISSING');
+           out.before={time:audit.checkedAtUTC,fixtures:audit.counts?.upcoming,readyFixtures:audit.counts?.ready3,teams:p.uniqueTeams,teamsReady:p.uniqueTeams-p.uniqueTeamsNeedingHistory,archiveFt:state.archive.ft};
+           const targets=(p.highestPriority??[]).filter(f=>Date.parse(f.kickoffUTC)>Date.now()+45*60*1000)
+            .sort((a,b)=>Date.parse(a.kickoffUTC)-Date.parse(b.kickoffUTC))
+            .flatMap(f=>[f.home,f.away].filter(t=>validId(t?.teamId)&&t.missingTo3>0&&!neverReplay.has(t.teamId)).map(t=>({...t,fixtureId:f.fixtureId,kickoffUTC:f.kickoffUTC})));
+           const t=targets[0];assert(t&&validId(t.fixtureId),'NO_FRESH_ELIGIBLE_TARGET');out.target=t;
+           const prior=health(await json(hub));out.hubBefore=prior;assert(safe(prior),'HUB_HEADROOM_UNSAFE_BEFORE_PILOT');
+           const path='/v1/teams/'+Number(t.teamId)+'/fixtures?status=finished&per_page=3';
+           out.providerRequests++;out.path=path;save();
+           const r=await fetch('https://api.5dollarfootballapi.com'+path,{headers:headers(key),redirect:'error',cache:'no-store',signal:AbortSignal.timeout(25000)});
+           out.providerHttpStatus=r.status;out.quota={limit:r.headers.get('x-ratelimit-limit'),remaining:r.headers.get('x-ratelimit-remaining'),reset:r.headers.get('x-ratelimit-reset')};
+           if(r.status===429){out.http429=1;out.retryAfter=r.headers.get('retry-after');throw Error('PROVIDER_429_STOP_NO_RETRY');}
+           assert(r.ok,'PROVIDER_HTTP_'+r.status);const body=await r.json();
+           assert((body.success===1||body.success===true)&&Array.isArray(body.data)&&body.data.length<=3,'PROVIDER_SCHEMA_ERROR');
+           out.received=body.data.length;
+           const seen=new Set(), accepted=[];let bad=0,dupe=0;
+           for(const row of body.data){
+            const a=Number(row?.teams?.home?.id),b=Number(row?.teams?.away?.id),fid=Number(row?.id),k=row?.kickoff_ts;
+            if(!validId(fid)||!validId(row?.league?.id)||!validId(a)||!validId(b)||a===b||![a,b].includes(Number(t.teamId))||row.status!=='finished'||row.status_code!=='full'||!Number.isSafeInteger(k)||k<=0||k>=sec()||!['home','away'].every(s=>Number.isSafeInteger(row.goals?.[s])&&row.goals[s]>=0)){bad++;continue;}
+            if(seen.has(fid)){dupe++;continue;}seen.add(fid);accepted.push(row);
+           }
+           out.rejected=bad;out.duplicateInResponse=dupe;
+           out.evidence=accepted.map(row=>({fixtureId:Number(row.id),kickoff_ts:row.kickoff_ts,homeId:Number(row.teams.home.id),awayId:Number(row.teams.away.id),status:row.status,status_code:row.status_code,ft:[row.goals.home,row.goals.away]}));
+           assert(bad===0,'INVALID_FINISHED_FT_ROWS_STOP');
+           if(accepted.length){
+            const x=await json(base+'/ou-history-ft-import-test',{method:'POST',headers:{...headers(ownerAuth),'content-type':'application/json'},body:JSON.stringify({source:'UPCOMING_TEAM_FT',teamId:Number(t.teamId),fixtureId:Number(t.fixtureId),observed:sec(),rows:accepted})});
+            out.import=x.stats; assert(x.code===state.code&&x.productionWrites===0&&x.oneX2LedgerUnchanged&&x.OUPredictionLedgerUnchanged&&x.bttsProjectUnchanged,'TEST_IMPORT_ISOLATION_CHECK_FAILED');
+           }
+           const [post,afterPlan,auditAfter,after,H]=await Promise.all([versions(),get('/history-cargo-registry?detail=0'),get('/ou-history-per-fixture-audit-test'),get('/ou-history-ft-state'),json(hub)]);
+           out.versionsAfter=post;out.hubAfter=health(H);
+           const p2=afterPlan.supplyPlanning??{}, f=auditAfter.fixtures?.find(f=>Number(f.fixtureId)===Number(t.fixtureId));
+           const side=t.side==='home'?'homeHistory':'awayHistory';
+           assert(f&&Number.isInteger(f[side]),'TARGET_READBACK_UNAVAILABLE');
+           out.after={time:auditAfter.checkedAtUTC,fixtures:auditAfter.counts.upcoming,readyFixtures:auditAfter.counts.ready3,teams:p2.uniqueTeams,teamsReady:p2.uniqueTeams-p2.uniqueTeamsNeedingHistory,archiveFt:after.archive.ft,teamFt:f[side],homeFt:f.homeHistory,awayFt:f.awayHistory};
+           assert.deepEqual(post,pre,'PROTECTED_VERSION_CHANGED_CONCURRENTLY');
+           assert(after.archive.ft>=state.archive.ft+(out.import?.added??0),'ARCHIVE_READBACK_MISMATCH');
+           assert(out.hubAfter.ok&&!out.hubAfter.stale&&!out.hubAfter.hasError&&!out.hubAfter.retryAfter,'LIVE_HUB_POSTCHECK_UNSAFE');
+           out.status=out.after.teamFt>=3?'PASS_PROVIDER_IMPORT_READBACK':'INSUFFICIENT_HISTORY';
+          }catch(e){out.status='STOPPED';out.reason=String(e.message).split('\n')[0].slice(0,140);process.exitCode=1}
+          save();console.log('TEAM_FIRST_PILOT '+JSON.stringify(out));
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: team-first-pilot-redacted
+          path: team-first-pilot.json
+          retention-days: 30
