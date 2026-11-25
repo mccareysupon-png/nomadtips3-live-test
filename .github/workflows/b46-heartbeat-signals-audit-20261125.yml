@@ -57,3 +57,16 @@ jobs:
           }));
           if(fa.formulas?.length!==42)process.exitCode=1;
           JS
+
+      - name: Capture recent Adaptive O/U matched records and schema (redacted, read-only)
+        run: |
+          node --input-type=module <<'JS'
+          const url='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/__b46_pm_adaptive_research';
+          const resp=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(28000)});
+          if(!resp.ok)throw Error('ADAPTIVE_DATA_HTTP_'+resp.status);
+          const data=await resp.json();
+          const all=Array.isArray(data.records)?data.records:[];
+          const sorted=all.slice().sort((a,b)=>Number(b.picked_at)-Number(a.picked_at)||Number(b.kickoff)-Number(a.kickoff));
+          const current=sorted.slice(0,18).map(r=>({fixture_id:r.fixture_id,formula_id:r.formula_id,home:r.home,away:r.away,kickoff:r.kickoff,picked_at:r.picked_at,selection:r.selection,line:r.line,odds:r.odds,bookmaker:r.bookmaker,odds_source:r.odds_source,status:r.status,hg:r.hg,ag:r.ag}));
+          console.log('BALL46_LATEST_PICKS '+JSON.stringify({lastRunAt:data.lastRunAt,latestPickedAt:sorted[0]?.picked_at,latestPickCount:sorted.filter(r=>r.picked_at===sorted[0]?.picked_at).length,records:current,rawCandidateKeys:Object.keys(data.rawCandidates?.[0]||{}),schemaKeys:Object.keys(data)}));
+          JS
