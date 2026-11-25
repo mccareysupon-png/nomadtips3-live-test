@@ -17,7 +17,7 @@ jobs:
         run: |
           node <<'JS'
           const {chromium,devices}=require('playwright');
-          const url='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/?view=statistics';
+          const url='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/?b46pm=ou';
           (async()=>{
             const browser=await chromium.launch();
             try {
@@ -28,7 +28,7 @@ jobs:
                 ['reduced motion',{viewport:{width:390,height:844},reducedMotion:'reduce'},false],
               ];
               const results=await Promise.allSettled(cases.map(async ([label,opts,switchMarket])=>{
-                const page=await browser.newPage(opts);
+                const page=await browser.newPage({...opts,serviceWorkers:'block'});
                 const errors=[];page.on('pageerror',e=>errors.push(e.message));
                 let release;
                 const hold=()=>new Promise(r=>{release=r});
@@ -38,7 +38,13 @@ jobs:
                 const card=page.locator('#b46-finance-chart-card');
                 try{
                   await page.goto(url,{waitUntil:'domcontentloaded',timeout:25000});
-                  await wait.waitFor({state:'visible',timeout:18000});
+                  const desktopTotal=page.locator('button[data-stat-market="all"]:visible').first();
+                  if(await desktopTotal.isVisible())await desktopTotal.click();
+                  else {
+                    await page.getByRole('button',{name:'Open navigation'}).click({timeout:12000});
+                    await page.locator('#b46m-drawer [data-b46m-page="statistics"]:visible').first().click({timeout:12000});
+                  }
+                  await wait.waitFor({state:'visible',timeout:10000});
                   const style=await wait.evaluate(async el=>{
                     const css=()=>getComputedStyle(el,'::before');
                     const before=css().transform;
@@ -63,7 +69,7 @@ jobs:
                   }
                   if(errors.length)throw Error(errors.join('; '));
                   console.log(label+' PASS '+JSON.stringify(style)+(switchMarket?' + market switch':''));
-                } finally {release();await page.close()}
+                } catch(e){console.error(label+' DIAG',await page.evaluate(()=>({view:document.body.dataset.workspaceView,url:location.href,loader:!!document.querySelector('.b46-market-loading'),chart:document.querySelector('#b46-finance-chart-card')?.outerHTML.slice(0,300),width:innerWidth})),errors);throw e;} finally {release();await page.close()}
               }));
               const failed=results.flatMap((r,i)=>r.status==='rejected'?[cases[i][0]+': '+r.reason.stack]:[]);
               if(failed.length)throw Error(failed.join('\n'));
