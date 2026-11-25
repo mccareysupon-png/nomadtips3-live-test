@@ -24,3 +24,5 @@ jobs:
         run: node --experimental-sqlite qa/prematch-history-20261120/b46-adaptive-formula-control-risk.test.mjs
       - name: Guarded Cloudflare TEST-only deployment, real API smoke, protected Worker invariants
         run: node qa/prematch-history-20261120/deploy-adaptive-manual-control-test-20261125.mjs
+
+# Retry after correcting isolated in-memory SQLite test column name.
