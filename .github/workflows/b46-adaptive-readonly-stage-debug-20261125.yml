@@ -30,3 +30,5 @@ jobs:
             console.log('B46_ADAPTIVE_STAGE_DEBUG',JSON.stringify({path,status:r.status,body:(await r.text()).slice(0,900)}));
           }
           NODE
+
+# inspect projection schema and formula IDs in isolated stage
