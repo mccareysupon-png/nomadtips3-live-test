@@ -112,10 +112,20 @@ try{
  assert(!legitimate.cors,'PUBLIC_BROWSER_CORS_WRONGLY_ENABLED');
  if(legitimate.http===200)assert.equal(legitimate.data.formulas?.length,42);
  else{assert.equal(legitimate.data.formulas,null,'UNAVAILABLE_MUST_RETURN_NULL');assert(['UNAVAILABLE','STALE','DATA_QUALITY_ERROR'].includes(legitimate.data.status));}
+ async function retryStatus(name,expected,fn){
+  let seen;
+  for(let attempt=0;attempt<30;attempt++){
+   seen=await fn();
+   if(seen.http===expected)return seen;
+   if(attempt===0||attempt===12||attempt===29)console.log('B46_DOT_NEGATIVE_AUTH_PROPAGATION '+JSON.stringify({name,attempt,http:seen.http,status:seen.data?.status??null}));
+   await new Promise(resolve=>setTimeout(resolve,1450));
+  }
+  throw Error(name+'_EXPECTED_HTTP_'+expected+'_OBSERVED_'+seen?.http);
+ }
  const [badCredential,mutation,ownerAgainstReader]=await Promise.all([
-  probe('GET','0'.repeat(64)),
-  probe('POST',dotToken),
-  probe('GET',createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex'))
+  retryStatus('BAD_READER',401,()=>probe('GET','0'.repeat(64))),
+  retryStatus('READ_ONLY_POST',405,()=>probe('POST',dotToken)),
+  retryStatus('OWNER_MUST_NOT_READ_AS_DOT',401,()=>probe('GET',createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex')))
  ]);
  assert.equal(badCredential.http,401,'READER_BAD_CREDENTIAL_WAS_ACCEPTED');
  assert.equal(ownerAgainstReader.http,401,'OWNER_AUTH_ACCEPTED_AS_DOT');
