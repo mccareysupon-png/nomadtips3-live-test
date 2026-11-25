@@ -28,3 +28,5 @@ jobs:
         run: node qa/prematch-history-20261120/deploy-adaptive-latest-all-ui-test-20261125.mjs --dry-run
       - name: Deploy ONLY the two TEST UI Workers and verify all pages and protected versions
         run: node qa/prematch-history-20261120/deploy-adaptive-latest-all-ui-test-20261125.mjs
+
+# Retry with owner latest API status-only diagnostics and unit test for latestSignals.
