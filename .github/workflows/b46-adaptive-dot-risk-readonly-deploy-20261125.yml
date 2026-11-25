@@ -28,3 +28,5 @@ jobs:
         run: node qa/prematch-history-20261120/deploy-adaptive-dot-risk-readonly-test-20261125.mjs --dry-run
       - name: Create dedicated secret hash and deploy read-only Dot path in TEST Worker
         run: node qa/prematch-history-20261120/deploy-adaptive-dot-risk-readonly-test-20261125.mjs
+
+# Retry after secure reader hash provisioned, record HTTP status diagnostics only (no secret output).
