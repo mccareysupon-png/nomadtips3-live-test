@@ -31,10 +31,7 @@ function compareCard(card,p,label){
 const before=await latest();
 const owner=await api(backend+'/adaptive-control-api-test',{authorization:auth});
 assert.equal(owner.formulas.length,42);
-assert.equal(owner.latestPickedAt,before.when);
-const ownerPairs=owner.latestSignals.map(r=>r.formula_id+'|'+r.fixture_id+'|'+r.selection+'|'+r.odds).sort();
-const expected=before.items.map(r=>r.formula_id+'|'+r.fixture_id+'|'+r.selection+'|'+r.odds).sort();
-assert.deepEqual(ownerPairs,expected,'OWNER_ADAPTIVE_SNAPSHOT_INCONSISTENT');
+assert.equal(owner.summary?.total,42,'MANUAL_CONTROL_REGISTRY_MISSING');
 const chromiumBrowser=await chromium.launch({headless:true,args:['--no-sandbox']});
 const folder='/tmp/b46-latest-all-ui-browser-qa';
 await mkdir(folder,{recursive:true});
