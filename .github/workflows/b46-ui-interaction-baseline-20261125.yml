@@ -63,18 +63,7 @@ jobs:
                 for(const n of ['total','1x2','total','1x2','total','1x2']){
                   if(label==='mobile'&&await nav.isVisible())await nav.click();
                   if(reports.length===1)await p.waitForFunction(()=>document.querySelectorAll('.workspace-panel tr').length>=40,{},{timeout:35000});
-                  let b=target(n);
-                  if(n==='1x2'&&await b.count()>1){
-                    const live=p.locator('[data-stat-market="1x2"]');
-                    if(await live.isVisible()) b=live;
-                    else {
-                      const candidates=await b.all();
-                      const onScreen=[];
-                      for(const x of candidates)if(await x.isVisible())onScreen.push(x);
-                      if(onScreen.length===1)b=onScreen[0];
-                      else b=b.first();
-                    }
-                  }
+                  const b=p.locator('button[data-stat-market="'+(n==='total'?'all':'1x2')+'"]:visible');
                   await p.evaluate(()=>{
                     window.b46Audit.start();
                     const start=performance.now(),frames=[];
