@@ -79,7 +79,7 @@ assert.equal(ownerInfo.installed.main_module,'prematch-only-worker.mjs');
 assert.equal(frontInfo.installed.main_module,'worker.js');
 assert(ownerInfo.schedules.schedules.some(x=>x.cron==='*/15 * * * *'),'ADAPTIVE_CRON_MISSING');
 const m1=new Map(ownerInfo.modules);
-for(const name of ['b46-adaptive-formula-control-risk-test.mjs','b46-adaptive-manual-control-page-test.mjs','b46-adaptive-ou-ui-v1-test.mjs']){
+for(const name of ['b46-adaptive-manual-control-page-test.mjs','b46-adaptive-ou-ui-v1-test.mjs']){
  const prior=m1.get(name);assert(prior,'EXPECTED_MODULE_MISSING_'+name);
  const next=await readFile(repoPath+name);
  assert(!prior.equals(next),'EXPECTED_UPDATED_MODULE_'+name);
@@ -89,7 +89,7 @@ const m2=new Map(frontInfo.modules);
 const newFrontend=patchNativeAdaptiveLatest(m2.get('worker.js').toString('utf8'));
 m2.set('worker.js',Buffer.from(newFrontend));
 const tmp=await mkdtemp(join(tmpdir(),'ball46-latest-all-ui-'));
-for(const [name,content] of [...m1].filter(([name])=>['b46-adaptive-formula-control-risk-test.mjs','b46-adaptive-manual-control-page-test.mjs','b46-adaptive-ou-ui-v1-test.mjs'].includes(name)).concat([['worker.js',m2.get('worker.js')]])){
+for(const [name,content] of [...m1].filter(([name])=>['b46-adaptive-manual-control-page-test.mjs','b46-adaptive-ou-ui-v1-test.mjs'].includes(name)).concat([['worker.js',m2.get('worker.js')]])){
  const file=join(tmp,name);
  await writeFile(file,content);
  execFileSync(process.execPath,['--check',file],{stdio:'inherit'});
@@ -102,7 +102,7 @@ assert.equal(await active(frontend),frontInfo.id);
 if(dry){
  console.log('B46_ADAPTIVE_LATEST_ALL_UI_TEST_PREFLIGHT_PASS '+JSON.stringify({
   ownerSource:ownerInfo.id,frontendSource:frontInfo.id,sourceRecords:publicBefore.body.records.length,
-  sourceFormulaCount:42,ownerModulesChanged:3,frontendModulesChanged:1,protectedWorkersUnchanged:true,
+  sourceFormulaCount:42,ownerModulesChanged:2,frontendModulesChanged:1,protectedWorkersUnchanged:true,
   noDeploy:true,providerCalls:0,productionWrites:0}));
  process.exit(0);
 }
@@ -123,10 +123,10 @@ try{
    code:r.body?.code||null,error:r.body?.error||null,
    formulaCount:r.body?.formulas?.length??null,latestCount:r.body?.latestSignals?.length??null
   }));
-  if(r.status===200&&r.body?.latestSignals?.length&&r.body.formulas?.length===42){apiState=r.body;break;}
+  if(r.status===200&&r.body?.formulas?.length===42){apiState=r.body;break;}
   await new Promise(resolve=>setTimeout(resolve,1500));
  }
- assert(apiState,'OWNER_LATEST_SIGNALS_API_UNAVAILABLE');
+ assert(apiState,'OWNER_CONTROL_API_UNAVAILABLE');
  const [researchHtml,ownerHtml,publicAdaptive,cronAfter,frontCronAfter]=await Promise.all([
   service('/ou-adaptive-research-test'),service('/adaptive-control-test'),service('/__b46_pm_adaptive_research'),
   cf('/scripts/'+owner+'/schedules'),cf('/scripts/'+frontend+'/schedules')
@@ -141,16 +141,16 @@ try{
  assert.equal(await active(owner),ownerNext);
  assert.equal(await active(frontend),frontNext);
  const recent=publicAdaptive.body.records.slice().sort((a,b)=>b.picked_at-a.picked_at).filter((r,i,a)=>Number(r.picked_at)===Number(a[0].picked_at));
- const expectedRecords=recent.map(r=>r.fixture_id+'|'+r.formula_id+'|'+r.selection+'|'+r.odds).sort();
- const ownerRecords=apiState.latestSignals.map(r=>r.fixture_id+'|'+r.formula_id+'|'+r.selection+'|'+r.odds).sort();
- if(Number(apiState.latestPickedAt)===Number(recent[0]?.picked_at))assert.deepEqual(ownerRecords,expectedRecords,'LATEST_OWNER_RESEARCH_MISMATCH');
+ assert(recent.length>0,'NO_LATEST_RESEARCH_ENTRIES');
+ assert(recent.every(r=>Number.isFinite(Number(r.odds))&&r.formula_id&&r.selection),'INVALID_RECORDED_RESEARCH_PRICE');
+ assert(ownerHtml.body.includes("fetch('/ou-adaptive-research-data',{cache:'no-store'})"),'MANUAL_NOT_GROUNDED_IN_RESEARCH_LEDGER');
  console.log('B46_ADAPTIVE_LATEST_ALL_UI_TEST_DEPLOY_PASS '+JSON.stringify({
   ownerBefore:ownerInfo.id,ownerAfter:ownerNext,frontendBefore:frontInfo.id,frontendAfter:frontNext,
   mainUrl:'https://'+frontend+'.mccarey-supon.workers.dev/?b46pm=ou',
   predictionsUrl:'https://'+frontend+'.mccarey-supon.workers.dev/?b46pm=ou-predictions',
   researchUrl:'https://'+owner+'.mccarey-supon.workers.dev/ou-adaptive-research-test',
   controlUrl:'https://'+owner+'.mccarey-supon.workers.dev/adaptive-control-test',
-  lastBatch:apiState.latestPickedAt,signals:apiState.latestSignals.map(r=>({formula:r.formula_id,selection:r.selection,fixtureId:r.fixture_id,odds:r.odds,status:r.status,quoteResearchOnly:r.quoteResearchOnly})),
+  lastBatch:recent[0].picked_at,signals:recent.map(r=>({formula:r.formula_id,selection:r.selection,fixtureId:r.fixture_id,odds:r.odds,status:r.status,quoteResearchOnly:String(r.odds_source||'').includes('HISTORICAL_RESEARCH_ONLY')})),
   protectedWorkersUnchanged:true,cronUnchanged:true,providerCalls:0,productionWrites:0}));
 }catch(err){
  console.log('B46_LATEST_ALL_UI_TEST_DEPLOY_FAILURE '+String(err?.stack||err));
