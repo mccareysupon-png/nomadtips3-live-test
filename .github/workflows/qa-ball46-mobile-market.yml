@@ -21,7 +21,8 @@ jobs:
            const p=await browser.newPage({...devices[name],defaultBrowserType:'chromium',serviceWorkers:'block'});
            const errors=[];p.on('pageerror',e=>errors.push(e.message));const asset=p.waitForResponse(r=>new URL(r.url()).pathname==='/ui-sync-fixes-343-v2.js',{timeout:28000});
            await p.goto(url,{waitUntil:'domcontentloaded',timeout:32000});const headers=(await asset).headers();assert.equal(headers['x-b46-test-flow-markers'],'batch-v1');
-           const rows=p.locator('.match-row[data-match-id]:visible');await rows.first().waitFor({timeout:20000});
+           const rows=p.locator('.match-row[data-match-id]:visible');await p.waitForTimeout(7500);
+           console.log('DOM',name,JSON.stringify(await p.evaluate(()=>({vw:innerWidth,body:document.body.innerText.slice(0,2200),els:[...document.querySelectorAll('[data-match-id],[data-id],[class*="match-card"],[class*="match-row"],[class*="fixture"],[class*="full-market"],button')].filter(e=>e.getBoundingClientRect().width).slice(0,55).map(e=>[e.tagName,String(e.className),e.getAttribute('data-match-id'),e.textContent.trim().slice(0,55)]),scripts:[...document.scripts].map(s=>s.src).filter(Boolean)}))));await p.screenshot({path:'mobile-first.png'});if(!await rows.count())break;
            const ids=await rows.evaluateAll(es=>es.slice(0,10).map(e=>e.dataset.matchId));let fit, holder, tabs, books, market;
            for(const id of ids){
             const row=rows.and(p.locator('[data-match-id="'+id+'"]'));await row.tap();
