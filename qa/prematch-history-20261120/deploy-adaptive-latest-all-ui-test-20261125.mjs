@@ -118,6 +118,11 @@ try{
  let apiState=null;
  for(let retry=0;retry<18;retry++){
   const r=await service('/adaptive-control-api-test',{headers:{authorization:auth}});
+  if(retry===0||retry===10||retry===17)console.log('B46_OWNER_API_DIAGNOSTIC '+JSON.stringify({
+   http:r.status,keys:r.body&&typeof r.body==='object'?Object.keys(r.body):[],
+   code:r.body?.code||null,error:r.body?.error||null,
+   formulaCount:r.body?.formulas?.length??null,latestCount:r.body?.latestSignals?.length??null
+  }));
   if(r.status===200&&r.body?.latestSignals?.length&&r.body.formulas?.length===42){apiState=r.body;break;}
   await new Promise(resolve=>setTimeout(resolve,1500));
  }
