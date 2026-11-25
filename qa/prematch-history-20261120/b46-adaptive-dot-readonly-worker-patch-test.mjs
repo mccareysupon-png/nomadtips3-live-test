@@ -11,17 +11,17 @@ export function patchAdaptiveDotRiskReadOnly(s){
  s=one(s,importRisk,importRisk+"\nimport {buildAdaptiveDotReadReport} from './b46-adaptive-dot-risk-readonly-v1-test.mjs';",'IMPORT');
  const doAnchor="if(path==='/adaptive-control-api-test'&&req.method==='GET'){";
  const doRead=String.raw`if(path==='/adaptive-dot-risk-internal-test'){
- if(req.method!=='GET')return json({status:'METHOD_NOT_ALLOWED',readOnly:true},405);
- if(req.headers.get('x-b46-control-role')!=='DOT_READER')return json({status:'UNAUTHORIZED',readOnly:true},403);
+ if(req.method!=='GET')return Response.json({status:'METHOD_NOT_ALLOWED',readOnly:true},{status:405,headers:{'cache-control':'no-store'}});
+ if(req.headers.get('x-b46-control-role')!=='DOT_READER')return Response.json({status:'UNAUTHORIZED',readOnly:true},{status:403,headers:{'cache-control':'no-store'}});
  try{
   const heartbeat=await this.ctx.storage.get('b46AdaptiveRiskCronLastV1')??null;
   const run=await this.ctx.storage.get('b46AdaptiveOuResearchLastV1')??null;
   const report=buildAdaptiveDotReadReport(this.db,now,{cron:heartbeat,run});
-  return json(report,report.status==='OK'?200:503);
+  return Response.json(report,{status:report.status==='OK'?200:503,headers:{'cache-control':'no-store'}});
  }catch(error){
   console.log('B46_DOT_READ_UNAVAILABLE_TEST');
-  return json({code:'B46_ADAPTIVE_DOT_SUPERVISOR_READ_V1_TEST',status:'UNAVAILABLE',
-   readOnly:true,reason:'WORKER_SNAPSHOT_READ_FAILED',formulas:null,summary:null},503);
+  return Response.json({code:'B46_ADAPTIVE_DOT_SUPERVISOR_READ_V1_TEST',status:'UNAVAILABLE',
+   readOnly:true,reason:'WORKER_SNAPSHOT_READ_FAILED',formulas:null,summary:null},{status:503,headers:{'cache-control':'no-store'}});
  }
 }
 `;
