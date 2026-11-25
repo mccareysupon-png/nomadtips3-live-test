@@ -1,0 +1,23 @@
+name: BALL46 Adaptive Dot read-only risk projection unit proof TEST 20261125
+on:
+  push:
+    branches: [feature/ball46-adaptive-manual-control-test-20261125]
+    paths: [.github/workflows/b46-adaptive-dot-risk-readonly-unit-20261125.yml]
+permissions: {contents: read}
+jobs:
+  unit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Check new Dot reader and guarded Worker patch JavaScript syntax
+        run: |
+          node --check qa/prematch-history-20261120/b46-adaptive-dot-risk-readonly-v1-test.mjs
+          node --check qa/prematch-history-20261120/b46-adaptive-dot-readonly-worker-patch-test.mjs
+          node --check qa/prematch-history-20261120/b46-adaptive-dot-risk-readonly-v1.test.mjs
+      - name: Validate 42 formulas, missing/stale data, FT proof, shadow and unchanged risk control
+        run: |
+          node --experimental-sqlite qa/prematch-history-20261120/b46-adaptive-formula-control-risk.test.mjs
+          node --experimental-sqlite qa/prematch-history-20261120/b46-adaptive-dot-risk-readonly-v1.test.mjs
