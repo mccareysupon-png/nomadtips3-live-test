@@ -19,7 +19,7 @@ for(let i=0;i<6;i++){
  db.exec('INSERT INTO b46_adaptive_ou_research_v1_ledger_test('+columns+') VALUES('+values+')',
   10000+i,'B02','O/U 2.5','UNDER',1,2,'One','Two',now-200+i,now-300,2.5,1.8,'test','HISTORICAL_RESEARCH_ONLY',now-350,2,'[]','[]',1,0,'LOSS',now-100+i,-1);
 }
-db.exec("UPDATE b46_adaptive_ou_research_v1_snapshot_test SET total=6,loss=6,settled_units=6,total_units=6,profit_loss=-6,maximum_drawdown=6 WHERE formula_id='B02' AND selection='ALL'");
+db.exec("UPDATE b46_adaptive_ou_research_v1_snapshot_test SET total=6,loss=6,settled_units=6,total_units=6,profit_loss=-6,max_drawdown=6 WHERE formula_id='B02' AND selection='ALL'");
 overview=adaptiveControlOverview(db,now);
 const initial=overview.formulas.find(x=>x.formula==='B02');
 assert.equal(initial.currentDD,6);assert.equal(initial.allTimeMaxDD,6);
