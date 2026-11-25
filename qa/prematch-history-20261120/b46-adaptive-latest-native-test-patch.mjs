@@ -1,7 +1,7 @@
 // Patch only the embedded TEST pre-match O/U UI script in the active frontend Worker.
 // No changes to the 1X2/BTTS/LIVE STATISTICS implementations or source data.
 import assert from 'node:assert/strict';
-const helper=String.raw\`
+const helper=String.raw`
 function b46AdaptiveLatestBlock(data,place){
  const box=document.createElement('section');
  box.id=place==='statistics'?'b46pm-adaptive-latest-statistics':'b46pm-adaptive-latest-predictions-content';
@@ -82,7 +82,7 @@ function b46AdaptiveLatestPredictions(content){
     p.textContent='Adaptive research data unavailable: '+String(e.message);target.replaceChildren(p);}});
  }
 }
-\`;
+`;
 function replaceOnce(source,needle,replacement,reason){
  const n=source.split(needle).length-1;
  assert.equal(n,1,reason+' EXPECTED_ONE_ACTUAL_'+n);
