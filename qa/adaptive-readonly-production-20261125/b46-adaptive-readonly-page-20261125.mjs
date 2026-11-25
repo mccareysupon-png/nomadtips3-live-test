@@ -9,7 +9,7 @@ export function project(source){
  if(source?.code!=='B46_ADAPTIVE_OU_RESEARCH_V1'||!Array.isArray(source.formulas)||source.formulas.length!==42||
    source.series30?.rangeDays!==30||source.series90?.rangeDays!==90)throw Error('Unexpected TEST research schema');
  const formulas=source.formulas.map(f=>{
-  if(!/^A\d{2}$/.test(f.formula))throw Error('Invalid formula ID');
+  if(!/^[A-E]\d{2}$/.test(f.formula))throw Error('Invalid formula ID');
   const fields=['historyUsed','totalPredictions','pending','settled','win','loss','winRate','profitLoss','roi','maximumDrawdown'];
   const result={formula:f.formula,selection:String(f.selection||'ALL').slice(0,20)};
   for(const key of fields)result[key]=sanitizeNum(f[key]);
