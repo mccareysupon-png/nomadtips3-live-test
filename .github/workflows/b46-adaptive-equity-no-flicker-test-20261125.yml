@@ -1,0 +1,39 @@
+name: BALL46 Adaptive Equity no-flicker TEST deploy and browser QA
+on:
+  push:
+    branches: [fix/b46-adaptive-equity-no-flicker-20261125]
+    paths: ['.github/workflows/b46-adaptive-equity-no-flicker-test-20261125.yml']
+permissions: {contents: read}
+concurrency:
+  group: ball46-premium-match-colors-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Validate patch and install browser QA
+        run: |
+          node --check qa/adaptive-equity-no-flicker-20261125/patch.mjs
+          node --check qa/adaptive-equity-no-flicker-20261125/deploy-test.mjs
+          node --check qa/adaptive-equity-no-flicker-20261125/qa.mjs
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Deploy only the current active TEST worker with isolated Adaptive chart patch
+        run: node qa/adaptive-equity-no-flicker-20261125/deploy-test.mjs
+      - name: Verify PC and mobile switching ranges without replacing DOM nodes
+        run: node qa/adaptive-equity-no-flicker-20261125/qa.mjs
+      - name: Store TEST release report and browser QA screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-adaptive-equity-no-flicker-test-${{ github.run_id }}
+          path: qa/adaptive-equity-no-flicker-20261125/audit/
+          if-no-files-found: warn
+          retention-days: 30
