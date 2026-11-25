@@ -1,0 +1,29 @@
+name: BALL46 Adaptive Manual Control real browser QA PC and Mobile 20261125
+on:
+  push:
+    branches: [feature/ball46-adaptive-manual-control-test-20261125]
+    paths: [.github/workflows/b46-adaptive-manual-control-browser-qa-20261125.yml]
+permissions: {contents: read}
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install isolated Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          npx playwright install chromium
+      - name: Exercise real 42-formula manual controls on PC and mobile and restore state
+        run: node qa/prematch-history-20261120/b46-adaptive-manual-control-browser-qa-20261125.mjs
+      - name: Keep QA screenshots for inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-adaptive-control-pc-mobile
+          path: /tmp/b46-adaptive-control-qa/*.png
+          if-no-files-found: ignore
