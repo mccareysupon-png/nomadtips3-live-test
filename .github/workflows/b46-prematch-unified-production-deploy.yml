@@ -1,0 +1,61 @@
+name: BALL46 ONE unified O/U production release with no-flicker chart
+on:
+  push:
+    branches: [release/b46-prematch-unified-no-flicker-20261125]
+    paths: ['.github/workflows/b46-prematch-unified-production-deploy.yml']
+permissions: {contents: read}
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Check audited pinned UI and production release scripts
+        run: |
+          node --check qa/prematch-unified-release-20261125/b46-prematch-unified-view.mjs
+          node --check qa/prematch-unified-release-20261125/release.mjs
+          node --check qa/prematch-unified-release-20261125/rollback.mjs
+          node --check qa/prematch-unified-release-20261125/qa.mjs
+      - name: Install headless Chromium for preview and production QA
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Pin audited TEST front-end and stage INACTIVE Production candidate
+        id: stage
+        env:
+          B46_UNIFIED_MODE: stage
+        run: node qa/prematch-unified-release-20261125/release.mjs
+      - name: Confirm the SAME unified PreMatch page in inactive Production Preview
+        env:
+          B46_UNIFIED_QA_ORIGIN: ${{ steps.stage.outputs.preview }}
+        run: node qa/prematch-unified-release-20261125/qa.mjs
+      - name: Activate only the verified unified Production candidate
+        env:
+          B46_UNIFIED_MODE: activate
+          B46_UNIFIED_CANDIDATE: ${{ steps.stage.outputs.candidate }}
+        run: node qa/prematch-unified-release-20261125/release.mjs
+      - name: Confirm the SAME unified PreMatch page on ball46.com in Desktop and Mobile
+        env:
+          B46_UNIFIED_QA_ORIGIN: https://ball46.com
+        run: node qa/prematch-unified-release-20261125/qa.mjs
+      - name: Rollback Production on failed activation or browser test
+        if: ${{ failure() && steps.stage.outputs.candidate != '' }}
+        env:
+          B46_UNIFIED_CANDIDATE: ${{ steps.stage.outputs.candidate }}
+        run: node qa/prematch-unified-release-20261125/rollback.mjs
+      - name: Archive release version, preview and browser screenshot proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b46-unified-prematch-production-${{ github.run_id }}
+          path: qa/prematch-unified-release-20261125/audit/
+          retention-days: 30
+          if-no-files-found: warn
