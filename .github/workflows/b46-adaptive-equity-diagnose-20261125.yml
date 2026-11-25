@@ -16,3 +16,5 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
       - run: node qa/adaptive-equity-no-flicker-20261125/diagnose.mjs
+
+# inspect current graph re-render scope
