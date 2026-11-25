@@ -25,13 +25,13 @@ jobs:
           assert.equal((await call('/owner/api/formulas',undefined,false)).status,401);
           const list=await (await call('/owner/api/formulas')).json();
           assert.equal(list.formulas.length,42);
-          assert(list.formulas.every(f=>!f.enabled));
+          assert(list.formulas.every(f=>f.enabled));
           for(const f of list.formulas){
-            assert.equal((await call('/owner/api/formulas/state',{formula:f.formula,enabled:true,revision:0})).status,200);
-            assert(ownerControlEnabled(db,f.formula));
-            assert.equal((await call('/owner/api/formulas/state',{formula:f.formula,enabled:false,revision:0})).status,409);
-            assert.equal((await call('/owner/api/formulas/state',{formula:f.formula,enabled:false,revision:1})).status,200);
+            assert.equal((await call('/owner/api/formulas/state',{formula:f.formula,enabled:false,revision:0})).status,200);
             assert(!ownerControlEnabled(db,f.formula));
+            assert.equal((await call('/owner/api/formulas/state',{formula:f.formula,enabled:true,revision:0})).status,409);
+            assert.equal((await call('/owner/api/formulas/state',{formula:f.formula,enabled:true,revision:1})).status,200);
+            assert(ownerControlEnabled(db,f.formula));
           }
           assert.equal((await call('/owner/api/formulas/state',{formula:'INVALID',enabled:true,revision:0})).status,400);
           assert.equal((await (await call('/owner/api/audit')).json()).audit.length,84);
