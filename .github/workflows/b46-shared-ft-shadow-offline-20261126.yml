@@ -1,0 +1,25 @@
+name: BALL46 Shared FT Shadow Bridge Offline QA 20261126
+on:
+  push:
+    branches:
+      - feature/ball46-adaptive-manual-control-test-20261125
+    paths:
+      - .github/workflows/b46-shared-ft-shadow-offline-20261126.yml
+      - qa/prematch-history-20261120/shared-ft-shadow-bridge-v1.mjs
+      - qa/prematch-history-20261120/shared-ft-shadow-bridge-v1.test.mjs
+permissions:
+  contents: read
+jobs:
+  offline-bridge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate shared FT bridge and historical compatibility
+        run: |
+          node --check qa/prematch-history-20261120/shared-ft-shadow-bridge-v1.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/shared-ft-shadow-bridge-v1.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/ou-target-history-ft-v1.test.mjs
