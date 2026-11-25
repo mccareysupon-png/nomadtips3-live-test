@@ -1,0 +1,174 @@
+name: BALL46 FT team-first resume with bounded HUB telemetry wait
+on:
+  push:
+    branches: [feature/ball46-adaptive-manual-control-test-20261125]
+    paths: ['.github/workflows/b46-ft-team-first-continue-20261126.yml']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: ball46-ft-phase1-phase2-guarded-oneoff-20261126
+  cancel-in-progress: false
+jobs:
+  guarded:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 65
+    steps:
+      - name: Verify successful pilot evidence without rerunning it
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download 45724079634 --repo "$GITHUB_REPOSITORY" -n team-first-pilot-redacted --dir prior-pilot
+      - name: Fill only missing teams into TEST, stop on live or quota problems
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          import fs from 'node:fs';
+          const {CLOUDFLARE_API_TOKEN:token,CLOUDFLARE_ACCOUNT_ID:account,FIVEDOLLAR_API_KEY:key}=process.env;
+          const out={status:'NOT_STARTED',providerRequests:0,http429:0,productionWrites:0,stages:[]};
+          const save=()=>fs.writeFileSync('team-first-resume.json',JSON.stringify(out,null,2));
+          const sec=()=>Math.floor(Date.now()/1000);
+          const base='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          const hub='https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/health';
+          const neverReplay=new Set([167913,173176,792,30127,9076,7749,171296,52924]);
+          const expectTest='777a95ab-719a-495d-9d84-7f88c4afae4b';
+          const names=['ball46-prematch-only-test-20261120','ball46-production','nomadtips3-5usd-hub-343','nomadtips3-engine-343'];
+          async function json(url,opts={}){
+           const r=await fetch(url,{...opts,signal:AbortSignal.timeout(25000),redirect:'error',cache:'no-store'});
+           if(!r.ok)throw Error(new URL(url).pathname+' HTTP '+r.status);
+           return r.json();
+          }
+          function headers(v){return {authorization:'Bearer '+v,accept:'application/json'}}
+          const ownerAuth=token&&crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const get=path=>json(base+path,{headers:headers(ownerAuth)});
+          async function versions(){return Object.fromEntries(await Promise.all(names.map(async n=>{const x=await json('https://api.cloudflare.com/client/v4/accounts/'+account+'/workers/scripts/'+n+'/deployments',{headers:headers(token)});const v=x.result.deployments[0].versions;assert(v.length===1&&v[0].percentage===100,'MULTIPLE_DEPLOYED_VERSIONS');return [n,v[0].version_id]})))}
+          function health(h){return {ok:h.ok===true,stale:h.stale===true,ageMs:h.ageMs,liveRate:h.estimatedBulkRequestsPerMinute,quotaObserved:h.bulkSpeedV3?.quotaObserved===true,headroomGate:h.bulkSpeedV3?.accelerationAvailable===true,retryAfter:h.retryAfterSec??null,last429:h.lastRateLimitAt??null,hasError:!!h.lastError}}
+          function safe(h){return h.ok&&!h.stale&&!h.hasError&&!h.retryAfter&&h.quotaObserved&&h.headroomGate&&Number.isFinite(h.ageMs)&&h.ageMs<=25000&&Number.isFinite(h.liveRate)&&h.liveRate<=10&&(!h.last429||Date.now()-Number(h.last429)>600000)}
+          const validId=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
+          
+          const snapshot='https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/snapshot';
+          const immutableCaps={1:182,2:182};
+          const earliestMargin=12*60*1000,spacing=7800;
+          let lastAt=0, quota=null, preVersions;
+          const oldExhausted=new Map([[171296,3],[52924,6]]);
+          const previousPhase1=new Set([...neverReplay,163528,856,877]);
+          const confirmedShort=new Set();
+          const platform=async()=>{const [a,r,f]=await Promise.all([get('/ou-history-per-fixture-audit-test'),get('/history-cargo-registry?detail=0'),get('/ou-history-ft-state')]);assert(a.code==='B46_OU_HISTORY_PER_FIXTURE_READ_ONLY_V1'&&Number.isInteger(a.counts?.upcoming)&&a.fixtures?.length===a.counts.upcoming,'TEST_COHORT_AUDIT_MISSING');assert(r.supplyPlanning?.targetHistoryPerTeam===3&&f.code==='B46_OU_TARGET_FT_HISTORY_V1_TEST','TEST_ARCHIVE_CONFIG_DRIFT');return {a, plan:r.supplyPlanning, ft:f.archive.ft}};
+          function flags(x){return {checkedAt:x.a.checkedAtUTC, fixtures:x.a.counts.upcoming, ready3:x.a.counts.ready3, uniqueTeams:x.plan.uniqueTeams, teamsReady3:x.plan.uniqueTeams-x.plan.uniqueTeamsNeedingHistory, ready5:x.a.fixtures.filter(f=>f.homeHistory>=5&&f.awayHistory>=5).length,ready10:x.a.fixtures.filter(f=>f.homeHistory>=10&&f.awayHistory>=10).length, archiveFt:x.ft};}
+          async function teamMap(x){
+           const byFixture=new Map();
+           for(const p of x.plan.highestPriority??[])byFixture.set(Number(p.fixtureId),{home:Number(p.home.teamId),away:Number(p.away.teamId)});
+           const sh=await json(snapshot);assert(sh.ok===true&&sh.stale!==true&&sh.cacheOnly===true&&Array.isArray(sh.fixtures),'SAFE_CACHE_ONLY_HUB_SNAPSHOT_UNAVAILABLE');
+           for(const f of sh.fixtures){const i=Number(f.fixtureId),h=Number(f.home?.id),a=Number(f.away?.id);if(![i,h,a].every(validId)||h===a)continue;const prior=byFixture.get(i);if(prior&& (prior.home!==h||prior.away!==a))throw Error('TEAM_IDS_DISAGREE_HCR_VS_HUB');byFixture.set(i,{home:h,away:a});}
+           return byFixture;
+          }
+          function summarizeFixtures(a){return Object.fromEntries(a.fixtures.map(f=>[String(f.fixtureId),[f.homeHistory,f.awayHistory]]));}
+          function choose(x,map,limit,attempted,phase){
+           let missing=0,tooNear=0;const candidates=new Map();
+           for(const f of x.a.fixtures){
+            const pending=['home','away'].filter(s=>f[s+'History']<limit);if(!pending.length)continue;
+            if(Date.parse(f.kickoffUTC)<=Date.now()+earliestMargin){tooNear+=pending.length;continue;}
+            const m=map.get(Number(f.fixtureId));
+            if(!m){missing+=pending.length;continue;}
+            for(const s of pending){const id=m[s];if(attempted.has(id)||confirmedShort.has(id)||(phase===2&&oldExhausted.has(id)))continue;
+             const t={id,fixtureId:Number(f.fixtureId),side:s,had:f[s+'History'],name:f[s],kickoffUTC:f.kickoffUTC};
+             const p=candidates.get(id);if(!p||Date.parse(f.kickoffUTC)<Date.parse(p.kickoffUTC))candidates.set(id,t);
+            }
+           }
+           return {missing,tooNear,targets:[...candidates.values()].sort((a,b)=>Date.parse(a.kickoffUTC)-Date.parse(b.kickoffUTC)||a.had-b.had||a.id-b.id)};
+          }
+          async function providerCall(t,limit){
+           const ms=Date.now();if(lastAt&&ms-lastAt<spacing)await new Promise(r=>setTimeout(r,spacing-(ms-lastAt)));
+           const deadline=Date.now()+75000;
+           for(;;){
+            const h=health(await json(hub));out.lastHub=h;
+            // Do not wait through a live fault or cooldown. Only wait for another existing HUB sample/window.
+            assert(h.ok&&!h.stale&&!h.hasError&&!h.retryAfter&&(!h.last429||Date.now()-Number(h.last429)>600000),'HUB_LIVE_OR_COOLDOWN_STOP');
+            if(safe(h)&&(!quota||quota.reset<=sec()||quota.remaining>20))break;
+            assert(Date.now()<deadline,'NO_FRESH_HUB_HEADROOM_WITHIN_75S_STOP');
+            out.hubWaitReads=(out.hubWaitReads??0)+1;await new Promise(r=>setTimeout(r,4200));
+           }
+           assert(Date.parse(t.kickoffUTC)>Date.now()+earliestMargin,'TARGET_KICKOFF_TOO_CLOSE_AFTER_WAIT');
+           const path='/v1/teams/'+t.id+'/fixtures?status=finished&per_page='+limit;
+           lastAt=Date.now();out.providerRequests++;save();
+           const r=await fetch('https://api.5dollarfootballapi.com'+path,{headers:headers(key),redirect:'error',cache:'no-store',signal:AbortSignal.timeout(25000)});
+           if(r.status===429){out.http429++;out.retryAfter=r.headers.get('retry-after');throw Error('PROVIDER_429_STOP_NO_RETRY');}
+           assert(r.ok,'PROVIDER_HTTP_'+r.status);
+           const body=await r.json(),fields=['x-ratelimit-limit','x-ratelimit-remaining','x-ratelimit-reset'].map(k=>r.headers.get(k));
+           assert(fields.every(x=>typeof x==='string'&&/^[0-9]+$/.test(x)),'PROVIDER_QUOTA_HEADERS_MISSING');
+           const [total,remaining,reset]=fields.map(Number);
+           assert(total===40&&remaining>=0&&remaining<total&&reset>=sec()&&reset<=sec()+120,'PROVIDER_QUOTA_HEADERS_INVALID');
+           quota={total,remaining,reset};out.lastQuota=quota;out.minQuota=out.minQuota===undefined?remaining:Math.min(out.minQuota,remaining);
+           assert((body.success===1||body.success===true)&&Array.isArray(body.data)&&body.data.length<=limit,'PROVIDER_TEAM_SCHEMA_INVALID');
+           return body.data;
+          }
+          async function runStage(phase,limit){
+           const start=await platform(), startMap=await teamMap(start), attempted=phase===1?new Set(previousPhase1):new Set();
+           const run={phase,limit,before:flags(start),beforeByFixture:summarizeFixtures(start.a),teamResults:[],received:0,added:0,duplicate:0,corrected:0,rejected:0,conflicts:0,stale:0,insufficient:0,missingIdentity:0,tooNear:0};
+           out.stages.push(run);out.status='RUNNING_PHASE_'+phase;save();
+           try {
+            let x=start,m=startMap, i=0;
+            const cohort=new Set(start.a.fixtures.map(x=>String(x.fixtureId)));
+            for(;;){
+             const filtered={...x,a:{...x.a,fixtures:x.a.fixtures.filter(x=>cohort.has(String(x.fixtureId)))}};
+             const q=choose(filtered,m,limit,attempted,phase);run.missingIdentity=q.missing;run.tooNear=q.tooNear;
+             if(!q.targets.length)break;
+             assert(i<immutableCaps[phase],'BOUNDED_STAGE_CAP_REACHED');
+             if(i%5===0)assert.deepEqual(await versions(),preVersions,'PROTECTED_WORKER_VERSION_CHANGED_STOP');
+             const t=q.targets[0];attempted.add(t.id);i++;
+             const p={...t,received:0,status:'REQUESTED'};run.teamResults.push(p);
+             const raw=await providerCall(t,limit); p.received=raw.length;run.received+=raw.length;
+             const rows=[],seen=new Set();
+             for(const f of raw){const H=Number(f?.teams?.home?.id),A=Number(f?.teams?.away?.id),id=Number(f?.id);
+               if(![H,A,id,Number(f?.league?.id)].every(validId)||H===A||![H,A].includes(t.id)||f.status!=='finished'||f.status_code!=='full'||!Number.isSafeInteger(f.kickoff_ts)||f.kickoff_ts<=0||f.kickoff_ts>=sec()||!['home','away'].every(s=>Number.isSafeInteger(f.goals?.[s])&&f.goals[s]>=0)){run.rejected++;continue;}
+               if(seen.has(id)){run.duplicate++;continue;}seen.add(id);rows.push(f);
+             }
+             assert(run.rejected===0,'INVALID_FINISHED_FT_ROWS_STOP');
+             p.fixtureIds=rows.map(f=>Number(f.id));
+             if(rows.length){const result=await json(base+'/ou-history-ft-import-test',{method:'POST',headers:{...headers(ownerAuth),'content-type':'application/json'},body:JSON.stringify({source:'UPCOMING_TEAM_FT',teamId:t.id,fixtureId:t.fixtureId,observed:sec(),rows})});
+              assert(result.code==='B46_OU_TARGET_FT_HISTORY_V1_TEST'&&result.productionWrites===0&&result.oneX2LedgerUnchanged&&result.OUPredictionLedgerUnchanged&&result.bttsProjectUnchanged,'TEST_IMPORT_ISOLATION_CHECK_FAILED');
+              const s=result.stats;run.added+=s.added;run.duplicate+=s.unchanged;run.corrected+=s.corrected;run.conflicts+=s.conflicts;run.stale+=s.stale;p.import=s;}
+             x=await platform();if(i%8===0)m=await teamMap(x);
+             const f=x.a.fixtures.find(f=>Number(f.fixtureId)===t.fixtureId);
+             p.readback=f?.[t.side+'History']??null;
+             assert(Number.isInteger(p.readback),'TARGET_READBACK_MISSING_STOP');
+             if(p.readback<limit&&rows.length<limit){p.status='INSUFFICIENT_HISTORY';run.insufficient++;if(phase===1)confirmedShort.add(t.id);}
+             else if(p.readback<limit){p.status='NOT_ENOUGH_UNIQUE_OR_VALID_ARCHIVE_RECORDS';run.insufficient++;}
+             else p.status='READY';
+             save();console.log('FT_TEAM '+JSON.stringify({phase,teamId:t.id,received:p.received,inserted:p.import?.added??0,readback:p.readback,status:p.status,remaining:quota.remaining}));
+            }
+            assert(run.missingIdentity===0,'SOME_CURRENT_TEST_TEAM_IDS_NOT_IN_CACHED_HUB_STOP_BEFORE_NEXT_PHASE');
+           }finally{
+            try{const x=await platform();run.after=flags(x);run.afterByFixture=summarizeFixtures(x.a);run.sameCohort=Object.keys(run.beforeByFixture).filter(k=>Object.hasOwn(run.afterByFixture,k)).reduce((o,k)=>{const a=run.beforeByFixture[k],b=run.afterByFixture[k];o.fixtures++;for(const n of [3,5,10]){if(a.every(c=>c>=n))o['before'+n]++;if(b.every(c=>c>=n))o['after'+n]++;}return o},{fixtures:0,before3:0,after3:0,before5:0,after5:0,before10:0,after10:0});}catch(e){run.readbackProblem=String(e.message).split('\n')[0].slice(0,120);}
+            save();
+           }
+           assert(run.after&&!run.readbackProblem,'PHASE_READBACK_MISSING_STOP');
+           assert(run.after.archiveFt>=run.before.archiveFt+run.added,'Archive additions not visible on readback');
+           assert.deepEqual(await versions(),preVersions,'PROTECTED_WORKER_VERSION_CHANGED_STOP');
+           console.log('FT_PHASE '+JSON.stringify({phase,before:run.before,after:run.after,sameCohort:run.sameCohort,received:run.received,added:run.added,duplicates:run.duplicate,corrected:run.corrected,rejected:run.rejected,conflicts:run.conflicts,stale:run.stale,insufficient:run.insufficient,tooNear:run.tooNear,missingIdentity:run.missingIdentity,requestsSoFar:out.providerRequests}));
+          }
+          try{
+           assert.equal(process.env.GITHUB_RUN_ATTEMPT,'1','NO_PROVIDER_REPLAY');
+           assert(token&&account&&key,'APPROVED_GITHUB_SECRETS_NOT_AVAILABLE');
+           const prior=JSON.parse(fs.readFileSync('prior-pilot/team-first-pilot.json'));
+           assert(prior.status==='PASS_PROVIDER_IMPORT_READBACK'&&prior.providerRequests===1&&prior.target?.teamId===163528,'VERIFIED_PILOT_REQUIRED');
+           preVersions=await versions();out.versionsBefore=preVersions;assert.equal(preVersions[names[0]],expectTest,'TEST_CHANGED_NO_PROVIDER_CALL');
+           const initial=await platform();
+           assert(initial.ft>=754,'EXPECTED_PILOT_IMPORT_NOT_VISIBLE');
+           await runStage(1,3);
+           await runStage(2,10);
+           out.status='PHASES_1_AND_2_READBACK_VERIFIED';
+          }catch(e){out.status='STOPPED';out.reason=String(e.message).split('\n')[0].slice(0,150);process.exitCode=1;}
+          try{out.versionsAfter=await versions();out.liveAfter=health(await json(hub));}catch(e){out.finalGuard='READBACK_UNAVAILABLE';process.exitCode=1;}
+          save();console.log('FT_BATCH_END '+JSON.stringify({status:out.status,reason:out.reason,providerRequests:out.providerRequests,http429:out.http429,retryAfter:out.retryAfter,minQuota:out.minQuota,productionWrites:0,versionsUnchanged:preVersions?JSON.stringify(preVersions)===JSON.stringify(out.versionsAfter):null,liveAfter:out.liveAfter,finalGuard:out.finalGuard,partial:out.stages.map(({phase,before,after,sameCohort,received,added,duplicate,corrected,rejected,conflicts,insufficient,tooNear,missingIdentity,teamResults})=>({phase,before,after,sameCohort,received,added,duplicate,corrected,rejected,conflicts,insufficient,tooNear,missingIdentity,attempted:teamResults.length}))}));
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: team-first-resume-test-report
+          path: team-first-batch.json
+          retention-days: 30
