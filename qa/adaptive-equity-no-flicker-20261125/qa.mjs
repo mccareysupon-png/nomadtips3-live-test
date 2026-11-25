@@ -50,6 +50,15 @@ try{
     return {button:button.outerHTML,rect:{x:b.x,y:b.y,w:b.width,h:b.height},at:at?.outerHTML.slice(0,450),
       pointer:getComputedStyle(button).pointerEvents,disabled:button.disabled,buttonClicks:window.__B46ClickProbe};
    },days);
+   if(days===90&&states.length===0){
+     const programmatic=await page.evaluate(()=>{
+       const button=document.querySelector('#b46-adaptive-research-equity button[data-range-days="90"]');
+       button.click();
+       return {probe:window.__B46ClickProbe,pressed:button.getAttribute('aria-pressed'),
+         caption:document.querySelector('#b46-adaptive-research-equity p.b46pm-stats-cutoff')?.textContent};
+     });
+     console.log('B46_EQUITY_PROGRAMMATIC_CLICK '+JSON.stringify(programmatic));
+   }
    console.log('B46_EQUITY_RANGE_STATUS '+JSON.stringify({name,days,status,pageErrors:errors,hit}));
    assert(status.samePanel&&status.sameGraph&&status.sameTable&&status.sameSvg&&status.samePolyline&&status.sameSelector,'DOM_REPLACED_'+name+'_'+days);
    assert(status.pressed==='true'&&status.aria.includes(days+' days'),'BAD_RANGE_'+name+'_'+days);
