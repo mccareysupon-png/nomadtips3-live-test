@@ -23,3 +23,5 @@ jobs:
         run: node qa/prematch-history-20261120/deploy-adaptive-canonical-predictions-test-20261125.mjs --dry-run
       - name: Activate TEST frontend only and validate preserved Workers
         run: node qa/prematch-history-20261120/deploy-adaptive-canonical-predictions-test-20261125.mjs
+
+# Retry after safe rebase onto newest live TEST frontend version 0fccf0ff.
