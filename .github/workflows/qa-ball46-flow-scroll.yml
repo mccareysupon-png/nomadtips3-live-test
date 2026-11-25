@@ -16,44 +16,43 @@ jobs:
         run: |
           node <<'JS'
           const {chromium}=require('playwright');
+          const url='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/';
           (async()=>{
-           const browser=await chromium.launch(),page=await browser.newPage({viewport:{width:1440,height:900},serviceWorkers:'block'});
-           try{
-           await page.goto('https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/',{waitUntil:'domcontentloaded'});
-           const rows=page.locator('.match-row[data-match-id]:visible');
-           await rows.first().waitFor({timeout:20000});
-           const data=page.locator('.expand-full-market-card .fmb-market:visible');
-           let tested=0,picked;
-           for(let i=0;i<Math.min(6,await rows.count())&&!picked;i++){
-             const row=rows.nth(i); await row.click();
-             const books=page.locator('.expand-full-market-card [data-fmb-book]:visible');
-             if(!await books.first().waitFor({timeout:6500}).then(()=>true,()=>false))continue;
-             console.log('BOOK_AVAIL',await books.evaluateAll(es=>es.slice(0,6).map(e=>e.outerHTML.slice(0,280))));
-             for(let j=0;j<Math.min(6,await books.count());j++){
-              const b=books.nth(j),book=await b.textContent();if(!await b.isEnabled())continue;
-              await b.click();tested++;
-              if(await data.first().waitFor({timeout:850}).then(()=>true,()=>false)){picked={book,id:await row.getAttribute('data-match-id')};break;}
-             }
+           const browser=await chromium.launch();
+           try {for(const variant of ['before','stable geometry']){
+           const page=await browser.newPage({viewport:{width:1440,height:900},serviceWorkers:'block'});const err=[];page.on('pageerror',e=>err.push(e.message));
+           await page.goto(url,{waitUntil:'domcontentloaded',timeout:25000});
+           if(variant!=='before')await page.addStyleTag({content:'.expand-full-market-card .fmb-market{content-visibility:visible!important;contain-intrinsic-size:none!important}'});
+           const rows=page.locator('.match-row[data-match-id]:visible');await rows.first().waitFor({timeout:15000});
+           const market=page.locator('.expand-full-market-card .fmb-market:visible');
+           let fit=null;
+           for(let i=0;i<Math.min(6,await rows.count())&&!fit;i++){
+            await rows.nth(i).click();
+            const books=page.locator('.expand-full-market-card [data-fmb-book]:visible');
+            if(!await books.first().waitFor({timeout:5000}).then(()=>true,()=>false))continue;
+            for(let j=0;j<Math.min(6,await books.count());j++){
+              const b=books.nth(j);if(!await b.isEnabled())continue;
+              await b.click();
+              if(await market.first().waitFor({timeout:850}).then(()=>true,()=>false)){fit={id:await rows.nth(i).getAttribute('data-match-id'),book:await b.textContent(),markets:await market.count()};break}
+            }
            }
-           console.log('MARKET',picked,'attempts',tested);
-           const box=page.locator('.expand-full-market-card:visible').first();
-           await box.scrollIntoViewIfNeeded();
-           console.log('SCROLL DOM',await box.evaluate(e=>{const info=x=>({cls:x.className,id:x.id,h:x.clientHeight,sh:x.scrollHeight,w:x.clientWidth,sw:x.scrollWidth,x:getComputedStyle(x).overflowX,y:getComputedStyle(x).overflowY});const p=[];for(let a=e;a;a=a.parentElement)p.push(info(a));return {p,inner:[...e.querySelectorAll('.fmb-tabs,[data-fmb-panel],.fmb-market,.fmb-table-wrap')].slice(0,10).map(info),flow:[...document.querySelectorAll('.b46-flow-space,.b46-signal-ticker')].slice(0,12).map(info)}}));
+           if(!fit)throw Error('Could not find a populated market');
+           const tabs=page.locator('.expand-full-market-card .fmb-tabs:visible');
+           await tabs.scrollIntoViewIfNeeded();
+           const box=await tabs.boundingBox();await page.mouse.move(box.x+box.width/2, Math.min(860,box.y+box.height+160));
+           const cdp=await page.context().newCDPSession(page);await cdp.send('Profiler.enable');await cdp.send('Profiler.setSamplingInterval',{interval:2500});await cdp.send('Profiler.start');
            await page.evaluate(()=>{
-            const b=document.querySelector('.expand-full-market-card'),scrolls=[],calls=[],r=[],l=[],mutationCounts={market:0,flow:0};let ts=performance.now();
-            const hook=window.scrollBy;window.scrollBy=function(...args){calls.push({args,t:Math.round(performance.now()-ts),stack:new Error().stack.split('\n')[2]});return hook.apply(this,args)};
-            document.addEventListener('scroll',e=>{const n=e.target;scrolls.push([Math.round(performance.now()-ts),n.className||n.nodeName,n.scrollTop??scrollY,n.scrollLeft??scrollX])},true);
-            const mo=(e,k)=>{if(e)new MutationObserver(a=>mutationCounts[k]+=a.length).observe(e,{childList:true,subtree:true})};mo(b,'market');mo(document.querySelector('.expand-flow-card'),'flow');
-            try{new PerformanceObserver(list=>{for(const e of list.getEntries())l.push(Math.round(e.duration))}).observe({type:'longtask'})}catch{}
-            window.__diag={scrolls,calls,r,l,mutationCounts};
-            let before=ts;const frame=t=>{r.push([Math.round(t-before),Math.round(b?.getBoundingClientRect().height??0),Math.round(document.querySelector('.expand-flow-card')?.getBoundingClientRect().height??0),Math.round(b?.getBoundingClientRect().top??0)]);before=t;if(t-ts<15000)requestAnimationFrame(frame)};requestAnimationFrame(frame);
+            const d=window.qa={geometry:[],flow:{},long:[]};let s=performance.now(),t0=s;
+            const f=document.querySelector('.expand-flow-card');new MutationObserver(rs=>{for(const r of rs){const k=String(r.target.className?.baseVal??r.target.className??r.target.nodeName);d.flow[k]=(d.flow[k]||0)+1}}).observe(f,{subtree:true,childList:true});
+            new PerformanceObserver(ls=>{for(const e of ls.getEntries())d.long.push(Math.round(e.duration))}).observe({type:'longtask'});
+            function frame(t){const el=document.querySelector('.expand-full-market-card');d.geometry.push([Math.round(t-t0),Math.round(el?.getBoundingClientRect().height||0)]);t0=t;if(t-s<17000)requestAnimationFrame(frame)}requestAnimationFrame(frame);
            });
-           const move=async(el,x,y)=>{const r=await el.boundingBox();if(r)await page.mouse.move(Math.max(10,Math.min(1430,r.x+r.width/2)),Math.max(10,Math.min(890,r.y+r.height/2)));for(let i=0;i<12;i++){await page.mouse.wheel(x,y);await page.waitForTimeout(110)}};
-           await move(box,0,110);await move(box,0,-110);
-           const bar=page.locator('.fmb-tabs:visible').first();if(await bar.count()){await bar.scrollIntoViewIfNeeded();await move(bar,105,0);await move(bar,-105,0);}
-           const flow=page.locator('.expand-flow-card .b46-flow-space:visible').first();if(await flow.count()){await flow.scrollIntoViewIfNeeded();await move(flow,110,0);await move(flow,-110,0);}
-           await page.waitForTimeout(5000);
-           console.log('TRACE',JSON.stringify(await page.evaluate(()=>{const d=window.__diag;return {calls:d.calls.slice(0,16),scrollCount:d.scrolls.length,events:d.scrolls.slice(0,18),maxFrameMs:Math.max(...d.r.map(x=>x[0])),marketHeights:[...new Set(d.r.map(x=>x[1]))],flowHeights:[...new Set(d.r.map(x=>x[2]))],longs:d.l,dom:d.mutationCounts};})));
-           }finally{await browser.close()}
+           for(const sign of [1,-1,1,-1])for(let n=0;n<8;n++){await page.mouse.wheel(0,115*sign);await page.waitForTimeout(100)}
+           await page.waitForTimeout(1500);
+           const {profile}=await cdp.send('Profiler.stop');const names={};for(const n of profile.nodes){if(!n.hitCount)continue;const f=n.callFrame;const name=(f.functionName||'(anonymous)')+' '+(f.url?f.url.split('/').pop().split('?')[0]+':'+f.lineNumber:'');names[name]=(names[name]||0)+n.hitCount;}
+           const diag=await page.evaluate(()=>{const d=window.qa;return {heights:[...new Set(d.geometry.map(x=>x[1]))],maxFrame:Math.max(...d.geometry.map(x=>x[0])),long:d.long,flow:d.flow}});
+           console.log('AB',JSON.stringify({variant,fit,diag,top:Object.entries(names).sort((a,b)=>b[1]-a[1]).slice(0,24),err}));
+           await page.close();
+           }}finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exitCode=1});
           JS
