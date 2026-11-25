@@ -11,7 +11,7 @@ import {patchAdaptiveDotRiskReadOnly} from './b46-adaptive-dot-readonly-worker-p
 const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
 assert(token&&account,'TEST_DEPLOY_CREDENTIALS_NOT_CONFIGURED');
 const worker='ball46-prematch-only-test-20261120';
-const baseline='3b14d940-5c47-46dd-b169-bd0ea8958add';
+const baseline='d66ec919-8158-4dd3-b797-2ade236c1ca5';
 const protect=['ball46-production','nomadtips3-engine-343','nomadtips3-5usd-hub-343',
  'nomadtips3-full-market-343-ball46','ball46-premium-match-colors-test-20261120'];
 const host='https://'+worker+'.mccarey-supon.workers.dev';
@@ -38,7 +38,7 @@ const [initial,protectBefore,installBefore,cronBefore,secretsBefore]=await Promi
 ]);
 assert.equal(initial,baseline,'TEST_WORKER_SOURCE_VERSION_DRIFT');
 assert(cronBefore.schedules.some(x=>x.cron==='*/15 * * * *'),'TEST_CRON_15M_UNEXPECTEDLY_MISSING');
-assert(!secretsBefore.some(x=>x.name===secretName),'DOT_READ_SECRET_ALREADY_PRESENT');
+assert(secretsBefore.some(x=>x.name===secretName),'DEDICATED_DOT_SECRET_NOT_PRESENT');
 const oldMap=new Map(installBefore.modules.map(x=>[x.name,Buffer.from(x.content_base64,'base64')]));
 assert.equal(installBefore.main_module,'prematch-only-worker.mjs');
 assert(!oldMap.has(dotModule));
@@ -65,10 +65,8 @@ if(dry){
 // The value is SHA-256(dotToken); neither it nor the dotToken are logged or committed.
 let afterSecret=null,patchedVersion=null,activated=false;
 try{
- await cf('/scripts/'+worker+'/secrets',{
-  method:'PUT',headers:{'content-type':'application/json'},
-  body:JSON.stringify({name:secretName,type:'secret_text',text:dotHash})
- });
+ // Dedicated hash secret was created in the prior attempt and is never rotated implicitly.
+ assert(secretsBefore.some(x=>x.name===secretName));
  const listed=await cf('/scripts/'+worker+'/secrets');
  assert(listed.some(x=>x.name===secretName),'READ_ONLY_SECRET_MISSING_AFTER_ADD');
  afterSecret=await active(worker);
@@ -102,6 +100,10 @@ try{
  let legitimate=null;
  for(let attempt=0;attempt<24;attempt++){
   const v=await probe('GET',dotToken);
+  if(attempt===0||attempt===8||attempt===16||attempt===23)console.log('B46_DOT_READER_DIAGNOSTIC '+JSON.stringify({
+   attempt,http:v.http,status:v.data?.status??null,code:v.data?.code??null,
+   reason:v.data?.reason??null,hasFormulas:Array.isArray(v.data?.formulas),cors:v.cors??null
+  }));
   if((v.http===200||v.http===503)&&v.data?.code==='B46_ADAPTIVE_DOT_SUPERVISOR_READ_V1_TEST'){legitimate=v;break;}
   await new Promise(resolve=>setTimeout(resolve,1600));
  }
