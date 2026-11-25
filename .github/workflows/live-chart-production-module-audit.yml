@@ -1,0 +1,55 @@
+name: LIVE chart production module audit
+on:
+  push:
+    branches: [fix/ball46-live-statistics-inplace-20261125]
+    paths: [.github/workflows/live-chart-production-module-audit.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Read-only audit of every production module
+        id: release
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          import {execFileSync} from 'node:child_process';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&account,'CLOUDFLARE_TEST_SECRETS_MISSING');
+          const name='ball46-production',host='https://ball46.com';
+          const api='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const protectedWorkers=['ball46-prematch-only-test-20261120','ball46-premium-match-colors-test-20261120',
+           'nomadtips3-engine-343','nomadtips3-5usd-hub-343','nomadtips3-full-market-343-ball46'];
+          async function cf(path,opt={}){
+           const r=await fetch(api+path,{...opt,headers:{authorization:'Bearer '+token,...opt.headers},signal:AbortSignal.timeout(55000)});
+           const j=await r.json();assert(r.ok&&j.success,'CF_'+path+'_'+r.status+'_'+JSON.stringify(j.errors??[]).slice(0,250));return j.result;
+          }
+          const ver=async n=>(await cf('/scripts/'+n+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+          const frozen=Object.fromEntries(await Promise.all(protectedWorkers.map(async n=>[n,await ver(n)])));
+          const current=await ver(name);
+          const [v,settings]=await Promise.all([
+           cf('/workers/'+name+'/versions/'+current+'?include=modules'),
+           cf('/scripts/'+name+'/settings')]);
+          const modules=Object.fromEntries(v.modules.map(m=>[m.name,Buffer.from(m.content_base64,'base64').toString()]));
+          const main=v.main_module,source=modules[main];
+          
+          const crypto=await import('node:crypto');
+          const response=await fetch(host+'/longterm-performance-343.js?audit='+Date.now());assert(response.ok);const asset=await response.text();
+          console.log('PRODUCTION_VERSION',current,'MODULE_COUNT',v.modules.length,'MAIN',main);
+          for(const m of v.modules){
+            const b=Buffer.from(m.content_base64,'base64'),t=b.toString();
+            console.log('MODULE',JSON.stringify({name:m.name,type:m.content_type,bytes:b.length,sha256:crypto.createHash('sha256').update(b).digest('hex'),exact:t===asset,trimMatch:t.trim()===asset.trim(),route:t.includes('longterm-performance-343.js'),renderer:t.includes('function renderFromStats'),marker:t.includes('B46_FINANCE_LINE_VISUAL_V1_20261114')}));
+          }
+          console.log('PRODUCTION_UNCHANGED',await ver(name)===current);
+          JS
