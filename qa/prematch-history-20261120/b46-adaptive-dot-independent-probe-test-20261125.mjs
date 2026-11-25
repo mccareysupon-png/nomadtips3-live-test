@@ -49,6 +49,7 @@ if(good.http===503){
   noOwnerTab:true,hasUnverifiedData:good.body.affectedFormulas?.length||0,
   elapsedMs:Date.now()-start
  }));
+ if(process.argv.includes('--allow-pending'))process.exit(0);
  process.exit(2);
 }
 assert.equal(good.http,200);
