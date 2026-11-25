@@ -1,0 +1,18 @@
+name: BALL46 Adaptive read-only TEST browser QA retry
+on:
+  push:
+    branches: [release/b46-adaptive-readonly-page-20261125]
+    paths: ['.github/workflows/b46-adaptive-readonly-qa-only-20261125.yml']
+permissions: {contents: read}
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - run: node qa/adaptive-readonly-production-20261125/qa.mjs
