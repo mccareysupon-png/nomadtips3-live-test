@@ -1,0 +1,26 @@
+name: BALL46 Adaptive 42 Formula Manual DD Control TEST Deploy 20261125
+on:
+  push:
+    branches: [feature/ball46-adaptive-manual-control-test-20261125]
+    paths: [.github/workflows/b46-adaptive-manual-control-test-deploy-20261125.yml]
+permissions: {contents: read}
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Check all additive modules and deployment script
+        run: |
+          node --check qa/prematch-history-20261120/b46-adaptive-formula-control-risk-test.mjs
+          node --check qa/prematch-history-20261120/b46-adaptive-manual-control-page-test.mjs
+          node --check qa/prematch-history-20261120/deploy-adaptive-manual-control-test-20261125.mjs
+      - name: Unit test 42 formulas, pause, auto-DD and owner-only resume, shadow preservation
+        run: node --experimental-sqlite qa/prematch-history-20261120/b46-adaptive-formula-control-risk.test.mjs
+      - name: Guarded Cloudflare TEST-only deployment, real API smoke, protected Worker invariants
+        run: node qa/prematch-history-20261120/deploy-adaptive-manual-control-test-20261125.mjs
