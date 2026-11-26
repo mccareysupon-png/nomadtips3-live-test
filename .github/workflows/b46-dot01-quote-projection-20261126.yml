@@ -1,0 +1,119 @@
+name: BALL46 dot01 quote eligibility TEST
+on:
+  push:
+    branches: [feature/ball46-adaptive-manual-control-test-20261125]
+    paths: ['.github/workflows/b46-dot01-quote-projection-20261126.yml']
+permissions:
+  contents: read
+concurrency:
+  group: ball46-ft-phase1-phase2-guarded-oneoff-20261126
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Install browser test tooling
+        run: |
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+      - name: Verify public quote gate, activate TEST only, roll back on regression
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'B46_DOT01_DEPLOY'
+          import A from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          import {chromium,devices} from 'playwright';
+          const worker='ball46-prematch-only-test-20261120',old='5fd461d9-5c90-42c4-97d8-8e32fec08e3a',next='bea0bf4c-ac3c-4b2c-a7a4-3e03ff1c9988';
+          const front='ball46-premium-match-colors-test-20261120';
+          const F='https://'+front+'.mccarey-supon.workers.dev', path='/__b46_pm_ou_formula_timeline_test';
+          const surfaces=['ball46-production',front,'nomadtips3-full-market-343-ball46','nomadtips3-5usd-hub-343','nomadtips3-engine-343'];
+          const {CLOUDFLARE_ACCOUNT_ID:a,CLOUDFLARE_API_TOKEN:t}=process.env;
+          const base='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/scripts/';
+          const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
+          const request=(u,init={})=>fetch(u,{...init,signal:AbortSignal.timeout(25000)});
+          const cf=async(w,p,init={})=>{
+           const r=await request(base+w+p,{...init,headers:{authorization:'Bearer '+t,...init.headers}});
+           if(!r.ok)throw Error('CF_'+r.status+'_'+w+p);
+           return p==='/content/v2'?r.text():(await r.json()).result;
+          };
+          const active=async w=>{const v=(await cf(w,'/deployments')).deployments[0].versions;A(v.length===1&&v[0].percentage===100);return v[0].version_id;};
+          const protectedVersions=()=>Promise.all(surfaces.map(active));
+          const activate=async(id,msg)=>(await cf(worker,'/deployments',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({strategy:'percentage',code_update_strategy:{mode:'deferred',max_delay:25},versions:[{version_id:id,percentage:100}],annotations:{'workers/message':msg}})})).id;
+          const wait=ms=>new Promise(r=>setTimeout(r,ms));
+          const read=async()=>{const r=await request(F+path);return [r.status,await r.json()];};
+          const validate=([status,j])=>{A.equal(status,200);A.equal(j.code,'B46_OU_FORMULA_TIMELINE_TEST_V1');A.ok(['OK','PARTIAL'].includes(j.status));A.equal(j.providerCalls,0);A.equal(j.productionWrites,0);A.ok(j.registry.includes('dot01'));return j;};
+          const dot=x=>x.formula_id==='dot01';
+          const valid=x=>Number.isFinite(x.odds)&&x.odds>=1.4&&x.odds<=10&&typeof x.bookmaker==='string'&&x.bookmaker.trim().length>0&&
+           /^FULL_MARKET_CACHE_GOAL_LINE(?:_FIXED)?_(?:OPENING|CLOSING)$/.test(x.odds_source)&&Number.isSafeInteger(x.quote_observed_at)&&x.quote_observed_at>=x.picked_at-120&&x.quote_observed_at<=x.picked_at&&x.picked_at+300<x.kickoff;
+          const id=x=>x.fixture_id+'|'+x.formula_id+'|'+x.selection;
+          const summary={status:'FAILED',testWorker:worker,providerCallsAdded:0,productionWrites:0,browser:[]};
+          let activated=false,browser;
+          try{
+           A(t&&a);A.equal(process.env.GITHUB_RUN_ATTEMPT,'1');
+           A.equal(await active(worker),old);
+           const [ov,nv,raw,guards,snap0]=await Promise.all([cf(worker,'/versions/'+old),cf(worker,'/versions/'+next),cf(worker,'/content/v2'),protectedVersions(),read()]);
+           for(const key of ['bindings','script_runtime'])A.deepEqual(ov.resources[key],nv.resources[key]);
+           for(const key of ['handlers','named_handlers'])A.deepEqual(ov.resources.script[key],nv.resources.script[key]);
+           const payload=raw.split(raw.split('\r\n')[0]).slice(1,-1);
+           const m=n=>{const x=payload.find(x=>x.includes('filename="'+n+'"'));A(x,'module '+n);return x.slice(x.indexOf('\r\n\r\n')+4,-2);};
+           A.equal(payload.length,48);
+           A.equal(hash(m('ou-formula-view.mjs')),'7234cbd6c221aed1ba59c07882eeeabaf7b6f6966c9c6e016a1b159ba53f897f');
+           A.equal(hash(m('prematch-only-worker.mjs')),'05a9a49718e13f1b48b915a8aa1c4ada9ab3f87ea4051dcb30621d7bb885e581');
+           const before=validate(snap0), beforeUnpriced=before.rows.filter(x=>dot(x)&&!valid(x));
+           A(beforeUnpriced.length>0,'NO_ORIGINAL_REGRESSION_SAMPLE');
+           A.equal(await active(worker),old);
+           summary.deployment=await activate(next,'TEST Predictions dot01 quote gate');activated=true;
+           let after=null;
+           for(let i=0;i<20;i++){
+            try{const j=validate(await read());if(j.rows.filter(dot).every(valid)){after=j;break}}catch{}
+            await wait(1800);
+           }
+           A(after,'NO_VERIFIED_ROLLOUT');
+           A.equal(await active(worker),next);
+           A.deepEqual(await protectedVersions(),guards);
+           A.deepEqual(after.registry,before.registry);
+           const pricing=new Map(before.rows.filter(r=>!dot(r)).map(r=>[id(r),r.odds]));
+           const shared=after.rows.filter(r=>!dot(r)&&pricing.has(id(r)));
+           A(shared.length>0,'ADAPTIVE_PRICE_BASELINE_MISSING');
+           A(shared.every(r=>r.odds===pricing.get(id(r))),'ADAPTIVE_PRICE_CHANGED');
+           const removed=new Set(beforeUnpriced.map(r=>r.fixture_id));
+           const visibleIds=new Set(after.rows.map(r=>r.fixture_id));
+           const onlyUnpriced=[...removed].filter(x=>!visibleIds.has(x));
+           A(onlyUnpriced.every(x=>!Object.hasOwn(after.monitor,String(x))),'SHADOW_FIXTURE_MONITOR_LEAK');
+           summary.initialUnpriced=beforeUnpriced.length;
+           summary.remainingUnpriced=after.rows.filter(x=>dot(x)&&!valid(x)).length;
+           summary.retainedVerifiedDot=after.rows.filter(dot).length;
+           summary.adaptiveSharedUnchanged=shared.length;
+           summary.shadowOnlyFixtureMonitorsExcluded=onlyUnpriced.length;
+           browser=await chromium.launch({headless:true});
+           for(const [form,opts] of [['desktop',{viewport:{width:1440,height:900}}],['mobile',devices['Pixel 7']]]){
+            const ctx=await browser.newContext({...opts,timezoneId:'Asia/Bangkok'});
+            try{
+             const page=await ctx.newPage();
+             const response=page.waitForResponse(r=>new URL(r.url()).pathname===path&&r.status()===200,{timeout:28000});
+             await page.goto(F+'/?b46pm=predictions',{waitUntil:'domcontentloaded',timeout:30000});
+             const live=validate([200,await (await response).json()]);
+             A(live.rows.filter(dot).every(valid),'BROWSER_LEAK');
+             const tl=page.locator('#b46-test-timeline');await tl.waitFor({timeout:25000});
+             await tl.getByRole('button',{name:'Over/Under',exact:true}).click({timeout:10000});
+             await tl.getByRole('button',{name:'All signals',exact:true}).click({timeout:10000});
+             const row=tl.locator('article[data-b46-pm-unified-fixture]');
+             const cards=await row.evaluateAll(rs=>rs.map(x=>({id:Number(x.dataset.b46PmUnifiedFixture),text:x.innerText})));
+             A(cards.every(x=>!onlyUnpriced.includes(x.id)),'UNPRICED_FIXTURE_CARD_REMAINED');
+             A(cards.every(x=>!/dot01[^\n]*No recorded price/i.test(x.text)),'UNPRICED_DOT01_CARD_REMAINED');
+             const details=tl.getByRole('button',{name:/^Details/});
+             for(let n=(await details.count())-1;n>=0;n--)await details.nth(n).click().catch(()=>{});
+             const text=await tl.innerText();
+             A(!/dot01[^\n]*No recorded price/i.test(text),'UNPRICED_DOT01_DETAILS_REMAINED');
+             summary.browser.push({form,cards:cards.length,unpricedDot01:0});
+            }finally{await ctx.close();}
+           }
+           A.equal(await active(worker),next);
+           A.deepEqual(await protectedVersions(),guards);
+           summary.status='PASSED';
+          }catch(e){console.error(e.stack);if(activated&&await active(worker)===next)summary.rollback=await activate(old,'Rollback TEST Predictions dot01 quote gate');throw e;}
+          finally{await browser?.close();console.log('DOT01_QA '+JSON.stringify(summary));}
+          B46_DOT01_DEPLOY
