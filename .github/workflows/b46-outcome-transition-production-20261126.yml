@@ -1,0 +1,123 @@
+name: BALL46 Outcome isolated Production release
+on:
+  push:
+    branches: [feature/ball46-adaptive-manual-control-test-20261125]
+    paths: ['.github/workflows/b46-outcome-transition-production-20261126.yml']
+permissions:
+  contents: read
+concurrency:
+  group: ball46-ft-phase1-phase2-guarded-oneoff-20261126
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Install browser test tooling
+        run: |
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+      - name: Prove the fixture stays stable per frame and promote isolated patch to Production after preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'B46_OUTCOME_DEPLOY'
+          import A from 'node:assert/strict';import crypto from 'node:crypto';import {chromium,devices} from 'playwright';
+          const worker='ball46-production',old='16bb9ec1-d6ea-4e3f-9406-243430e032c6',next='afe92f72-7ca0-41c2-8ad2-34f7a1d3ad2e';
+          const F='https://'+next.split('-')[0]+'-'+worker+'.mccarey-supon.workers.dev',P='https://ball46.com',js='/longterm-performance-343.js',route='/?view=statistics';
+          const {CLOUDFLARE_ACCOUNT_ID:a,CLOUDFLARE_API_TOKEN:t}=process.env;
+          const base='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/scripts/';
+          const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
+          const protectedNames=['ball46-premium-match-colors-test-20261120','ball46-prematch-only-test-20261120','nomadtips3-5usd-hub-343','nomadtips3-engine-343'];
+          const candidates=['2405135b26944128e2af498c2cdc696affd3f653b662ae103b183f9bf520dd85','1877c7dff116b9fbde7710f9ef3b6d1011e4197c7f149eed55d3b0bf612cbed0'];
+          const request=(u,init={})=>fetch(u,{...init,signal:AbortSignal.timeout(25000)});
+          const cf=async(w,p,init={})=>{const r=await request(base+w+p,{...init,headers:{authorization:'Bearer '+t,...init.headers}});if(!r.ok)throw Error('CF_'+r.status+'_'+w+p);return p==='/content/v2'?r.text():(await r.json()).result;};
+          const active=async w=>{const v=(await cf(w,'/deployments')).deployments[0].versions;A(v.length===1&&v[0].percentage===100);return v[0].version_id;};
+          const activate=async(id,msg)=>(await cf(worker,'/deployments',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({strategy:'percentage',code_update_strategy:{mode:'deferred',max_delay:25},versions:[{version_id:id,percentage:100}],annotations:{'workers/message':msg}})})).id;
+          const report={status:'FAILED',tests:[],candidate:next,rollbackVersion:old};let browser,activated=false;
+          const body=async u=>{const r=await request(u);A.equal(r.status,200);return r.text();};
+          async function verify(browser,origin,layouts){
+           for(const [name,opts] of layouts){
+            const ctx=await browser.newContext(opts),p=await ctx.newPage();
+            try{
+             const errs=[];p.on('pageerror',e=>errs.push(e.message));
+             let pending=false;
+             await p.route('**/b46-receiver-v1/graph?**',async r=>{
+              const m=new URL(r.request().url()).searchParams.get('market');
+              if(pending&&['all','1X2'].includes(m))await new Promise(s=>setTimeout(s,650));
+              await r.continue();
+             });
+             const doc=await p.goto(origin+route,{waitUntil:'domcontentloaded',timeout:30000});
+             A.equal(doc.status(),200);A.equal(new URL(p.url()).origin,origin);
+             A.equal(doc.headers()['x-b46-flow-scroll'],'batch-v1','Rollback baseline Event Flow patch fell out');
+             await p.waitForFunction(()=>document.querySelector('#b46-finance-chart-card')?.dataset.b46StatisticsSource==='receiver',
+                {timeout:24000});
+             await p.waitForTimeout(300);
+             for(const [target,expected,graph] of [['1x2','1X2 · Match Result','1X2'],['all','Total · All Markets','all']]){
+              pending=true;
+              const out=await p.evaluate(async ({target,expected,graph})=>{
+               const chart=()=>document.querySelector('#b46-finance-chart-card');
+               const panel=()=>document.querySelector('[data-workspace-panel="statistics"]');
+               const shown=x=>x.getClientRects().length>0&&!x.closest('[hidden]')&&getComputedStyle(x).visibility==='visible';
+               const pick=(s)=>[...panel().querySelectorAll(s)].filter(shown);
+               const size=()=>Math.round(chart().querySelector('[data-b46-perf-shell]').getBoundingClientRect().height);
+               const events=[],beforeSize=size(),beforeMarket=chart().dataset.b46PaintedMarket;
+               const watch=()=>{
+                const items=pick('.b46-stage-outcomes,.b46-market-unified-outcomes,.b46-v1-market-outcomes,.b46-fast-outcomes');
+                const rows=pick('.f46-overview,.b46-v1-market-detail-grid,.b46-stage-summary-grid,.sp-kpis,.b46m14-strip,.b46v23-strip,.sp-stat-hero');
+                const m=chart().dataset, title=chart().querySelector('.f46-heading h3')?.textContent;
+                const hasReceiver=m.b46StatisticsSource==='receiver'&&m.b46Market===graph&&m.b46PaintedMarket===target;
+                events.push({held:panel().dataset.b46MarketTransition===target,outcomes:items.length,old:rows.length,
+                  height:size(),hasReceiver,title:items.length?title:null,settled:m.b46Settled});
+               };
+               const button=document.querySelector('.left-rail button[data-stat-market="'+target+'"]');
+               if(!button)return {error:'NO_MARKET_BUTTON'};
+               button.click();watch();
+               const start=performance.now();
+               await new Promise(resolve=>{
+                function frame(){watch();if((events.at(-1).hasReceiver&&events.at(-1).title===expected&&performance.now()-start>710)||performance.now()-start>=6000)resolve();else requestAnimationFrame(frame)}
+                requestAnimationFrame(frame);
+               });
+               return {beforeMarket,beforeSize,events,final:events.at(-1)};
+              },{target,expected,graph});
+              A(!out.error,JSON.stringify(out));
+              A.notEqual(out.beforeMarket,target,'BASELINE_WRONG');
+              const during=out.events.filter(e=>!e.hasReceiver);
+              A(during.length>=2,'NEED_MULTIPLE_TRANSITION_FRAMES');
+              A(during.every(e=>e.held&&e.old===0&&e.outcomes===0),JSON.stringify({origin,name,target,stale:during.filter(e=>!e.held||e.old||e.outcomes).slice(0,4)}));
+              A(during.every(e=>Math.abs(e.height-out.beforeSize)<=1),'HEIGHT_NOT_HELD '+JSON.stringify(during.slice(0,4)));
+              A(out.events.every(e=>e.outcomes<=1),'DUPLICATE_OUTCOME_FRAME');
+              A(out.final.hasReceiver&&!out.final.held&&out.final.outcomes===1&&out.final.title===expected&&Number(out.final.settled)>0,'WRONG_READY_CARD '+JSON.stringify(out.final));
+              report.tests.push({origin,name,target,frames:out.events.length,held:during.length,height:out.beforeSize,finalOutcome:out.final.outcomes,settled:out.final.settled});
+             }
+             A.deepEqual(errs,[]);
+            }finally{await ctx.close();}
+           }
+          }
+          try{
+           A(t&&a);A.equal(process.env.GITHUB_RUN_ATTEMPT,'1');
+           A.equal(await active(worker),old,'PRODUCTION_BASELINE_DRIFT');
+           const [ov,nv,guards,prod,prev]=await Promise.all([cf(worker,'/versions/'+old),cf(worker,'/versions/'+next),Promise.all(protectedNames.map(active)),body(P+js),body(F+js)]);
+           for(const key of ['bindings','script_runtime'])A.deepEqual(ov.resources[key],nv.resources[key]);
+           for(const key of ['handlers','named_handlers'])A.deepEqual(ov.resources.script[key],nv.resources.script[key]);
+           A.equal(hash(prod),candidates[0]);A.equal(hash(prev),candidates[1]);
+           A(prev.includes('B46_STATS_OUTCOME_ATOMIC_PROD_V1'));
+           A.equal(hash(await body(F+'/b46-statistics-fast-v1-20261116.js')),hash(await body(P+'/b46-statistics-fast-v1-20261116.js')));
+           browser=await chromium.launch({headless:true});
+           const sizes=[['desktop',{viewport:{width:1440,height:900}}],['mobile',devices['Pixel 7']]];
+           await verify(browser,F,sizes);
+           A.equal(await active(worker),old,'PRODUCTION_DRIFT_AFTER_PREVIEW');
+           A.deepEqual(await Promise.all(protectedNames.map(active)),guards);
+           report.deployment=await activate(next,'Production: atomic Statistics market transition only');activated=true;
+           for(let i=0;i<12;i++){if(hash(await body(P+js))===candidates[1])break;await new Promise(s=>setTimeout(s,2600));}
+           A.equal(hash(await body(P+js)),candidates[1]);
+           const result=await request(P+js);A.equal(result.headers.get('x-b46-statistics-outcome'),'atomic-v1');
+           A.equal((await request(P+'/?b46pm=ou')).status,200);
+           A.equal(await active(worker),next);A.deepEqual(await Promise.all(protectedNames.map(active)),guards);
+           await verify(browser,P,sizes);
+           A.equal(await active(worker),next);
+           report.status='PASSED';
+          }catch(e){console.error(e.stack);if(activated&&await active(worker)===next)report.rollback=await activate(old,'Rollback Production Outcome transition');throw e;}
+          finally{await browser?.close();console.log('OUTCOME_QA '+JSON.stringify(report));}
+          B46_OUTCOME_DEPLOY
