@@ -1,0 +1,202 @@
+name: BALL46 all O/U formulas unified TEST Predictions
+on:
+  push:
+    branches: [feature/ball46-adaptive-manual-control-test-20261125]
+    paths: ['.github/workflows/b46-predictions-ou-all-formulas-20261126.yml']
+permissions:
+  contents: read
+concurrency:
+  group: ball46-ft-phase1-phase2-guarded-oneoff-20261126
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Install browser test tooling
+        run: |
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+      - name: Verify the candidate, activate TEST, recheck both layouts and roll back on regression
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'B46_OU_JS'
+          import A from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          import vm from 'node:vm';
+          import {chromium,devices} from 'playwright';
+          const back={name:'ball46-prematch-only-test-20261120',old:'606d91c4-cad7-4c93-b4fd-398f9f806c53',next:'5fd461d9-5c90-42c4-97d8-8e32fec08e3a'};
+          const front={name:'ball46-premium-match-colors-test-20261120',old:'a031fee8-d7b0-4b10-ab7d-07ae11867312',next:'6ef164b5-8b73-48d4-964f-dfc2b4511019'};
+          const F='https://'+front.name+'.mccarey-supon.workers.dev',B='https://'+back.name+'.mccarey-supon.workers.dev',P='https://ball46.com';
+          const route='/?b46pm=predictions',asset='/__b46_prematch_timeline_test.js',ouPath='/__b46_pm_ou_formula_timeline_test',native='/__b46_prematch_client.js';
+          const {CLOUDFLARE_API_TOKEN:t,CLOUDFLARE_ACCOUNT_ID:a}=process.env;
+          const base='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/scripts/';
+          const protectNames=['ball46-production','nomadtips3-5usd-hub-343','nomadtips3-engine-343'];
+          const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
+          const request=(u,init={})=>fetch(u,{...init,signal:AbortSignal.timeout(22000)});
+          const cf=async(w,p,init={})=>{
+           const r=await request(base+w+p,{...init,headers:{authorization:'Bearer '+t,...init.headers}});
+           if(!r.ok)throw Error('Cloudflare '+w+p+' HTTP '+r.status);
+           return p==='/content/v2'?r.text():(await r.json()).result;
+          };
+          const active=async w=>{const v=(await cf(w,'/deployments')).deployments[0].versions;A(v.length===1&&v[0].percentage===100);return v[0].version_id;};
+          const protectedVersions=()=>Promise.all(protectNames.map(active));
+          const activate=async(w,id,message)=>(await cf(w,'/deployments',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({strategy:'percentage',code_update_strategy:{mode:'deferred',max_delay:25},versions:[{version_id:id,percentage:100}],annotations:{'workers/message':message}})})).id;
+          const pause=ms=>new Promise(r=>setTimeout(r,ms));
+          const attempt=async fn=>{for(let i=0;i<15;i++){try{const q=await fn();if(q)return q;}catch{}await pause(2600);}return null;};
+          const report={status:'FAILED',qa:[],deployed:[],rollback:[],providerCallsAdded:0,productionWrites:0};
+          let browser;
+          const days=t=>Math.floor((t+25200)/86400);
+          const parseWorkerPart=(payload,name)=>{
+           const part=payload.split(payload.split('\r\n')[0]).find(x=>x.includes('filename="'+name+'"'));
+           A(part);return part.slice(part.indexOf('\r\n\r\n')+4,-2);
+          };
+          const depChecks=async(w)=>{
+           A.equal(await active(w.name),w.old,'BASELINE_DRIFT '+w.name);
+           const [old,next]=await Promise.all([cf(w.name,'/versions/'+w.old),cf(w.name,'/versions/'+w.next)]);
+           A.deepEqual(old.resources.bindings,next.resources.bindings);
+           A.deepEqual(old.resources.script_runtime,next.resources.script_runtime);
+           A.deepEqual(old.resources.script.handlers,next.resources.script.handlers);
+          };
+          try{
+           A(t&&a);A.equal(process.env.GITHUB_RUN_ATTEMPT,'1');
+           await Promise.all([depChecks(front),depChecks(back)]);
+           const [guards,fr,br,ds,ps,orig]=await Promise.all([
+            protectedVersions(),cf(front.name,'/content/v2'),cf(back.name,'/content/v2'),
+            request(F+'/__b46_prematch_data').then(x=>x.json()),request(F+'/__b46_pm_poisson_1x2_data').then(x=>x.json()),
+            request(F+native).then(x=>x.text())
+           ]);
+           A.equal(hash(orig),'a9b8c069e1193972adaa69ccbda069f412600f33c08097b19bb1eaad1fab51a2');
+           const rkey='var prematchTimelineTestScript = ',ix=fr.indexOf(rkey);A(ix>0);
+           const client=JSON.parse(fr.slice(ix+rkey.length,fr.indexOf('\n',ix)).replace(/;$/,''));
+           A.equal(hash(client),'bc0fc1101afeb99b84eb02c9fae71d0e8942774d1532d14180a2d5a28f33752b');
+           new vm.Script(client);
+           A.equal(hash(parseWorkerPart(br,'prematch-only-worker.mjs')),'05a9a49718e13f1b48b915a8aa1c4ada9ab3f87ea4051dcb30621d7bb885e581');
+           A.equal(hash(parseWorkerPart(br,'ou-formula-view.mjs')),'d1a64890771ca59f6ce2a4be327beb8c625e5e5d0ca4212efe3e8e0f2be25eda');
+           const mid=days(Date.now()/1000)*86400-25200;
+           const row=(i,market='1X2',offset=13*3600+i*60,price=2.14,status='PENDING')=>{
+            const k=mid+offset;return {fixture_id:3400000+i,home_id:8+i,away_id:40+i,home:'Alpha '+i,away:'Beta '+i,market,kickoff:k,observed:k-500,picked_at:k-400,pick:{'1X2':'HOME_WIN','O/U':'OVER_2.5',BTTS:'BTTS_YES'}[market],price,status,hg:2,ag:1};
+           };
+           const rows=[row(3,'1X2',10*3600),row(3,'O/U',10*3600),row(9),row(5),row(20,'O/U',-6000,2.05,'WIN'),row(25,'1X2',3600,1.9,'WIN')];
+           const rec=(i,formula,selection,price=null)=>{
+            const k=i===4?11*3600:10*3600;
+            const {market,pick,...r}=row(i,'O/U',k,price);
+            return {...r,formula_id:formula,selection,line:2.5,odds:price,odds_source:price===null?null:'HISTORICAL_RESEARCH_ONLY',quote_observed_at:price===null?null:r.observed};
+           };
+           const registry=[...Array.from({length:42},(_,i)=>'A'+(i+1)),'dot01'];
+           const selections=[rec(3,'A02','OVER',1.71),rec(3,'A03','UNDER',2.2),rec(3,'dot01','UNDER'),rec(4,'dot01','UNDER')];
+           let changed=false;
+           const mockOu=()=>({code:'B46_OU_FORMULA_TIMELINE_TEST_V1',status:'OK',testOnly:true,registry,rows:selections,
+            monitor:{'3400004':{phase:'LIVE',minute:changed?39:38,score:{home:changed?1:0,away:2},scheduledKickoff:mid+11*3600,snapshotStale:false}}});
+           const mock={...ds,allLedger:{...ds.allLedger,rows},testMonitor:{snapshotStale:false,monitor:{
+            '3400003':{phase:'LIVE',minute:78,score:{home:2,away:1},scheduledKickoff:mid+10*3600}}}};
+           const sizes=[['desktop',{viewport:{width:1440,height:900}}],['mobile',devices['Pixel 7']]];
+           browser=await chromium.launch({headless:true});
+           for(const [name,opts] of sizes){
+            const ctx=await browser.newContext({...opts,timezoneId:'Asia/Bangkok'});
+            try{
+             const pg=await ctx.newPage();changed=false;
+             await pg.clock.install({time:new Date((mid+12*3600+30*60)*1000)});
+             await pg.route('**'+asset,r=>r.fulfill({status:200,contentType:'application/javascript',body:client}));
+             await pg.route('**'+ouPath,r=>r.fulfill({json:mockOu()}));
+             await pg.route('**/__b46_prematch_data',r=>r.fulfill({json:mock}));
+             await pg.route('**/__b46_pm_poisson_1x2_data',r=>r.fulfill({json:{...ps,rows:[]}}));
+             await pg.route('**/__b46_pm_poisson_1x2.js',r=>r.fulfill({status:200,contentType:'application/javascript',body:''}));
+             await pg.goto(F+route,{waitUntil:'domcontentloaded'});
+             const tl=pg.locator('#b46-test-timeline');await tl.waitFor();
+             const hit=i=>tl.locator('article[data-b46-pm-unified-fixture="'+(3400000+i)+'"]');
+             await hit(4).waitFor();
+             const cards=tl.locator('article[data-b46-pm-unified-fixture]');
+             const tap=(title)=>tl.getByRole('button',{name:title,exact:true}).click();
+             A.deepEqual(await cards.evaluateAll(v=>v.map(x=>Number(x.dataset.b46PmUnifiedFixture)-3400000)),[4,3,5,9]);
+             A.equal(await hit(3).count(),1);A.equal(await hit(4).count(),1);
+             const cl=name==='mobile'?'.b46gn-minute-number':'.score-cell .b46-live-clock-text';
+             const score=name==='mobile'?'.b46gn-team-score':'.score-cell > strong';
+             A.match(await hit(4).locator(cl).innerText(),/38/);A.deepEqual(await hit(4).locator(score).allTextContents(),['0','2']);
+             A(await hit(4).getByText(/dot01 · TEST · No recorded price/).isVisible());
+             changed=true;await pg.clock.fastForward(65000);
+             await pg.waitForFunction(sel=>document.querySelector('article[data-b46-pm-unified-fixture="3400004"] '+sel)?.textContent.includes('39'),cl,{timeout:20000});
+             A.deepEqual(await hit(4).locator(score).allTextContents(),['1','2']);
+             await tap('Over/Under');
+             A.equal(await cards.count(),2);A(await hit(3).getByText(/Legacy O\/U/).isVisible());
+             A(await hit(3).getByText('O/U formulas disagree',{exact:true}).isVisible());
+             await hit(3).getByRole('button',{name:'Details (4 selections)'}).click();
+             A(await hit(3).getByText('Over/Under · A02',{exact:true}).isVisible());
+             A(await hit(3).getByText('Over/Under · A03',{exact:true}).isVisible());
+             A(await hit(3).getByText('Over/Under · dot01',{exact:true}).isVisible());
+             await tap('Confirmed prices');A.equal(await cards.count(),1);A.equal(await hit(4).count(),0);
+             await tap('Research / unverified');A.equal(await cards.count(),2);
+             await tap('All signals');await tap('Past 7 days');A(await hit(20).getByText(/Legacy O\/U/).isVisible());
+             A(await tl.evaluate(x=>x.scrollWidth<=x.clientWidth+1),'TIMELINE_OVERFLOW_'+name);
+             report.qa.push(name+' synthetic: legacy+dOT01+Adaptive, one fixture card, native live monitor refresh, past results, scoped prices');
+            }finally{await ctx.close();}
+           }
+           for(const w of [back,front]){
+            A.equal(await active(w.name),w.old);
+            report.deployed.push({name:w.name,id:await activate(w.name,w.next,'BALL46 TEST formula timeline only')});
+           }
+           const snapshot=await attempt(async()=>{
+            const x=await request(F+ouPath);if(!x.ok)return null;
+            const j=await x.json();return j?.testOnly===true&&j.status==='OK'?j:null;
+           });
+           A(snapshot,'FORMULA_TWINS_NOT_LIVE');
+           A.equal(snapshot.code,'B46_OU_FORMULA_TIMELINE_TEST_V1');
+           A.equal(snapshot.registry.length,43);A.equal(new Set(snapshot.registry).size,43);
+           A(snapshot.registry.includes('dot01'));A(snapshot.rows.some(x=>x.formula_id==='dot01'),'NO_ACTUAL_DOT01_ROWS');
+           A(snapshot.rows.some(x=>x.formula_id!=='dot01'),'NO_ACTUAL_ADAPTIVE_ROWS');
+           A(!snapshot.truncated,'ACTUAL_FEED_TRUNCATED');
+           A.equal(snapshot.providerCalls,0);A.equal(snapshot.productionWrites,0);
+           A.equal(hash(await request(F+asset).then(x=>x.text())),hash(client));
+           const [internal,masked,post,untrusted,prod,legacy]=await Promise.all([
+            request(F+'/?b46pm=ou&__b46_original_ui_shell=1'),request(F+ouPath+'?__b46_original_ui_shell=1'),
+            request(F+ouPath,{method:'POST'}),request(B+'/ou-formula-timeline-test',{headers:{'x-b46-ou-formula-surface':'TEST_PREDICTIONS_FACADE'}}),
+            request(P+'/?b46pm=ou'),request(F+native)
+           ]);
+           A.equal(masked.status,404);A.equal(post.status,404);A.equal(untrusted.status,404);
+           const shell=await internal.text();A(shell.includes(native)&&!shell.includes(asset)&&!shell.includes(ouPath));
+           A.equal(prod.status,200);const prodShell=await prod.text();A(!prodShell.includes(asset)&&!prodShell.includes(ouPath));
+           A.equal(hash(await legacy.text()),hash(orig));
+           for(const w of [front,back])A.equal(await active(w.name),w.next);
+           A.deepEqual(await protectedVersions(),guards);
+           for(const [name,opts] of sizes){
+            const ctx=await browser.newContext({...opts,timezoneId:'Asia/Bangkok'});
+            try{
+             const pg=await ctx.newPage();
+             await pg.goto(F+route,{waitUntil:'domcontentloaded'});
+             const tl=pg.locator('#b46-test-timeline');await tl.waitFor({timeout:25000});
+             await tl.getByRole('button',{name:'Over/Under',exact:true}).click();
+             await tl.getByText('Includes legacy O/U, 42 Adaptive formulas and dot01 when they have a signal.').waitFor({timeout:25000});
+             const cards=tl.locator('article[data-b46-pm-unified-fixture]');
+             const ids=await cards.evaluateAll(v=>v.map(x=>x.dataset.b46PmUnifiedFixture));
+             A(ids.length>0);A.equal(ids.length,new Set(ids).size);
+             const mirrors=await cards.locator('.b46pm-live-mirror-fixture').count();A.equal(mirrors,ids.length);
+             await tl.getByRole('button',{name:'Past 7 days',exact:true}).click();
+             const old=tl.getByText(/Legacy O\/U/);
+             for(let i=0;i<5&&!await old.count();i++){
+              const more=tl.getByRole('button',{name:/^Show more/}).first();if(!await more.isVisible())break;await more.click();
+             }
+             A(await old.count()>0,'ACTUAL_LEGACY_OU_NOT_VISIBLE');
+             A(await tl.evaluate(x=>x.scrollWidth<=x.clientWidth+1),'ACTUAL_OVERFLOW_'+name);
+             await pg.goto(F+'/?b46pm=1x2',{waitUntil:'domcontentloaded'});
+             await pg.locator('#b46-p01-test-results').waitFor({timeout:25000});
+             A.equal(await pg.locator('#b46-test-timeline').count(),0);
+             report.qa.push(name+' actual TEST: unified unique cards and past legacy O/U; separate 1×2 route unchanged');
+            }finally{await ctx.close();}
+           }
+           const d=days(Date.now()/1000),today=snapshot.rows.filter(x=>days(x.kickoff)===d);
+           report.actual={registry:snapshot.registry.length,rowsToday:today.length,fixturesToday:new Set(today.map(x=>x.fixture_id)).size,
+            dot01Today:today.filter(x=>x.formula_id==='dot01').length,dot01NoPriceToday:today.filter(x=>x.formula_id==='dot01'&&x.odds==null).length,
+            monitorStatus:snapshot.monitorStatus,missingNames:snapshot.missingNames};
+           report.status='PASSED';
+          }catch(e){
+           console.error(e.stack);
+           for(const w of [front,back])if(report.deployed.some(r=>r.name===w.name)&&await active(w.name)===w.next)
+            report.rollback.push({name:w.name,id:await activate(w.name,w.old,'Rollback BALL46 TEST formula timeline')});
+           throw e;
+          }finally{
+           await browser?.close();
+           console.log(JSON.stringify(report));
+          }
+          B46_OU_JS
