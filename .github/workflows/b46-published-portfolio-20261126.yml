@@ -76,6 +76,7 @@ jobs:
            replace(' return mountTimeline;',' mountTimeline.portfolio=portfolio;\n return mountTimeline;');
            replace("  function performanceQuery(){\n    if(mode!=='1x2'&&mode!=='all')return null;","  function performanceQuery(){\n    if(mode!=='1x2')return null;");
            replace("    function perfSource(){\n    if(mode==='ou'){","    function perfSource(){\n    if(mode==='all')return getPublishedStats().all;\n    if(mode==='ou'){");
+           replace("    const summary=el('section','b46pm-performance-summary');","    const summary=el('section','b46pm-performance-summary');\n    if(mode==='all')for(const k of ['total','settled','pending','win','loss','units'])summary.dataset[k]=String(all[k]);");
            replace("const subtitle=mode==='all'?'Pre-Match · Total (1X2)'","const subtitle=mode==='all'?'Pre-Match · Total'");
            replace("    const note=el('small','b46pm-performance-provenance',empty?", "    const note=el('small','b46pm-performance-provenance',mode==='all'?'Same verified selections as Predictions · One per fixture per market · 06:00 London cutoff':empty?");
            replace("  function draw(pageOnly=false){",`  let archive=null,archiveError=false,archiveRead=null,archiveAt=0,publishedCache=null;
@@ -132,6 +133,7 @@ jobs:
            replace("const values=[\n      [period", "const values=[\n      ...(sPub?[['ROI',sPub.staked?(100*sPub.units/sPub.staked).toFixed(2)+'%':'—','']]:[]),\n      [period");
            replace(":'AVG ODDS uses the odds saved when the Bot selected each pick, not changing live odds.'));",":sPub?'Win rate and ROI use settled published selections only. Today uses the 06:00 London accounting cutoff.':'AVG ODDS uses the odds saved when the Bot selected each pick, not changing live odds.'));");
            replace("    const visible=(mode==='ou'?(b46OuNativeRows??[]):[...rows]).sort((a,b)=>{","    const allMarketGroups=published?groupPreMatchIssuedRows(listRows):null;\n    const visible=(mode==='ou'?(b46OuNativeRows??[]):published?[...allMarketGroups.values()].map(rs=>rs[0]):[...rows]).sort((a,b)=>{\n      if(published)return Number(b.kickoff)-Number(a.kickoff)||Number(a.fixture_id)-Number(b.fixture_id);");
+           replace("      list.append(bar);\n    }\n    if(mode==='ou'&&!b46OuNativeRows){","      list.append(bar);\n      if(published){list.dataset.b46PublishedPeriod=period;list.append(toolbar); }\n    }\n    if(mode==='ou'&&!b46OuNativeRows){");
            replace("      bar.append(el('h2','','Prediction History'),el('span','',visible.length+' matches'));","      bar.append(el('h2','','Prediction History'),el('span','',visible.length+' matches'+(published?' · '+listRows.length+' selections':'')));");
            replace("      const match=el('article','b46pm-match'+(live?' b46pm-match-live':''));","      const match=el('article','b46pm-match'+(live?' b46pm-match-live':''));\n      if(published){match.dataset.b46PublishedFixture=String(item.fixture_id);match.dataset.b46PmMarket=item.market;match.dataset.b46PmRecordedPrice=String(item.price);}");
            replace("      if(mode==='ou'&&item.formula_id)top.append","      if((mode==='ou'||published)&&item.formula_id)top.append");
@@ -217,7 +219,8 @@ jobs:
           }
           const sizes=[['desktop',{viewport:{width:1440,height:900}}],['mobile',devices['Pixel 7']]];
           const routes='/?b46pm=all&b46pmPeriod=all';
-          const totals=async p=>Object.fromEntries(await p.locator('#b46-prematch-panel .b46pm-stats-board .b46pm-stat').evaluateAll(es=>es.map(x=>[x.children[0].textContent,x.children[1].textContent])));
+          const publishedSummary='#b46-prematch-panel .b46pm-performance-summary[data-total]';
+          const totals=async p=>p.locator(publishedSummary).evaluate(x=>({...x.dataset}));
           const report={status:'FAILED',checks:[],nextB:null,nextF:null,deploymentB:null,deploymentF:null,rollbacks:[],productionWrites:0};
           let browser;
           try{
@@ -236,7 +239,7 @@ jobs:
            const f=patchFacade(mf.get('worker.js').code,model);
            A.equal(hash(f.client),'6ca0381e9e440082f0fd4dce4f543f0e013ef37c96c4c24d0900f85a376a3389');
            A.equal(hash(oldAsset),hash(f.client));
-           A.equal(hash(f.changed),'07a89fe7c0c079024a54cb9fc3adc3a4fb6915d95a9f3ec6c2e76be4a72d97cf');
+           A.equal(hash(f.changed),'05f42825499cdaaaecdd3392e1f354035b2924d8367335771d2cf9b5a0b17b5e');
            new vm.Script(f.changed);
            const mStart=f.changed.indexOf(' const renderTestTimeline='),mEnd=f.changed.indexOf('  let archive=',mStart);
            const portfolio=vm.runInNewContext(f.changed.slice(mStart,mEnd)+'\nrenderTestTimeline.portfolio',{Intl,Date});
@@ -268,11 +271,12 @@ jobs:
              await p.route(u=>u.pathname===O&&!u.search,r=>r.fulfill({json:{...mockArchive,monitor:{'722101':{phase:'FINISHED',scheduledKickoff:kickoff}}}}));
              await p.route('**'+po,r=>r.fulfill({json:{...p01,rows:[]}}));
              await p.goto(F+routes,{waitUntil:'domcontentloaded'});
-             await p.locator('#b46-prematch-panel .b46pm-stats-board').waitFor({timeout:17000}).catch(async error=>{
+             await p.locator(publishedSummary).waitFor({timeout:17000}).catch(async error=>{
               console.error('PANEL STATE',p.url(),(await p.locator('#b46-prematch-panel').allTextContents()).map(t=>t.slice(0,600)));throw error;
              });
              const stats=await totals(p);
-             A.deepEqual([stats.TOTAL,stats.SETTLED,stats.PENDING,stats.WIN,stats.LOSS,stats.ROI,stats['P/L']],['3','2','1','1','1','50.00%','+1.00 U']);
+             A.deepEqual([stats.total,stats.settled,stats.pending,stats.win,stats.loss,stats.units],['3','2','1','1','1','1']);
+             A.match(await p.locator(publishedSummary).innerText(),/50\.0%/);
              A.equal(await p.locator('.b46pm-performance-subtitle').innerText(),'Pre-Match · Total');
              A.match(await p.locator('.b46pm-performance-hero').innerText(),/\+1\.00/);
              const cards=p.locator('article[data-b46-published-fixture]');
@@ -292,7 +296,7 @@ jobs:
              A.equal(await shown.getAttribute('data-b46-pm-unified-fixture'),'722101');
              fail=true;await p.goto(F+routes,{waitUntil:'domcontentloaded'});
              await p.getByText('Full statistics could not be verified.',{exact:true}).waitFor({timeout:18000});
-             A.equal(await p.locator('#b46-prematch-panel .b46pm-stats-board').count(),0);
+             A.equal(await p.locator(publishedSummary).count(),0);
              report.checks.push(label+' shared verified winner, one card with two markets, 1U each, chart, incomplete feed fails closed');
             }finally{await c.close();}
            }
@@ -319,17 +323,17 @@ jobs:
             const c=await browser.newContext({...opts,timezoneId:'Asia/Bangkok'}),p=await c.newPage();
             try{
              await p.goto(F+routes,{waitUntil:'domcontentloaded'});
-             await p.locator('#b46-prematch-panel .b46pm-stats-board').waitFor({timeout:24000});
+             await p.locator(publishedSummary).waitFor({timeout:24000});
              const s=await totals(p);
-             A.equal(Number(s.TOTAL),Number(s.SETTLED)+Number(s.PENDING));
+             A.equal(Number(s.total),Number(s.settled)+Number(s.pending));
              const count=await p.locator('article[data-b46-published-fixture]').count();A(count>0);
              A.equal(await p.locator('#b46-p01-test-results').count(),0);
              A(await p.getByText(/Same verified selections as Predictions/).isVisible());
              await p.getByRole('button',{name:'Today',exact:true}).click();
-             A((await totals(p)).PICKS!=null);
+             A.equal(await p.locator('[data-b46-published-period]').getAttribute('data-b46-published-period'),'today');
              await p.reload({waitUntil:'domcontentloaded'});
-             await p.locator('#b46-prematch-panel .b46pm-stats-board').waitFor({timeout:24000});
-             A((await totals(p)).PICKS!=null);
+             await p.locator(publishedSummary).waitFor({timeout:24000});
+             A.equal(await p.locator('[data-b46-published-period]').getAttribute('data-b46-published-period'),'today');
              report.checks.push(label+' actual TEST Today and All time');
             }finally{await c.close();}
            }
