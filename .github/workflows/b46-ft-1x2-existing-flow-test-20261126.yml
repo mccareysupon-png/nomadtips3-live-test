@@ -1,0 +1,109 @@
+name: BALL46 TEST existing 1X2 and O/U verified FT flow
+on:
+  push:
+    branches: [feature/ball46-adaptive-manual-control-test-20261125]
+    paths: ['.github/workflows/b46-ft-1x2-existing-flow-test-20261126.yml']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: ball46-ft-phase1-phase2-guarded-oneoff-20261126
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - name: Activate prepared TEST audit only after import finishes, verify, and roll back on failure
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          import fs from 'node:fs';
+          const {CLOUDFLARE_API_TOKEN:token,CLOUDFLARE_ACCOUNT_ID:account,GH_TOKEN}=process.env;
+          const worker='ball46-prematch-only-test-20261120',old='65f2d4dd-e3bb-44d2-947c-084d88cd3149',next='2fa6b7cf-c9b8-4fac-b7c0-638affff0a7d';
+          const base='https://'+worker+'.mccarey-supon.workers.dev', auth='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const cf='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers/scripts/';
+          const other=['ball46-production','nomadtips3-5usd-hub-343','nomadtips3-engine-343','ball46-premium-match-colors-test-20261120'];
+          const stats={status:'NOT_STARTED',providerCalls:0,productionWrites:0};
+          let activated=false;
+          async function api(url,{method='GET',headers={},body}={}){
+           const r=await fetch(url,{method,headers,body:body===undefined?undefined:JSON.stringify(body),redirect:'error',signal:AbortSignal.timeout(25000)});
+           if(!r.ok)throw Error(method+' '+new URL(url).pathname+' HTTP '+r.status);
+           return r.json();
+          }
+          function cfGet(w,p){return api(cf+w+p,{headers:{authorization:'Bearer '+token}})}
+          function get(p){return api(base+p,{headers:{authorization:auth}})}
+          async function active(name){const a=(await cfGet(name,'/deployments')).result.deployments[0].versions;assert(a.length===1&&a[0].percentage===100,'EXPECTED_SINGLE_ACTIVE_WORKER');return a[0].version_id}
+          async function protectedVersions(){return Object.fromEntries(await Promise.all(other.map(async n=>[n,await active(n)])))}
+          async function activate(id,msg){const a=await api(cf+worker+'/deployments',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:{strategy:'percentage',code_update_strategy:{mode:'deferred',max_delay:25},versions:[{version_id:id,percentage:100}],annotations:{'workers/message':msg}}});assert(a.success===true,'CLOUDFLARE_TEST_DEPLOYMENT_FAILED');return a.result.id;}
+          const delay=ms=>new Promise(r=>setTimeout(r,ms));
+          async function probe(path,expected,label,budget=5){
+           for(let n=0;n<budget;n++){
+            let item={label,attempt:n+1};
+            try{const r=await fetch(base+path,{headers:{authorization:auth},redirect:'manual',signal:AbortSignal.timeout(12000)});
+             item.http=r.status;item.cfRay=r.headers.get('cf-ray');
+             let z;try{z=await r.json()}catch{}
+             const safe=x=>typeof x==='string'&&/^[A-Z0-9_]{1,100}$/.test(x)?x:null;
+             item.code=safe(z?.code??z?.oneX2HistorySource);item.status=safe(z?.status);item.errors=z?.errors?.map(x=>({fixtureId:x.fixtureId,stage:safe(x.stage)}));
+             (stats.probes??=[]).push(item);
+             if(r.ok&&(typeof expected==='function'?expected(z):z?.code===expected))return z;
+            }catch(e){item.error=e.name;(stats.probes??=[]).push(item);}
+            if(n+1<budget)await delay(4000);
+           }
+           throw Error('TEST_PROBE_FAILED_'+label);
+          }
+          try{
+           assert.equal(process.env.GITHUB_RUN_ATTEMPT,'1','DONT_REPLAY_TEST_DEPLOY');
+           const w=await api('https://api.github.com/repos/'+process.env.GITHUB_REPOSITORY+'/actions/runs/45725405632',{headers:{authorization:'Bearer '+GH_TOKEN,accept:'application/vnd.github+json'}});
+           assert.equal(w.status,'completed','IMPORT_STILL_RUNNING_NO_DEPLOY');stats.importConclusion=w.conclusion;
+           const [activeOld,baseVersion,candidate]=await Promise.all([active(worker),cfGet(worker,'/versions/'+old),cfGet(worker,'/versions/'+next)]);
+           assert.equal(activeOld,old,'TEST_BASELINE_CHANGED_NO_DEPLOY');
+           const a=baseVersion.result.resources,b=candidate.result.resources;
+           assert.deepEqual(a.bindings,b.bindings,'SECRET_BINDINGS_CHANGED');assert.deepEqual(a.script_runtime,b.script_runtime,'WORKER_RUNTIME_CHANGED');
+           assert.deepEqual(a.script.handlers,b.script.handlers);assert.deepEqual(a.script.named_handlers,b.script.named_handlers);
+           const [p,cohort,archive]=await Promise.all([protectedVersions(),get('/ou-history-per-fixture-audit-test'),get('/ou-history-ft-state')]);
+           stats.before={versions:p,archiveFt:archive.archive.ft,upcoming:cohort.counts.upcoming,ready:cohort.counts.ready3};
+           assert(archive.archive.ft>=754,'KNOWN_TEST_FT_NOT_PRESENT');
+           assert.equal(await active(worker),old);
+           stats.deployment=await activate(next,'Use verified FT in existing 1X2 TEST flow; retain original O/U formula set');activated=true;
+           const flow=await probe('/dry-run',x=>x?.oneX2HistorySource==='VERIFIED_FT_UNION_V1','ONE_X2_EXISTING_DRY_RUN',16);
+           assert.equal(await active(worker),next,'CANDIDATE_NOT_ACTIVE');
+           const [persisted,ou,closed,versions]=await Promise.all([get('/ou-history-ft-state'),get('/ou-adaptive-research-data'),get('/btts-bulk-v2-state'),protectedVersions()]);
+           assert(persisted.archive.ft>=stats.before.archiveFt,'FT_ARCHIVE_DECREASED');
+           assert.equal(closed.config.mode,'CLOSED','BTTS_MUST_REMAIN_CLOSED');
+           assert.deepEqual(versions,p,'PROTECTED_VERSIONS_CHANGED_CONCURRENTLY');
+           assert.equal(Object.keys(ou.formulaCounts??{}).length,42,'ADAPTIVE_FORMULA_COUNT_CHANGED');
+           assert.equal(flow.published,0,'DRY_RUN_PUBLISHED');
+           assert.equal(flow.providerCalls,0);
+           let comparable=0,aligned=0,actualPricedModels=0;
+           const c=new Map(cohort.fixtures.map(r=>[r.fixtureId,r]));
+           for(const r of flow.rows){
+            const f=c.get(Number(r.fixtureId));
+            if(!f)continue;
+            comparable++;if(r.homeCount===f.homeHistory&&r.awayCount===f.awayHistory)aligned++;
+            if(r.oneX2.metrics?.historyCounts?.[0]===r.homeCount&&r.oneX2.metrics?.historyCounts?.[1]===r.awayCount)actualPricedModels++;
+           }
+           assert(comparable>=10&&aligned===comparable,'ONE_X2_FLOW_ARCHIVE_COUNTS_DISAGREE');
+           assert(actualPricedModels>0,'NO_REAL_PRICED_MODELS_IN_FLOW');
+           const known=new Set([194533541,194432263,194040220]);
+           const ouWithPilotEvidence=ou.rawCandidates?.filter(y=>y.historyEvidence?.some(x=>x.rows?.some(z=>known.has(Number(z.fixtureId)))))??[];
+           stats.status='ONE_X2_EXISTING_FLOW_VERIFIED';stats.archiveReadback=persisted.archive.ft;stats.oneX2={source:flow.oneX2HistorySource,upcoming:flow.counts.upcoming,ready:flow.counts.historyComplete,comparable,aligned,actualPricedModels,computed:flow.probability.oneX2.computed};
+           stats.ou={formulas:Object.keys(ou.formulaCounts).length,lastRunAt:ou.lastRunAt,screening:ou.screeningCounts,priced:ou.priced?.fixtures??null,knownImportedFtEvidence:ouWithPilotEvidence.length,feed:ou.fixtureFeed?.source??null,ruleChanged:false,cronFresh:Date.now()-Date.parse(ou.lastRunAt)<25*60*1000};
+           stats.bttsMode=closed.config.mode;stats.versionsAfter=versions;
+          }catch(e){
+           stats.status='FAILED';stats.reason=String(e.message).split('\n')[0].slice(0,160);process.exitCode=1;
+           if(activated)try{if(await active(worker)===next){await activate(old,'Rollback TEST FT audit after verification failure');stats.rollback=await active(worker);}}catch{stats.rollback='UNVERIFIED'}
+          }
+          fs.writeFileSync('detector-audit-result.json',JSON.stringify(stats,null,2));console.log('FT_DETECTOR_AUDIT '+JSON.stringify(stats));
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: detector-audit-result
+          path: detector-audit-result.json
+          retention-days: 30
