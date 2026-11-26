@@ -257,15 +257,20 @@ jobs:
            for(const [label,opts] of sizes){
             const c=await browser.newContext({...opts,timezoneId:'Asia/Bangkok'}),p=await c.newPage();
             let fail=false;
+            p.on('pageerror',e=>console.error('PAGEERROR',label,e.message));
+            p.on('console',m=>{if(/Published statistics unavailable|Pre-Match test data/.test(m.text()))console.error(label,m.text());});
+            p.on('response',r=>{const u=new URL(r.url());if([O,L,asset].includes(u.pathname))console.log(label,u.pathname+u.search,r.status());});
             try{
              await p.route('**'+asset,r=>r.fulfill({contentType:'application/javascript',body:f.changed}));
              await p.route('**'+PA,r=>r.fulfill({contentType:'application/javascript',body:''}));
              await p.route('**'+L,r=>r.fulfill({json:mockIssued}));
-             await p.route('**'+AA,r=>r.fulfill({json:fail?{...mockArchive,truncated:true}:mockArchive}));
-             await p.route('**'+O,r=>r.fulfill({json:{...mockArchive,monitor:{'722101':{phase:'FINISHED',scheduledKickoff:kickoff}}}}));
+             await p.route(u=>u.pathname===O&&u.searchParams.get('scope')==='published-archive',r=>r.fulfill({json:fail?{...mockArchive,truncated:true}:mockArchive}));
+             await p.route(u=>u.pathname===O&&!u.search,r=>r.fulfill({json:{...mockArchive,monitor:{'722101':{phase:'FINISHED',scheduledKickoff:kickoff}}}}));
              await p.route('**'+po,r=>r.fulfill({json:{...p01,rows:[]}}));
              await p.goto(F+routes,{waitUntil:'domcontentloaded'});
-             await p.locator('#b46-prematch-panel .b46pm-stats-board').waitFor({timeout:25000});
+             await p.locator('#b46-prematch-panel .b46pm-stats-board').waitFor({timeout:17000}).catch(async error=>{
+              console.error('PANEL STATE',p.url(),(await p.locator('#b46-prematch-panel').allTextContents()).map(t=>t.slice(0,600)));throw error;
+             });
              const stats=await totals(p);
              A.deepEqual([stats.TOTAL,stats.SETTLED,stats.PENDING,stats.WIN,stats.LOSS,stats.ROI,stats['P/L']],['3','2','1','1','1','50.00%','+1.00 U']);
              A.equal(await p.locator('.b46pm-performance-subtitle').innerText(),'Pre-Match · Total');
