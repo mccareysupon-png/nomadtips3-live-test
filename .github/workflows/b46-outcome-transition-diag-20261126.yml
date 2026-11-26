@@ -1,0 +1,60 @@
+name: BALL46 Outcome frame diagnostic
+on:
+  push:
+    branches: [feature/ball46-adaptive-manual-control-test-20261125]
+    paths: ['.github/workflows/b46-outcome-transition-diag-20261126.yml']
+permissions:
+  contents: read
+concurrency:
+  group: ball46-ft-phase1-phase2-guarded-oneoff-20261126
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Install browser test tooling
+        run: |
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+      - name: Observe Production and TEST without writes
+        run: |
+          node --input-type=module <<'B46_OUTCOME_DIAG'
+          import {chromium,devices} from 'playwright';
+          const urls={prod:'https://ball46.com/?view=statistics',test:'https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/?view=statistics'};
+          const b=await chromium.launch({headless:true});
+          try{
+          for(const [site,url] of Object.entries(urls))for(const [form,opts] of [['pc',{viewport:{width:1440,height:900}}],['mobile',devices['Pixel 7']]]){
+           const ctx=await b.newContext(opts),p=await ctx.newPage();
+           try{
+            await p.route('**/b46-receiver-v1/graph?**',async r=>{
+             if(new URL(r.request().url()).searchParams.get('market')==='1X2')await new Promise(s=>setTimeout(s,450));
+             await r.continue();
+            });
+            p.on('pageerror',e=>console.log('PAGEERROR',site,form,e.message));
+            await p.goto(url,{waitUntil:'domcontentloaded',timeout:24000});
+            await p.waitForSelector('#b46-finance-chart-card .f46-card',{timeout:23000});
+            await p.waitForTimeout(1000);
+            const f=await p.evaluate(async ()=>{
+             const samples=[],fs=window.requestAnimationFrame.bind(window);
+             const before=performance.now();
+             const sel='.sp-stats-content :is(.b46-stage-outcomes,.b46-market-unified-outcomes,.b46-v1-market-outcomes,.sp-metrics,.sp-hero,.f46-metrics,.b46-stage-summary-grid,.b46-v1-market-detail-grid,.f46-overview,.f46-card,.b46-fast-v1-dock,.sp-overview)';
+             const val=()=>{
+              return [...document.querySelectorAll(sel)].filter(x=>x.getClientRects().length&&getComputedStyle(x).visibility!=='hidden'&&!x.closest('[hidden]')).map(x=>{
+               const a=x.getBoundingClientRect();return [x.className?.baseVal||x.className,x.id,Math.round(a.y),Math.round(a.height),x.textContent.trim().replace(/\s+/g,' ').slice(0,120),x.parentElement?.className?.baseVal||x.parentElement?.className];
+              });
+             };
+             let sig='';
+             const measure=()=>{const v=[new URL(location.href).searchParams.get('market')||'all',document.getElementById('b46-finance-chart-card')?.dataset.b46StatisticsSource,val()];const s=JSON.stringify(v);if(s!==sig){samples.push([Math.round(performance.now()-before),...v]);sig=s}};
+             measure();
+             const button=document.querySelector('.left-rail button[data-stat-market="1x2"]')||document.querySelector('button[data-stat-market="1x2"]');
+             if(!button)return {error:'MISSING_1X2'};
+             button.click();measure();
+             await new Promise(resolve=>{function next(){measure();if(performance.now()-before>=1700)resolve();else fs(next)}fs(next)});
+             return {panel:[...document.querySelectorAll('.sp-stats-content')].map(x=>[...x.children].map(y=>String(y.className))),samples};
+            });
+            console.log('STATS_OUTCOME_DIAG '+site+' '+form+' '+JSON.stringify(f));
+           }catch(e){console.log('STATS_OUTCOME_DIAG_ERROR '+site+' '+form+' '+e.message)}finally{await ctx.close();}
+          }
+          }finally{await b.close()}
+          B46_OUTCOME_DIAG
