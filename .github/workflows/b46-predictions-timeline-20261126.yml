@@ -1,0 +1,143 @@
+name: BALL46 Predictions Timeline isolated TEST rollout
+on:
+  push:
+    branches: [feature/ball46-adaptive-manual-control-test-20261125]
+    paths: ['.github/workflows/b46-predictions-timeline-20261126.yml']
+permissions:
+  contents: read
+concurrency:
+  group: ball46-ft-phase1-phase2-guarded-oneoff-20261126
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Install browser test tooling
+        run: |
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+      - name: Verify the candidate, activate TEST, recheck both layouts and roll back on regression
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'B46_TIMELINE_JS'
+          import A from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          import vm from 'node:vm';
+          import {chromium,devices} from 'playwright';
+          const worker='ball46-premium-match-colors-test-20261120',old='38bc0c98-1130-4770-8f59-8b1d9c362ec3',next='45114a1f-5180-486d-bf39-8e4543a2c53a';
+          const F='https://'+worker+'.mccarey-supon.workers.dev',P='https://ball46.com',route='/?b46pm=predictions',asset='/__b46_prematch_timeline_test.js',native='/__b46_prematch_client.js';
+          const {CLOUDFLARE_API_TOKEN:t,CLOUDFLARE_ACCOUNT_ID:a}=process.env;
+          const base='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/scripts/';
+          const protectedNames=['ball46-production','ball46-prematch-only-test-20261120','nomadtips3-5usd-hub-343','nomadtips3-engine-343'];
+          const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
+          const request=(u,init={})=>fetch(u,{...init,signal:AbortSignal.timeout(25000)});
+          const cf=async(w,p,init={})=>{
+           const r=await request(base+w+p,{...init,headers:{authorization:'Bearer '+t,...init.headers}});
+           if(!r.ok)throw Error('Cloudflare '+w+p+' HTTP '+r.status);
+           return p==='/content/v2'?r.text():(await r.json()).result;
+          };
+          const active=async w=>{const v=(await cf(w,'/deployments')).deployments[0].versions;A(v.length===1&&v[0].percentage===100);return v[0].version_id;};
+          const protect=()=>Promise.all(protectedNames.map(active));
+          const activate=async(id,message)=>(await cf(worker,'/deployments',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({strategy:'percentage',code_update_strategy:{mode:'deferred',max_delay:25},versions:[{version_id:id,percentage:100}],annotations:{'workers/message':message}})})).id;
+          const waitFor=async fn=>{for(let i=0;i<14;i++){try{if(await fn())return true;}catch{}await new Promise(r=>setTimeout(r,2200));}return false;};
+          const report={status:'FAILED',qa:[],deployment:null,rollback:null,productionWrites:0,providerCalls:0};
+          let browser,activated=false;
+          try{
+           A(t&&a);A.equal(process.env.GITHUB_RUN_ATTEMPT,'1');A.equal(await active(worker),old,'BASELINE_CHANGED');
+           const [prior,staged,guards,raw,legacy,ds,as,ps]=await Promise.all([
+            cf(worker,'/versions/'+old),cf(worker,'/versions/'+next),protect(),cf(worker,'/content/v2'),
+            request(F+native).then(x=>x.text()),request(F+'/__b46_prematch_data').then(x=>x.json()),
+            request(F+'/__b46_pm_adaptive_research').then(x=>x.json()),request(F+'/__b46_pm_poisson_1x2_data').then(x=>x.json())
+           ]);
+           A.equal(hash(legacy),'a9b8c069e1193972adaa69ccbda069f412600f33c08097b19bb1eaad1fab51a2');
+           A.deepEqual(prior.resources.bindings,staged.resources.bindings);
+           A.deepEqual(prior.resources.script_runtime,staged.resources.script_runtime);
+           A.deepEqual(prior.resources.script.handlers,staged.resources.script.handlers);
+           const marker='var prematchTimelineTestScript = ',idx=raw.indexOf(marker);
+           A(idx>0,'CANDIDATE_SOURCE_MARKER');
+           const client=JSON.parse(raw.slice(idx+marker.length,raw.indexOf('\n',idx)).replace(/;$/,''));
+           A.equal(hash(client),'cda75d02891e08cb5fee4b7ce278b0c6db3c0bea25682043258592b5237833ad');
+           new vm.Script(client);
+           A.equal((await request(F+asset)).status,404);
+           const mid=Math.floor((Date.now()/1000+25200)/86400)*86400-25200;
+           const row=(i,market='1X2',offset=13*3600+i*60,price=2.14,unverified=false,status='PENDING')=>{
+            const k=mid+offset;
+            return {fixture_id:3400000+i,home:'Alpha '+i,away:'Beta '+i,market,kickoff:k,observed:k-500,picked_at:k-400,pick:{'1X2':'HOME_WIN','O/U':'OVER_2.5',BTTS:'BTTS_YES'}[market],price,quoteTimestampUnverified:unverified,status,hg:2,ag:1};
+           };
+           const rows=[...Array.from({length:15},(_,i)=>row(15-i)),row(2,'BTTS'),row(20,'O/U',13*3600,null),row(22,'O/U',14*3600,2.1,true),row(24,'1X2',86400+39000),row(25,'1X2',3600,1.9,false,'WIN')];
+           const mock={...ds,allLedger:{...ds.allLedger,rows},testMonitor:{snapshotStale:false,monitor:{}}};
+           const poisson={...ps,rows:[{fixtureId:3400020,home:'Alpha 20',away:'Beta 20',kickoff:mid+13*3600,pickedAt:mid,odds:null,pick:'DRAW',status:'PENDING'}]};
+           browser=await chromium.launch({headless:true});
+           const sizes=[['desktop',{viewport:{width:1440,height:900}}],['mobile',devices['Pixel 7']]];
+           for(const [name,opts] of sizes){
+            const ctx=await browser.newContext(opts);
+            try {
+             const pg=await ctx.newPage();
+             await pg.route('**'+native,r=>r.fulfill({status:200,contentType:'application/javascript',body:client}));
+             await pg.route('**/__b46_prematch_data',r=>r.fulfill({json:mock}));
+             await pg.route('**/__b46_pm_adaptive_research',r=>r.fulfill({json:{...as,records:[]}}));
+             await pg.route('**/__b46_pm_poisson_1x2_data',r=>r.fulfill({json:poisson}));
+             await pg.route('**/__b46_pm_poisson_1x2.js',r=>r.fulfill({status:200,contentType:'application/javascript',body:''}));
+             await pg.goto(F+route,{waitUntil:'domcontentloaded'});
+             const tl=pg.locator('#b46-test-timeline'),cards=tl.locator('article');
+             await tl.waitFor({timeout:25000});
+             const click=(s,exact=false)=>tl.getByRole('button',{name:s,exact}).click();
+             A.equal(await cards.count(),12,'INITIAL_LIMIT_'+name);
+             const clocks=await tl.locator('time').allTextContents();A.deepEqual(clocks,[...clocks].sort());
+             A.equal((await cards.locator('h3').allTextContents()).filter(x=>x==='Alpha 2 vs Beta 2').length,1);
+             A.equal(await tl.getByText('Alpha 20 vs Beta 20').count(),0);
+             await click('Show more');A.equal(await cards.count(),15);
+             await click('Finished · 1');A.equal(await cards.count(),16);
+             await click('BTTS',true);A.equal(await cards.count(),1);A.match(await cards.innerText(),/Yes/);
+             await click('Tomorrow',true);A.equal(await cards.count(),0);
+             await click('All markets',true);A.equal(await cards.count(),1);A.match(await cards.innerText(),/Alpha 24/);
+             await click('Today',true);
+             const entry=cards.filter({hasText:'Alpha 2 vs Beta 2'});
+             await entry.getByRole('button',{name:'Details (2 selections)'}).click();
+             A(await entry.getByText('BTTS',{exact:true}).isVisible());
+             await click('Research / unverified');
+             await tl.getByText('Alpha 20 vs Beta 20').waitFor();A.equal(await cards.count(),2);
+             A(await cards.filter({hasText:'Alpha 22'}).getByText('Quote time unverified').isVisible());
+             A(await tl.evaluate(x=>x.scrollWidth<=x.clientWidth+1),'TIMELINE_OVERFLOW_'+name);
+             report.qa.push(name+' synthetic: filters order single-card price-evidence finished load-more');
+            } finally { await ctx.close(); }
+           }
+           A.equal(await active(worker),old,'BASELINE_CHANGED_DURING_QA');
+           report.deployment=await activate(next,'BALL46 TEST Predictions timeline only');activated=true;
+           A(await waitFor(async()=>{const r=await request(F+asset);return r.status===200&&hash(await r.text())===hash(client);}), 'CANDIDATE_ASSET_NOT_ACTIVE');
+           A.equal(await active(worker),next);A.deepEqual(await protect(),guards);
+           const [internal,internalAsset,prod,liveLegacy]=await Promise.all([request(F+'/?b46pm=ou&__b46_original_ui_shell=1'),request(F+asset+'?__b46_original_ui_shell=1'),request(P+'/?b46pm=ou'),request(F+native)]);
+           const internalHtml=await internal.text(),prodHtml=await prod.text();
+           A.equal(internal.status,200);A.equal(internalAsset.status,404);A(internalHtml.includes(native)&&!internalHtml.includes(asset),'INTERNAL_SHELL_CHANGED');
+           A.equal(prod.status,200);A(!prodHtml.includes(asset),'PRODUCTION_TIMELINE_LEAK');
+           A.equal(hash(await liveLegacy.text()),hash(legacy),'LEGACY_ASSET_CHANGED');
+           for(const [name,opts] of sizes){
+            const ctx=await browser.newContext(opts);
+            try{
+             const pg=await ctx.newPage();
+             await pg.goto(F+route,{waitUntil:'domcontentloaded'});
+             const tl=pg.locator('#b46-test-timeline');await tl.waitFor({timeout:25000});
+             const cards=tl.locator('article'),ids=await cards.evaluateAll(es=>es.map(e=>e.dataset.b46PmUnifiedFixture));
+             A.equal(ids.length,new Set(ids).size);A(ids.length<=12);
+             A(await tl.evaluate(x=>x.scrollWidth<=x.clientWidth+1),'LIVE_OVERFLOW_'+name);
+             await tl.getByRole('button',{name:'Tomorrow',exact:true}).click();
+             A.equal(await tl.getByRole('button',{name:'Tomorrow',exact:true}).getAttribute('aria-pressed'),'true');
+             await pg.goto(F+'/?b46pm=1x2',{waitUntil:'domcontentloaded'});
+             await pg.locator('#b46-p01-test-results').waitFor({timeout:25000});
+             A.equal(await pg.locator('#b46-test-timeline').count(),0);
+             report.qa.push(name+' actual TEST: route/filter/dedup/no overflow and unchanged 1×2 route');
+            }finally{await ctx.close();}
+           }
+           report.status='PASSED';
+          }catch(e){
+           console.error(e.stack);
+           if(activated&&await active(worker)===next)report.rollback=await activate(old,'Rollback TEST Predictions timeline');
+           throw e;
+          }finally{
+           await browser?.close();
+           console.log(JSON.stringify(report));
+          }
+          B46_TIMELINE_JS
