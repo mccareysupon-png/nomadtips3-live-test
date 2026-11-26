@@ -1,0 +1,163 @@
+name: BALL46 Desktop first-screen experiment TEST
+on:
+  push:
+    branches: [feature/ball46-adaptive-manual-control-test-20261125]
+    paths: ['.github/workflows/b46-desktop-stats-lite-20261126.yml']
+permissions:
+  contents: read
+concurrency:
+  group: ball46-ft-phase1-phase2-guarded-oneoff-20261126
+  cancel-in-progress: false
+jobs:
+  qa-and-release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Install Chromium
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Verify and compare opt-in desktop first screen on TEST only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'B46_DESKTOP_LITE'
+          import A from 'node:assert/strict';
+          import vm from 'node:vm';
+          import crypto from 'node:crypto';
+          import {chromium,devices} from 'playwright';
+          const w='ball46-premium-match-colors-test-20261120',old='70b64fac-bf79-4aae-813b-19137017db25';
+          const F='https://'+w+'.mccarey-supon.workers.dev',P='https://ball46.com';
+          const path='/?b46pm=all&b46pmPeriod=all',opt='&b46statsLite=1',lite='/__b46_pm_stats_lite_test',asset='/__b46_prematch_timeline_test.js',L='/__b46_prematch_data',archive='/__b46_pm_ou_formula_timeline_test?scope=published-archive';
+          const {CLOUDFLARE_API_TOKEN:t,CLOUDFLARE_ACCOUNT_ID:a}=process.env;
+          const H=s=>crypto.createHash('sha256').update(s).digest('hex');
+          const req=(u,init={})=>fetch(u,{...init,signal:AbortSignal.timeout(25000)});
+          const read=async u=>{const r=await req(u);A(r.ok,u+' '+r.status);return r.text()};
+          const cf=async(name,p,init={})=>{
+           const r=await req('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/scripts/'+name+p,{...init,headers:{authorization:'Bearer '+t,...init.headers}});
+           if(!r.ok)throw Error(name+p+' '+r.status);return p==='/content/v2'?r.text():(await r.json()).result;
+          };
+          const active=async n=>{const v=(await cf(n,'/deployments')).deployments[0].versions;A.equal(v.length,1);A.equal(v[0].percentage,100);return v[0].version_id};
+          const guard=()=>Promise.all(['ball46-production','ball46-prematch-only-test-20261120','nomadtips3-engine-343','nomadtips3-5usd-hub-343','nomadtips3-full-market-343-ball46'].map(active));
+          const activate=async(id,message)=>(await cf(w,'/deployments',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({strategy:'percentage',code_update_strategy:{mode:'deferred',max_delay:25},versions:[{version_id:id,percentage:100}],annotations:{'workers/message':message}})})).id;
+          const approx=async fn=>{for(let k=0;k<15;k++){try{if(await fn())return true;}catch{}await new Promise(r=>setTimeout(r,2000))}return false};
+          const desktop={viewport:{width:1440,height:900},timezoneId:'Asia/Bangkok'};
+          const heroFull='#b46-prematch-panel .b46pm-performance-summary[data-total] .b46pm-performance-hero';
+          const heroLite='#b46pm-mobile-lite[data-b46-lite-ready] .b46pm-performance-hero';
+          const report={status:'FAILED',before:[],control:[],pilot:[],checks:[]};
+          let browser,next,switched=false;
+          async function measure(test){
+           const c=await browser.newContext(desktop),p=await c.newPage();
+           try{
+            const cdp=await c.newCDPSession(p);
+            await cdp.send('Network.enable');await cdp.send('Network.setCacheDisabled',{cacheDisabled:true});
+            const urls=[];
+            p.on('request',r=>{const u=new URL(r.url());if(u.origin===F)urls.push(u.pathname+u.search)});
+            await p.addInitScript(sel=>{
+             const seen=()=>{const e=document.querySelector(sel);if(!e||!e.textContent.trim()||!e.getClientRects().length)return;obs.disconnect();requestAnimationFrame(()=>requestAnimationFrame(()=>{window.b46FirstTotals=performance.now();}));};
+             const obs=new MutationObserver(seen);obs.observe(document,{subtree:true,childList:true,characterData:true});
+            },test?heroLite:heroFull);
+            await p.goto(F+path+(test?opt:''),{waitUntil:'domcontentloaded',timeout:40000});
+            await p.waitForFunction(()=>window.b46FirstTotals>0,{},{timeout:40000});
+            const row=await p.evaluate(paths=>{
+             const p=performance.getEntriesByType('resource').filter(x=>paths.includes(new URL(x.name).pathname));
+             return {ms:Math.round(window.b46FirstTotals),bytes:p.reduce((n,x)=>n+x.encodedBodySize,0),sources:p.length};
+            },[lite,L,archive.split('?')[0]]);
+            if(test){
+             A(urls.includes(lite));A(!urls.includes(L)&&!urls.includes(archive),'EAGER_FULL_DATA');
+            }else A(urls.includes(L)&&urls.includes(archive)&&!urls.includes(lite),'INVALID_CONTROL');
+            return row;
+           }finally{await c.close();}
+          }
+          try{
+           A(t&&a);A.equal(process.env.GITHUB_RUN_ATTEMPT,'1');A.equal(await active(w),old);
+           const [raw,v,hold,native]=await Promise.all([cf(w,'/content/v2'),cf(w,'/versions/'+old),guard(),read(F+'/__b46_prematch_client.js')]);
+           const boundary=raw.slice(0,raw.indexOf('\r\n')),start=raw.indexOf('\r\n\r\n')+4,end=raw.indexOf('\r\n'+boundary,start);
+           if(raw.startsWith('--')){A(start>4&&end>start);A.match(raw.slice(0,start),/filename="worker.js"/);A.equal((raw.match(/Content-Disposition: form-data;/g)||[]).length,1);}
+           const src=raw.startsWith('--')?raw.slice(start,end):raw;
+           const anchor=" &&matchMedia".trim(); // Exact cap removed only inside the TEST timeline payload.
+           const key='var prematchTimelineTestScript = ',i=src.indexOf(key)+key.length,endLine=src.indexOf('\n',i);
+           A(i>=key.length&&endLine>i);
+           const original=JSON.parse(src.slice(i,endLine).replace(/;$/,''));
+           const gate="get('b46statsLite')==='1'"+anchor+"('(max-width:760px)').matches";
+           A.equal(original.split(gate).length,2);
+           const edited=original.replace(gate,"get('b46statsLite')==='1'");
+           const source=src.slice(0,i)+JSON.stringify(edited)+';'+src.slice(endLine);
+           A.equal(H(original),'455bec1df01c1e54e5f5b7f01fce06d1d5ac57ca57dfddf89561685f43d7ad2c');
+           A.equal(H(await read(F+asset)),H(original));new vm.Script(edited);
+           const server=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+           const compact=async(input,b)=>server.default.fetch(new Request(F+lite),{PREMATCH_STORE:{async fetch(r){return Response.json(new URL(r.url).pathname==='/preview-data'?input:b)}}});
+           const [data,ar]=await Promise.all([JSON.parse(await read(F+L)),JSON.parse(await read(F+archive))]);
+           const mini=await compact(data,ar),j=await mini.json();
+           A.equal(mini.status,200);A.equal(j.all.total,j.all.settled+j.all.pending);
+           A(!j.all.daily&&!j.rows);A(Buffer.byteLength(JSON.stringify(j))<5000);
+           A.equal((await compact(data,{...ar,truncated:true})).status,503);
+           const modelStart=edited.indexOf(' const renderTestTimeline='),modelEnd=edited.indexOf('  let archive=',modelStart);
+           const calc=vm.runInNewContext(edited.slice(modelStart,modelEnd)+'\nrenderTestTimeline.portfolio',{Intl,Date});
+           const proof=calc(data.allLedger.rows,ar,data.dailyBook.window);
+           A.deepEqual(j.today,JSON.parse(JSON.stringify(proof.today)));const {daily,...head}=proof.all;A.deepEqual(j.all,JSON.parse(JSON.stringify(head)));
+           browser=await chromium.launch();
+           {
+            const c=await browser.newContext(desktop),p=await c.newPage();let broken=true;const hits=[];
+            p.on('request',r=>{const u=new URL(r.url());if(u.origin===F)hits.push(u.pathname+u.search)});
+            try{
+             await p.route('**'+asset,r=>r.fulfill({contentType:'application/javascript',body:edited}));
+             await p.route('**'+lite,r=>r.fulfill(broken?{status:503,json:{status:'UNAVAILABLE'}}:{json:j}));
+             await p.route('**'+L,r=>r.fulfill({json:data}));
+             await p.route(u=>u.pathname===archive.split('?')[0]&&u.searchParams.get('scope')==='published-archive',r=>r.fulfill({json:ar}));
+             await p.goto(F+path+opt,{waitUntil:'domcontentloaded'});
+             const card=p.locator('#b46pm-mobile-lite');
+             await card.getByText('Summary not available.').waitFor({timeout:20000});
+             A.equal(await card.locator('.b46pm-performance-hero').count(),0,'FAILED_SUMMARY_SHOWED_FALSE_ZERO');
+             broken=false;await card.getByRole('button',{name:'Retry summary'}).click();
+             await p.locator(heroLite).waitFor({timeout:15000});
+             A.equal(await card.getAttribute('data-units'),String(j.all.units));
+             A.equal(await card.getAttribute('data-settled'),String(j.all.settled));
+             await card.getByRole('button',{name:'Today',exact:true}).click();
+             A.equal(await card.getAttribute('data-settled'),String(j.today.settled));
+             await card.getByRole('button',{name:'All time',exact:true}).click();
+             A(!hits.includes(L)&&!hits.includes(archive));
+             await card.getByRole('button',{name:'Show chart and history'}).click();
+             await p.locator(heroFull).waitFor({timeout:22000});
+             A(hits.includes(L)&&hits.includes(archive));
+             A.equal(await card.count(),0);A.equal(await p.locator('.b46pm-performance-summary[data-total]').getAttribute('data-units'),String(j.all.units));
+             A(await p.getByRole('heading',{name:'Prediction History'}).isVisible());
+             report.checks.push('Unavailable and Retry; Today and All time; one matching canonical full chart and history on request');
+            }finally{await c.close();}
+           }
+           A.equal(await active(w),old);A.deepEqual(await guard(),hold);
+           const meta={main_module:'worker.js',compatibility_date:v.resources.script_runtime.compatibility_date,usage_model:v.resources.script_runtime.usage_model,bindings:v.resources.bindings,annotations:{'workers/message':'TEST only: opt-in desktop statistics summary, retain mobile'}};
+           if(v.resources.script_runtime.compatibility_flags)meta.compatibility_flags=v.resources.script_runtime.compatibility_flags;
+           const form=new FormData();form.set('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));form.set('worker.js',new Blob([source],{type:'application/javascript+module'}),'worker.js');
+           next=(await cf(w,'/versions',{method:'POST',body:form})).id;report.next=next;
+           const nv=(await cf(w,'/versions/'+next)).resources;
+           for(const k of ['bindings','script_runtime'])A.deepEqual(nv[k],v.resources[k]);
+           A.deepEqual(nv.script.handlers,v.resources.script.handlers);
+           A.equal(await active(w),old);A.deepEqual(await guard(),hold);
+           report.deployment=await activate(next,'TEST only: extend explicit All Matches lite opt-in to desktop');switched=true;
+           A(await approx(async()=>await active(w)===next&&H(await read(F+asset))===H(edited)));
+           const rr=await req(F+lite); A.equal(rr.status,200,'SUMMARY_API_FAILED_ON_EDGE');
+           for(let i=0;i<5;i++){
+            if(i%2){report.pilot.push(await measure(true));report.control.push(await measure(false));}
+            else{report.control.push(await measure(false));report.pilot.push(await measure(true));}
+           }
+           const c=await browser.newContext(devices['Pixel 7']),p=await c.newPage();
+           try{
+            const asked=[];p.on('request',r=>asked.push(new URL(r.url()).pathname));
+            await p.goto(F+path+opt,{waitUntil:'domcontentloaded'});
+            await p.locator(heroLite).waitFor({timeout:25000});
+            A(asked.includes(lite)&&!asked.includes(L),'MOBILE_PILOT_REGRESSION');
+           }finally{await c.close()}
+           A.equal(await read(F+'/__b46_prematch_client.js'),native);
+           A.equal((await req(F+lite+'?__b46_original_ui_shell=1')).status,404);
+           A(!(await read(P+'/?b46pm=ou')).includes(lite));A.deepEqual(await guard(),hold);
+           const mid=(x,k)=>[...x].map(y=>y[k]).sort((a,b)=>a-b)[Math.floor(x.length/2)];
+           report.median=Object.fromEntries(['control','pilot'].map(k=>[k,{ms:mid(report[k],'ms'),bytes:mid(report[k],'bytes')}]));
+           report.status='PASSED';
+          }catch(e){
+           console.error(e.stack);
+           if(switched&&await active(w)===next)report.rollback=await activate(old,'Rollback TEST desktop opt-in');
+           throw e;
+          }finally{await browser?.close();console.log('B46_DESKTOP_LITE_QA '+JSON.stringify(report));}
+          B46_DESKTOP_LITE
