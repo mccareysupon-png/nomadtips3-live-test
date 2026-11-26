@@ -1,0 +1,84 @@
+name: BALL46 TEST locked O-U 2.5 prices audit
+on:
+  push:
+    branches: [feature/ball46-adaptive-manual-control-test-20261125]
+    paths: ['.github/workflows/b46-ou-blind-backtest-odds-20261126.yml']
+permissions:
+  contents: read
+jobs:
+  blind-read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Freeze stored TEST predictions before loading verified FT labels
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node --input-type=module <<'B46_JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const iso=t=>new Date(t*1000).toISOString();
+          const round=n=>Number(n.toFixed(5));
+          const t=x=>Number.isSafeInteger(x)&&x>0;
+          const score=x=>Number.isSafeInteger(x)&&x>=0;
+          const cohort='B46_BLIND_LOCKED_OU25_20261126_V1';
+          const src={archive:'/ou-history-ft-state',pred:'/ou-value-v2-state',result:'/ou-adaptive-research-data'};
+          const host='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          const secret=process.env.CLOUDFLARE_API_TOKEN;
+          assert(secret,'SECURE_REPO_SECRET_MISSING');
+          const authorization='Bearer '+crypto.createHmac('sha256',secret).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          async function get(path){
+           assert(Object.values(src).includes(path));
+           const r=await fetch(host+path,{method:'GET',headers:{authorization,accept:'application/json'},redirect:'error',signal:AbortSignal.timeout(25000)});
+           if(!r.ok)throw Error(path+' HTTP '+r.status);
+           const j=await r.json();
+           assert.equal(j.providerCalls,0);
+           assert.equal(j.productionWrites,0);
+           return j;
+          }
+          const pOver=lambda=>1-Math.exp(-lambda)*(1+lambda+lambda*lambda/2);
+          const digest=x=>crypto.createHash('sha256').update(JSON.stringify(x)).digest('hex');
+          const locked=x=>x.line===2.5&&t(x.fixture_id)&&t(x.kickoff)&&t(x.picked_at)&&x.picked_at<x.kickoff&&t(x.source_observed_at)&&x.source_observed_at<=x.picked_at&&Number.isFinite(x.lambda_home)&&x.lambda_home>0&&Number.isFinite(x.lambda_away)&&x.lambda_away>0&&x.lambda_home+x.lambda_away<=20;
+          const confirmed=x=>x.line===2.5&&t(x.fixture_id)&&t(x.kickoff)&&t(x.result_observed_at)&&x.result_observed_at>x.kickoff&&t(x.settled_at)&&x.settled_at>=x.result_observed_at&&score(x.hg)&&score(x.ag)&&typeof x.result_source==='string'&&x.result_source.length>0&&['WIN','LOSS'].includes(x.status)&&((x.selection==='OVER')===(x.hg+x.ag>=3))===(x.status==='WIN');
+          const loss=(p,y)=>(p-y)**2;
+          const log=(p,y)=>-(y?Math.log(Math.max(1e-12,p)):Math.log(Math.max(1e-12,1-p)));
+          try {
+           const [a,p]=await Promise.all([get(src.archive),get(src.pred)]);
+           assert(Array.isArray(p.selections));
+           const seen=new Set();
+           const frozen=p.selections.filter(locked).sort((a,b)=>a.picked_at-b.picked_at||a.fixture_id-b.fixture_id).flatMap(x=>{
+            if(seen.has(x.fixture_id))return []; seen.add(x.fixture_id);
+            return [Object.freeze({id:x.fixture_id,kickoff:x.kickoff,asOf:x.picked_at,p:pOver(x.lambda_home+x.lambda_away),minHistory:Math.min(x.home_history,x.away_history)})];
+           });
+           const hash=digest(frozen);
+           console.log('B46_BLIND_FROZEN '+JSON.stringify({cohort,archiveFT:a.archive.ft,readShadow:p.selections.length,exact25:p.selections.filter(x=>x.line===2.5).length,frozen:frozen.length,sha256:hash}));
+           // No labels are fetched before the prediction cohort is locked.
+           const z=await get(src.result); assert(Array.isArray(z.records));
+           const outcomes=new Map(),conflict=new Set();
+           for(const x of z.records.filter(confirmed)){
+            const prior=outcomes.get(x.fixture_id);
+            if(prior&&(prior.hg!==x.hg||prior.ag!==x.ag||prior.kickoff!==x.kickoff)){conflict.add(x.fixture_id);continue}
+            if(!prior||prior.observed>x.result_observed_at)outcomes.set(x.fixture_id,{kickoff:x.kickoff,observed:x.result_observed_at,hg:x.hg,ag:x.ag});
+           }
+           for(const id of conflict)outcomes.delete(id);
+           const pairs=frozen.flatMap(f=>{const x=outcomes.get(f.id); if(!x||x.kickoff!==f.kickoff)return [];return [{...f,y:Number(x.hg+x.ag>=3)}]});
+           const cohortMetrics=x=>x.length?{n:x.length,over:x.filter(f=>f.y===1).length,under:x.filter(f=>f.y===0).length,correct:x.filter(f=>Number(f.p>=.5)===f.y).length,brier:round(x.reduce((a,r)=>a+loss(r.p,r.y),0)/x.length),brier50:.25,logLoss:round(x.reduce((a,r)=>a+log(r.p,r.y),0)/x.length),logLoss50:round(Math.log(2))}:null;
+           assert.equal(digest(frozen),hash);
+           assert.equal(hash,'10abc09dd8a1bc0f81c66cd3954106bbc0c5e90b5da66a9b82eee1094222093e','PRIOR_PREDICTION_COHORT_CHANGED');
+           assert.equal(pairs.length,1,'PRIOR_MATCHED_COHORT_CHANGED');
+           assert.equal(cohortMetrics(pairs).brier,.16762,'PRIOR_MATCHED_OUTCOME_CHANGED');
+           const lookup=new Map(p.selections.filter(locked).map(x=>[x.fixture_id,x]));
+           const toPrice=f=>{
+            const s=lookup.get(f.id), side=f.p>=.5?'OVER':'UNDER';
+            const sr=String(s?.pick??'').toUpperCase();
+            if(!(sr===side||sr===side+'_2.5')||!Number.isFinite(s?.price)||s.price<=1||!s.source||!s.bookmaker)return null;
+            return s.price;
+           };
+           const matched=pairs.map(f=>({side:f.p>=.5?'OVER':'UNDER',win:Number(f.p>=.5)===f.y,odds:toPrice(f),actualTotal:(outcomes.get(f.id).hg+outcomes.get(f.id).ag)}));
+           const priced=matched.filter(x=>x.odds!==null), allOdds=frozen.map(toPrice).filter(x=>x!==null);
+           const pnl=priced.reduce((n,x)=>n+(x.win?x.odds-1:-1),0);
+           const avg=a=>a.length?round(a.reduce((s,x)=>s+x,0)/a.length):null;
+           console.log('B46_ODDS_TERMINAL '+JSON.stringify({status:'COMPLETE',wins:matched.filter(x=>x.win).length,losses:matched.filter(x=>!x.win).length,winRatePercent:round(100*matched.filter(x=>x.win).length/matched.length),nMatched:matched.length,nPriced:priced.length,avgOddsPricedSettled:avg(priced.map(x=>x.odds)),nPricedAll:allOdds.length,avgOddsAll:avg(allOdds),netU:priced.length?round(pnl):null,stakeU:priced.length,roiPercent:priced.length?round(100*pnl/priced.length):null,matched,providerCalls:0,productionWrites:0}));
+           console.log('B46_BLIND_TERMINAL '+JSON.stringify({status:'COMPLETE',cohort,archiveFT:a.archive.ft,legacyOrNew:'TARGET_FT_ARCHIVE_COUNT_ONLY',locked:frozen.length,firstLocked:frozen.length?iso(frozen[0].asOf):null,lastLocked:frozen.length?iso(frozen.at(-1).asOf):null,lockedHash:hash,adaptiveRows:z.records.length,confirmedUnique:outcomes.size,conflictingFixtures:conflict.size,matched:pairs.length,unmatched:frozen.length-pairs.length,metrics:cohortMetrics(pairs),enoughHistory5:cohortMetrics(pairs.filter(x=>x.minHistory>=5)),history3to4:cohortMetrics(pairs.filter(x=>x.minHistory>=3&&x.minHistory<5)),leagueBenchmark:null,returns:null,providerCalls:0,productionWrites:0}));
+          } catch(e){console.log('B46_BLIND_TERMINAL '+JSON.stringify({status:'FAILED',error:e.message}));process.exitCode=1;}
+          B46_JS
