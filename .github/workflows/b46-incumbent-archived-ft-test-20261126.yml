@@ -1,0 +1,92 @@
+name: BALL46 Incumbent 1X2 verified archived FT settlement TEST
+on:
+  push:
+    branches: [feature/ball46-adaptive-manual-control-test-20261125]
+    paths: ['.github/workflows/b46-incumbent-archived-ft-test-20261126.yml']
+permissions:
+  contents: read
+concurrency:
+  group: ball46-ft-phase1-phase2-guarded-oneoff-20261126
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: Enable Node SQLite test runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify SQLite fixture cases, activate TEST, verify the original pending match
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'B46_FT_JS'
+          import A from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          import {spawnSync} from 'node:child_process';
+          import {writeFileSync as write} from 'node:fs';
+          const worker='ball46-prematch-only-test-20261120',old='a9851595-511d-4e1a-9e7b-d98d4c1ca559',next='606d91c4-cad7-4c93-b4fd-398f9f806c53';
+          const front='ball46-premium-match-colors-test-20261120';
+          const names=['ball46-production','nomadtips3-5usd-hub-343','nomadtips3-engine-343',front];
+          const F='https://'+front+'.mccarey-supon.workers.dev',B='https://'+worker+'.mccarey-supon.workers.dev';
+          const {CLOUDFLARE_API_TOKEN:t,CLOUDFLARE_ACCOUNT_ID:a}=process.env;
+          const base='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/scripts/';
+          const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
+          const request=(u,init={})=>fetch(u,{...init,signal:AbortSignal.timeout(22000)});
+          const cf=async(w,p,init={})=>{
+           const r=await request(base+w+p,{...init,headers:{authorization:'Bearer '+t,...init.headers}});
+           if(!r.ok)throw Error('Cloudflare '+w+p+' HTTP '+r.status);
+           return p==='/content/v2'?r.text():(await r.json()).result;
+          };
+          const active=async w=>{const v=(await cf(w,'/deployments')).deployments[0].versions;A(v.length===1&&v[0].percentage===100);return v[0].version_id;};
+          const protect=()=>Promise.all(names.map(active));
+          const activate=async(id,message)=>(await cf(worker,'/deployments',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({strategy:'percentage',code_update_strategy:{mode:'deferred',max_delay:25},versions:[{version_id:id,percentage:100}],annotations:{'workers/message':message}})})).id;
+          async function ledg(){
+           const r=await request(F+'/__b46_prematch_data');
+           A.equal(r.status,200);const v=await r.json();A.equal(v?.testLedger?.mode,'TEST_ONLY');
+           return {row:v.testLedger.rows.find(x=>x.fixture_id===204906154),stats:v.testLedger.stats};
+          }
+          async function ctrl(){
+           const owner=crypto.createHmac('sha256',t).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+           const r=await request(B+'/adaptive-control-api-test',{headers:{authorization:'Bearer '+owner}});
+           A.equal(r.status,200);const d=await r.json();A.equal(d.formulas.length,42);
+          }
+          const identity=r=>[r.fixture_id,r.home_id,r.away_id,r.kickoff,r.picked_at,r.observed,r.pick,r.price];
+          const report={status:'FAILED',fixture:204906154,providerCallsAdded:0,productionWrites:0,rollback:null};
+          let activated=false;
+          try{
+           A(t&&a);A.equal(process.env.GITHUB_RUN_ATTEMPT,'1');A.equal(await active(worker),old,'BASELINE_CHANGED');
+           const [prior,staged,guards,raw,start]=await Promise.all([cf(worker,'/versions/'+old),cf(worker,'/versions/'+next),protect(),cf(worker,'/content/v2'),ledg()]);
+           A.equal(guards[3],'45114a1f-5180-486d-bf39-8e4543a2c53a','FRONT_TIMELINE_NOT_ACTIVE');
+           A.deepEqual(prior.resources.bindings,staged.resources.bindings);
+           A.deepEqual(prior.resources.script_runtime,staged.resources.script_runtime);
+           A.deepEqual(prior.resources.script.handlers,staged.resources.script.handlers);
+           A(start.row);A.equal(start.row.status,'PENDING','ALREADY_SETTLED_BASELINE_OPPORTUNITY_CHANGED');
+           A.equal(start.row.pick,'AWAY_WIN');A.equal(start.row.price,2.1);report.before=start.row.status;
+           const part=raw.split(raw.split('\r\n')[0]).find(p=>p.includes('filename="test-pick-ledger.mjs"'));
+           A(part);const src=part.slice(part.indexOf('\r\n\r\n')+4,-2);
+           A.equal(hash(src),'f684b72b06f0d5d941449875550d1f78014b765fa3989bf2d7a2a09708aee0f2');write('settlement-candidate.mjs',src);
+           write('qa-settlement.mjs',"import assert from 'node:assert/strict';\nimport {DatabaseSync} from 'node:sqlite';\nimport {initPickLedger,settlePicks,ledger} from './settlement-candidate.mjs';\nconst db0=new DatabaseSync(':memory:');\nconst db={exec:(q,...p)=>{const stmt=db0.prepare(q);return stmt.columns().length?stmt.all(...p):(stmt.run(...p),[])},\n transaction(fn){db0.exec('BEGIN');try{const r=fn();db0.exec('COMMIT');return r;}catch(e){db0.exec('ROLLBACK');throw e;}}};\ninitPickLedger(db);\ndb.exec(\"CREATE TABLE result_version(fixture_id INTEGER,kickoff INTEGER,home_id INTEGER,away_id INTEGER,observed INTEGER,status TEXT,hg INTEGER,ag INTEGER,PRIMARY KEY(fixture_id,observed))\");\ndb.exec(\"CREATE TABLE b46_ou_target_history_ft_v1(fixture_id INTEGER PRIMARY KEY,kickoff INTEGER,home_id INTEGER,away_id INTEGER,observed INTEGER,source TEXT,hg INTEGER,ag INTEGER)\");\nconst now=1795674000,k=now-3000;\nconst ids=Array.from({length:14},(_,i)=>i+1);\nconst pick=(id,side='HOME_WIN',status='PENDING',at=k-200)=>db.exec(\"INSERT INTO test_pick_1x2 (fixture_id,home_id,away_id,home,away,kickoff,picked_at,observed,pick,price,probability,edge,ev,tier,home_count,away_count,model,status) VALUES(?,10,20,'A','B',?,?,?,?,2.5,.51,.05,.2,'both_min3',6,6,'market-anchored-1x2-v1',?)\",id,k,at,k-300,side,status);\nconst archive=(i,opts={})=>db.exec(\"INSERT INTO b46_ou_target_history_ft_v1 VALUES (?,?,?,?,?,?,?,?)\",i,opts.k??k,opts.h??10,20,opts.t??k+2000,opts.s??'5USD_UPCOMING_TEAM_FINISHED',opts.hg??2,opts.ag??1);\nconst live=(i,ts,st,hg,ag,kick=k,home=10)=>db.exec(\"INSERT INTO result_version VALUES(?,?,?,?,?,?,?,?)\",i,kick,home,20,ts,st,hg,ag);\nfor(const i of ids)pick(i,i===2?'DRAW':i===3?'AWAY_WIN':'HOME_WIN',i===12?'LOSS':'PENDING',i===11?k:k-200);\narchive(1);archive(2,{hg:1,ag:1,s:'5USD_UPCOMING_LEAGUE_FINISHED'});archive(3);\narchive(4);live(4,k+500,'finished',0,3);\narchive(5);live(5,k+500,'finished',2,0);live(5,k+600,'postponed',null,null);\narchive(6,{h:30});archive(7,{k:k+25});archive(8,{t:now+1});\narchive(9,{t:k});archive(10,{s:'UNKNOWN'});archive(11);archive(12);\narchive(13);live(13,k+600,'finished',2,1,k+11,30);\nlive(14,k+600,'finished',3,0,k+11);\nconst immutable=r=>[r.fixture_id,r.home_id,r.away_id,r.kickoff,r.picked_at,r.observed,r.pick,r.price,r.model];\nconst before=ledger(db).rows.map(immutable);\nassert.equal(settlePicks(db,now),5);\nassert.equal(settlePicks(db,now),0);\nconst r=ledger(db).rows;\nassert.deepEqual(r.map(x=>x.status),['WIN','WIN','LOSS','LOSS','PENDING','PENDING','PENDING','PENDING','PENDING','PENDING','PENDING','LOSS','PENDING','WIN']);\nassert.deepEqual(r.slice(0,4).map(x=>[x.hg,x.ag,x.units]),[[2,1,1.5],[1,1,1.5],[2,1,-1],[0,3,-1]]);\nassert.deepEqual(r.map(immutable),before);\nassert.equal(r[11].settled_at,null);\nassert.equal(settlePicks(db,now+5),1);\nassert.equal(ledger(db).rows[7].status,'WIN');\nconsole.log('14 scenarios passed, including wrong identity/kickoff, later non-final primary, future/non-final observations, immutable quotes, legacy revised kickoff, and idempotency.');\n");
+           const qa=spawnSync(process.execPath,['qa-settlement.mjs'],{encoding:'utf8'});console.log(qa.stdout);if(qa.status!==0)throw Error(qa.stderr);
+           await ctrl();
+           A.equal(await active(worker),old,'BASELINE_CHANGED_DURING_QA');
+           report.deployment=await activate(next,'BALL46 TEST 1x2 archived FT fallback');activated=true;
+           let after;
+           for(let i=0;i<20;i++){
+            try{const a=await ledg();if(a.row?.status==='WIN'){after=a;break;}}catch(e){console.log('READ_RETRY',i);}
+            await new Promise(r=>setTimeout(r,3200));
+           }
+           A(after,'FT_FALLBACK_NOT_VERIFIED');
+           A.deepEqual(identity(after.row),identity(start.row));A.equal(after.row.hg,1);A.equal(after.row.ag,5);
+           A(Math.abs(after.row.units-1.1)<1e-10);A(after.row.settled_at>0);
+           A.equal(after.stats.total,after.stats.settled+after.stats.pending);
+           A.equal(after.stats.settled,after.stats.win+after.stats.loss);
+           await ctrl();
+           A.equal(await active(worker),next);A.deepEqual(await protect(),guards);
+           report.after={status:after.row.status,hg:after.row.hg,ag:after.row.ag,units:after.row.units,settledAt:after.row.settled_at,total:after.stats.total,win:after.stats.win,loss:after.stats.loss,pending:after.stats.pending};
+           report.status='PASSED';
+          }catch(e){console.error(e.stack);if(activated&&await active(worker)===next)report.rollback=await activate(old,'Rollback TEST 1x2 archived FT fallback');throw e;}
+          finally{console.log(JSON.stringify(report));}
+          B46_FT_JS
