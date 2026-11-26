@@ -1,0 +1,345 @@
+name: BALL46 Published portfolio TEST
+on:
+  push:
+    branches: [feature/ball46-adaptive-manual-control-test-20261125]
+    paths: ['.github/workflows/b46-published-portfolio-20261126.yml']
+permissions:
+  contents: read
+concurrency:
+  group: ball46-ft-phase1-phase2-guarded-oneoff-20261126
+  cancel-in-progress: false
+jobs:
+  qa-and-release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Install Chromium
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Verify shared published accounting and deploy TEST workers only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'B46_PUBLISHED_PORTFOLIO'
+          const replaces=(src,pairs)=>{for(const [a,b] of pairs){if(src.split(a).length!==2)throw Error('Anchor drift: '+a.slice(0,100));src=src.replace(a,()=>b);}return src};
+          function patchBackend(parts){
+           const m=parts.get('ou-formula-view.mjs'),p=parts.get('b46-poisson-1x2-shadow-test.mjs');
+           if(!m||!p)throw Error('Missing modules');
+           const valid=" AND typeof(odds) IN ('integer','real') AND odds BETWEEN 1.40 AND 10.00 AND typeof(bookmaker)='text' AND length(trim(bookmaker))>0 AND odds_source IN ('FULL_MARKET_CACHE_GOAL_LINE_CLOSING','FULL_MARKET_CACHE_GOAL_LINE_OPENING','FULL_MARKET_CACHE_GOAL_LINE_FIXED_CLOSING','FULL_MARKET_CACHE_GOAL_LINE_FIXED_OPENING') AND typeof(quote_observed_at)='integer' AND quote_observed_at BETWEEN picked_at-120 AND picked_at AND picked_at+300<kickoff";
+           const view=replaces(m,[
+            ["import {matchNormalHub} from './normal-hub-monitor.mjs';","import {matchNormalHub} from './normal-hub-monitor.mjs';\nimport {readPublishedPoisson} from './b46-poisson-1x2-shadow-test.mjs';"],
+            ["export function projectOuTimeline(db,now,cache={}){\n const {from,before}=range(now);","export function projectOuTimeline(db,now,cache={},archive=false){\n const {from,before}={...range(now),...(archive?{from:946684800}:{})};"],
+            ["quote_observed_at,status,hg,ag FROM b46_adaptive_ou_research_v1_ledger_test WHERE kickoff>=? AND kickoff<? ORDER BY kickoff DESC,fixture_id,formula_id,selection LIMIT ?", "quote_observed_at,status,hg,ag,settled_at FROM b46_adaptive_ou_research_v1_ledger_test WHERE kickoff>=? AND kickoff<?\"+(archive?"+JSON.stringify(valid)+":\"\")+\" ORDER BY kickoff DESC,fixture_id,formula_id,selection LIMIT ?"],
+            ["formula_id:'dot01',line:2.5,quote_observed_at:odds_observed,status,","formula_id:'dot01',line:2.5,quote_observed_at:odds_observed,status,settled_at,"],
+            ["  const [last,bot,snapshot]=await Promise.all([","  const archive=new URL(req.url).searchParams.get('scope')==='published-archive';\n  const [last,bot,snapshot]=await Promise.all(["],
+            ["   hub?.fetch('https://hub.internal/snapshot'", "   !archive&&hub?.fetch('https://hub.internal/snapshot'"],
+            ["  return Response.json(projectOuTimeline(db,now,{snapshot,adaptiveFixtures:last?.fixtures,botFixtures:bot}),secure);",
+             "  const result=projectOuTimeline(db,now,{snapshot,adaptiveFixtures:last?.fixtures,botFixtures:bot},archive);\n  if(!archive)return Response.json(result,secure);\n  const p=readPublishedPoisson(db,result.range.before);\n  return Response.json({...result,scope:'PUBLISHED_ARCHIVE_TEST_V1',poisson:p.rows,truncated:result.truncated||p.truncated||false},secure);"]
+           ]);
+           const pp=p+`
+          export function readPublishedPoisson(db,before){
+           const list=rows(db,"SELECT fixture_id,home_id,away_id,home,away,kickoff,picked_at,p,quote,book,quote_observed,settled_at,hg,ag FROM "+L+" WHERE tier='MAIN_5PLUS' AND kickoff<? AND quote IS NOT NULL AND book IN ('bet365','5usd-hub') AND quote_observed>0 AND quote_observed<=picked_at AND picked_at<kickoff ORDER BY picked_at DESC,fixture_id LIMIT 6001",before);
+           return {truncated:list.length>6000,rows:list.slice(0,6000).map(r=>{
+            const t=top(JSON.parse(r.p)),q=JSON.parse(r.quote);
+            return {fixtureId:r.fixture_id,homeId:r.home_id,awayId:r.away_id,home:r.home,away:r.away,
+             kickoff:r.kickoff,pickedAt:r.picked_at,quoteObservedAt:r.quote_observed,pick:keys[t],odds:q[t],book:r.book,
+             status:r.settled_at==null?'PENDING':t===out(r.hg,r.ag)?'WIN':'LOSS',settled_at:r.settled_at,hg:r.hg,ag:r.ag};
+           })};
+          }
+          `;
+           parts.set('ou-formula-view.mjs',view);parts.set('b46-poisson-1x2-shadow-test.mjs',pp);return parts;
+          }
+          function patchClient(src,model){
+           const replace=(a,b)=>{src=replaces(src,[[a,b]]);};
+           replace(" const bestOnly=m=>m==='O/U'||m==='1X2';"," const bestOnly=m=>m==='O/U'||m==='1X2'||m==='BTTS';");
+           replace(" const CSS=`",model+"\n const CSS=`");
+           const cstart=src.indexOf(' const combine=issued=>{'),cend=src.indexOf(' const monitorFor=',cstart);
+           if(cstart<0||cend<0)throw Error('missing timeline selection scope');
+           src=src.slice(0,cstart)+" const combine=issued=>prepared(issued,ou?.rows??[],p01?.rows??[]);\n"+src.slice(cend);
+           const gs=src.indexOf('     const groups=new Map();\n     const researchMonitor='),ge=src.indexOf('     const complete=',gs);
+           if(gs<0||ge<0)throw Error('timeline fixture group anchor');
+           src=src.slice(0,gs)+`     const researchMonitor=ou?.monitor??{};
+               const freshLive=h=>h?.phase==='LIVE'&&!(h?.snapshotStale??stale);
+               const displayed=groupPublicSelections(combine(issued).filter(row=>{
+                 const h=monitorFor(hubRows[row.id],researchMonitor[row.id],stale),kickoff=seconds(h?.scheduledKickoff)??row.kickoff;
+                 const carryOver=state.date==='today'&&freshLive(h)&&kickoff&&day(kickoff)<target;
+                 const inWindow=kickoff&&(state.date==='history'?day(kickoff)>=target-7&&day(kickoff)<target&&!freshLive(h):day(kickoff)===target);
+                 return kickoff&&(inWindow||carryOver)&&row.recorded<kickoff;
+               })).map(g=>{
+                 const h=monitorFor(hubRows[g.id],researchMonitor[g.id],stale),kickoff=seconds(h?.scheduledKickoff)??g.rows[0].kickoff;
+                 return {...g,h,kickoff,rows:g.rows.filter(r=>state.market==='all'||state.market===r.market)};
+               }).filter(g=>g.rows.length);
+          `+src.slice(ge);
+           replace('const fixtures=[...groups.values()].map(g=>({...g,rows:chooseDisplayed(g.rows)})).sort((a,b)=>{','const fixtures=displayed.sort((a,b)=>{');
+           replace(' return mountTimeline;',' mountTimeline.portfolio=portfolio;\n return mountTimeline;');
+           replace("  function performanceQuery(){\n    if(mode!=='1x2'&&mode!=='all')return null;","  function performanceQuery(){\n    if(mode!=='1x2')return null;");
+           replace("    function perfSource(){\n    if(mode==='ou'){","    function perfSource(){\n    if(mode==='all')return getPublishedStats().all;\n    if(mode==='ou'){");
+           replace("const subtitle=mode==='all'?'Pre-Match · Total (1X2)'","const subtitle=mode==='all'?'Pre-Match · Total'");
+           replace("    const note=el('small','b46pm-performance-provenance',empty?", "    const note=el('small','b46pm-performance-provenance',mode==='all'?'Same verified selections as Predictions · One per fixture per market · 06:00 London cutoff':empty?");
+           replace("  function draw(pageOnly=false){",`  let archive=null,archiveError=false,archiveRead=null,archiveAt=0,publishedCache=null;
+            function getPublishedStats(){
+              if(!archive||!allLedger||!Array.isArray(allLedger.rows)||!dailyBook?.window||
+                !Number.isSafeInteger(allLedger.stats?.total)||allLedger.stats.total!==allLedger.rows.length)return null;
+              const refs=[archive,allLedger,dailyBook.window];
+              if(!publishedCache||!refs.every((x,i)=>x===publishedCache.refs[i])){
+                publishedCache={refs,value:renderTestTimeline.portfolio(allLedger.rows,archive,dailyBook.window)};
+              }
+              return publishedCache.value;
+            }
+            function loadPublishedArchive(force=false){
+              if(archiveRead)return archiveRead;
+              if(!force&&Date.now()-archiveAt<60000)return;
+              archiveRead=fetch('/__b46_pm_ou_formula_timeline_test?scope=published-archive',{cache:'no-store',signal:AbortSignal.timeout(11000)})
+                .then(async res=>{
+                  if(!res.ok)throw Error('Archive HTTP '+res.status);
+                  const d=await res.json();
+                  if(d.scope!=='PUBLISHED_ARCHIVE_TEST_V1'||d.status!=='OK'||!d.testOnly||d.truncated||
+                     !Number.isSafeInteger(d.range?.before)||!Array.isArray(d.rows)||!Array.isArray(d.poisson))
+                    throw Error('Incomplete published archive');
+                  archive=d;archiveError=false;
+                }).catch(e=>{archive=null;archiveError=true;console.warn('Published statistics unavailable:',String(e));})
+                .finally(()=>{archiveRead=null;archiveAt=Date.now();if(mode==='all'&&!loading){draw();updateMenu();}});
+              return archiveRead;
+            }
+            function draw(pageOnly=false){`);
+           replace("    const activeLedger=mode==='ou'?",`    const published=mode==='all'?getPublishedStats():null;
+              if(mode==='all'&&!published){
+                const wait=el('section','b46pm-inline-wait');wait.setAttribute('role','status');
+                if(archiveError||archive){
+                  wait.append(el('span','b46pm-inline-error','Full statistics could not be verified.'));
+                  const retry=el('button','b46pm-inline-retry','Retry');retry.type='button';
+                  retry.addEventListener('click',()=>{archiveError=false;loadPublishedArchive(true);load();});
+                  wait.append(retry);
+                }else{
+                  wait.append(el('span','','Loading published statistics…'));
+                  loadPublishedArchive();
+                }
+                content.append(wait);finish();return;
+              }
+              const activeLedger=mode==='ou'?`);
+           replace("const {rows=[],stats:originalMarketStats={}}=activeLedger;","const {rows=[],stats:originalMarketStats={}}=published?{rows:published.rows,stats:published.all}:activeLedger;");
+           replace("const todayWindow=selectedBook?.window??dailyBook?.window??null;","const todayWindow=published?.window??selectedBook?.window??dailyBook?.window??null;");
+           replace("const selected=period==='today'?selectedToday:rows;","const selected=period==='today'?selectedToday:rows;\n    const sPub=published?.[period];\n    const listRows=published?(period==='today'?published.todayRows:published.rows):rows;");
+           replace("const settled=mode==='ou'&&b46OuCombined?","const settled=sPub??(mode==='ou'&&b46OuCombined?");
+           replace("selectedBook?.settled??{}):stats;","selectedBook?.settled??{}):stats);");
+           replace("const picks=mode==='ou'&&b46OuCombined?","const picks=sPub?sPub.total:mode==='ou'&&b46OuCombined?");
+           replace("const settledCount=period==='today'?","const settledCount=sPub?sPub.settled:period==='today'?");
+           replace("const liveCount=mode==='ou'&&b46OuCombined?", "const liveCount=sPub?null:mode==='ou'&&b46OuCombined?");
+           replace("const pendingCount=mode==='ou'&&b46OuCombined?","const pendingCount=sPub?sPub.pending:mode==='ou'&&b46OuCombined?");
+           replace("'AVG ODDS',mode==='ou'?","'AVG ODDS',sPub?(sPub.avgOdds==null?'—':sPub.avgOdds.toFixed(2)):mode==='ou'?");
+           replace("const values=[\n      [period", "const values=[\n      ...(sPub?[['ROI',sPub.staked?(100*sPub.units/sPub.staked).toFixed(2)+'%':'—','']]:[]),\n      [period");
+           replace(":'AVG ODDS uses the odds saved when the Bot selected each pick, not changing live odds.'));",":sPub?'Win rate and ROI use settled published selections only. Today uses the 06:00 London accounting cutoff.':'AVG ODDS uses the odds saved when the Bot selected each pick, not changing live odds.'));");
+           replace("    const visible=(mode==='ou'?(b46OuNativeRows??[]):[...rows]).sort((a,b)=>{","    const allMarketGroups=published?groupPreMatchIssuedRows(listRows):null;\n    const visible=(mode==='ou'?(b46OuNativeRows??[]):published?[...allMarketGroups.values()].map(rs=>rs[0]):[...rows]).sort((a,b)=>{\n      if(published)return Number(b.kickoff)-Number(a.kickoff)||Number(a.fixture_id)-Number(b.fixture_id);");
+           replace("      bar.append(el('h2','','Prediction History'),el('span','',visible.length+' matches'));","      bar.append(el('h2','','Prediction History'),el('span','',visible.length+' matches'+(published?' · '+listRows.length+' selections':'')));");
+           replace("      const match=el('article','b46pm-match'+(live?' b46pm-match-live':''));","      const match=el('article','b46pm-match'+(live?' b46pm-match-live':''));\n      if(published){match.dataset.b46PublishedFixture=String(item.fixture_id);match.dataset.b46PmMarket=item.market;match.dataset.b46PmRecordedPrice=String(item.price);}");
+           replace("      if(mode==='ou'&&item.formula_id)top.append","      if((mode==='ou'||published)&&item.formula_id)top.append");
+           replace("      const metricTexts=item.formula_id?", "      const metricTexts=published?[item.market==='O/U'?'OVER / UNDER':item.market]:item.formula_id?");
+           replace("      list.append(match);\n    }\n    if(paginateStats",`      if(published){
+                  const siblings=allMarketGroups.get(String(item.fixture_id))??[];
+                  if(siblings.length>1){
+                    const strip=prematchMarketStrip(siblings.slice(1));
+                    [...strip.children].forEach((node,i)=>{
+                      const r=siblings[i+1];node.dataset.b46PmRecordedPrice=String(r.price);
+                      if(r.formula_id)node.append(el('span','',r.formula_id));
+                      if(calculated(r.units))node.append(el('span','',perfSigned(r.units)));
+                    });match.append(strip);
+                  }
+                }
+                list.append(match);
+              }
+              if(published){const style=el('style');style.textContent=prematchMarketTheme();list.append(style);}
+              if(paginateStats`);
+           replace("r.id==='predictions'?String(predictionsStats.pending??'—'):r.id==='btts'?rate(btts):rate(oneX2)","r.id==='predictions'?String(predictionsStats.pending??'—'):r.id==='all'?rate(getPublishedStats()?.all??{}):r.id==='btts'?rate(btts):rate(oneX2)");
+           replace("      if(mode&&mode!=='predictions'){","      if(mode==='all'){await loadPublishedArchive();}\n      if(mode&&mode!=='predictions'&&mode!=='all'){");
+           return src;
+          }
+          function patchFacade(src,model){
+           const k='var prematchTimelineTestScript = ',a=src.indexOf(k)+k.length,b=src.indexOf('\n',a);
+           if(a<k.length||b<a)throw Error('Missing TEST-only timeline');
+           const client=JSON.parse(src.slice(a,b).replace(/;$/,''));
+           const changed=patchClient(client,model);
+           src=src.slice(0,a)+JSON.stringify(changed)+';'+src.slice(b);
+           src=replaces(src,[
+           ["   return env.PREMATCH_STORE.fetch(new Request('https://prematch.internal/ou-formula-timeline-test',{",
+            "   const scope=u.searchParams.get('scope')==='published-archive'?'?scope=published-archive':'';\n   return env.PREMATCH_STORE.fetch(new Request('https://prematch.internal/ou-formula-timeline-test'+scope,{"],
+           ["if(!['1x2','all'].includes(route)||!region","if(route!=='1x2'||!region"]
+           ]);
+           return {src,client,changed};
+          }
+          
+          const model=" // B46_TEST_PUBLISHED_PORTFOLIO_V1: same validated selections and tie-breaker as Predictions.\n const prepared=(issued,ouRows,p01Rows)=>[\n   ...issued.map(r=>makeRow(r,'issued')),\n   ...ouRows.map(r=>makeRow(r,'adaptive')),\n   ...p01Rows.map(r=>makeRow(r,'poisson'))\n ].filter(Boolean);\n function groupPublicSelections(rows){\n   const groups=new Map();\n   for(const row of rows){\n     if(!groups.has(row.id))groups.set(row.id,{id:row.id,rows:[],keys:new Set(),identity:null});\n     const g=groups.get(row.id),k=[row.kind,row.model,row.market,row.pick].join('|');\n     const identity=validIds(row.raw.home_id)&&validIds(row.raw.away_id)?[+row.raw.home_id,+row.raw.away_id].join(':'):null;\n     if((identity&&g.identity&&identity!==g.identity)||(!bestOnly(row.market)&&g.keys.has(k)))continue;\n     if(identity&&!g.identity)g.identity=identity;\n     g.keys.add(k);g.rows.push(row);\n   }\n   return [...groups.values()].map(g=>({...g,rows:chooseDisplayed(g.rows)}));\n }\n const londonTime=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit',hourCycle:'h23',hour:'2-digit'});\n function businessDate(sec){\n   const p=Object.fromEntries(londonTime.formatToParts(sec*1000).map(v=>[v.type,v.value]));\n   return new Date(Date.UTC(+p.year,+p.month-1,+p.day)-(+p.hour<6?86400000:0)).toISOString().slice(0,10);\n }\n const roundUnits=n=>Math.round(n*1e8)/1e8;\n function unitsFor(status,price){\n   switch(status){\n    case 'WIN':return price-1;\n    case 'LOSS':return -1;\n    case 'HALF_WIN':return (price-1)/2;\n    case 'HALF_LOSS':return -.5;\n    case 'PUSH':case 'VOID':case 'DRAW':return 0;\n    default:return null;\n   }\n }\n function scorePortfolio(settled,selected){\n   let win=0,loss=0,draw=0,units=0,staked=0,odds=0;\n   for(const r of settled){\n     const u=r.units;units+=u;odds+=r.price;\n     if(u>0)win++;else if(u<0)loss++;else draw++;\n     if(r.status!=='VOID')staked++;\n   }\n   return {source:'PUBLISHED_SELECTIONS_TEST',total:selected.length,settled:settled.length,\n    pending:selected.filter(r=>r.status==='PENDING').length,win,loss,draw,staked,units:roundUnits(units),\n    winRate:win+loss?100*win/(win+loss):null,avgOdds:settled.length?odds/settled.length:null};\n }\n function portfolio(issued,archive,window,market='all'){\n   if(!window?.businessDay||!Number.isSafeInteger(window.begin)||!Number.isSafeInteger(window.end))throw Error('Missing London accounting window');\n   const now=Math.floor(Date.now()/1000);\n   const rows=groupPublicSelections(prepared(issued,archive.rows,archive.poisson).filter(r=>r.kickoff<archive.range.before))\n     .flatMap(g=>g.rows).filter(r=>market==='all'||r.market===market).map(row=>{\n     const r=row.raw,status=row.status==='DRAW'&&row.market==='1X2'?'PENDING':row.status;\n     const u=unitsFor(status,row.price),at=seconds(r.settled_at??r.settledAt);\n     const validFT=Number.isInteger(r.hg)&&Number.isInteger(r.ag)&&Math.min(r.hg,r.ag)>=0;\n     const final=u!==null&&at!==null&&at>=row.kickoff&&at<=now&&(validFT||status==='VOID');\n     return {...r,fixture_id:row.id,market:row.market,home:row.home,away:row.away,\n      kickoff:row.kickoff,picked_at:row.recorded,bookmaker:row.bet,\n      pick:row.kind==='adaptive'?row.pick:r.pick,formula_id:row.model,price:row.price,\n      status:final?status:'PENDING',settled_at:final?at:null,units:final?roundUnits(u):null};\n   });\n   const settled=rows.filter(r=>r.settled_at!==null);\n   const inWindow=t=>t>=window.begin&&t<window.end;\n   const todayIssued=rows.filter(r=>inWindow(r.picked_at)),todaySettled=settled.filter(r=>inWindow(r.settled_at));\n   const todayRows=rows.filter(r=>inWindow(r.picked_at)||inWindow(r.settled_at));\n   const groups=new Map();\n   for(const row of settled){\n     const d=businessDate(row.settled_at);\n     if(!groups.has(d))groups.set(d,[]);\n     groups.get(d).push(row);\n   }\n   let running=0;\n   const daily=[...groups].sort(([a],[b])=>a.localeCompare(b)).map(([date,rs])=>{\n     const s=scorePortfolio(rs,rs);running=roundUnits(running+s.units);\n     return {date,cumulativeUnits:running,netUnits:s.units,stakedUnits:s.staked,win:s.win,loss:s.loss,draw:s.draw};\n   });\n   return {window,rows,todayRows,today:scorePortfolio(todaySettled,todayIssued),all:{...scorePortfolio(settled,rows),daily}};\n }\n";
+          import A from 'node:assert/strict';
+          import vm from 'node:vm';
+          import crypto from 'node:crypto';
+          import {chromium,devices} from 'playwright';
+          const {CLOUDFLARE_ACCOUNT_ID:a,CLOUDFLARE_API_TOKEN:t}=process.env;
+          const back='ball46-prematch-only-test-20261120',front='ball46-premium-match-colors-test-20261120';
+          const oldB='12ff890d-7a7f-4259-903a-f7a68b1a9062',oldF='0cc9a924-4452-4298-b5b5-eaf29b93fcb4';
+          const F='https://'+front+'.mccarey-supon.workers.dev',P='https://ball46.com';
+          const asset='/__b46_prematch_timeline_test.js',L='/__b46_prematch_data',O='/__b46_pm_ou_formula_timeline_test',AA=O+'?scope=published-archive',po='/__b46_pm_poisson_1x2_data';
+          const qt=['ball46-production','nomadtips3-5usd-hub-343','nomadtips3-engine-343','nomadtips3-full-market-343-ball46','ball46-prematch-performance-test-20261121'];
+          const PA='/__b46_pm_poisson_1x2.js';
+          const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
+          const req=(url,init={})=>fetch(url,{...init,signal:AbortSignal.timeout(27000)});
+          const read=async(u)=>{const r=await req(u);A(r.ok,u+' HTTP '+r.status);return r.text();};
+          const j=async u=>JSON.parse(await read(u));
+          const api=async(w,p,init={})=>{
+           const r=await req('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/scripts/'+w+p,{...init,headers:{authorization:'Bearer '+t,...init.headers}});
+           if(!r.ok){const x=await r.json().catch(()=>null);throw Error(w+p+' HTTP '+r.status+' '+JSON.stringify(x?.errors?.map(v=>[v.code,v.message])));}
+           return p==='/content/v2'?r.text():(await r.json()).result;
+          };
+          const active=async w=>{const v=(await api(w,'/deployments')).deployments[0].versions;A.equal(v.length,1);A.equal(v[0].percentage,100);return v[0].version_id;};
+          const guard=()=>Promise.all(qt.map(active));
+          const activate=async(w,id,message)=>(await api(w,'/deployments',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({strategy:'percentage',code_update_strategy:{mode:'deferred',max_delay:25},versions:[{version_id:id,percentage:100}],annotations:{'workers/message':message}})})).id;
+          const retry=async f=>{for(let n=0;n<15;n++){try{if(await f())return true}catch{}await new Promise(r=>setTimeout(r,2000))}return false;};
+          function modules(raw){
+           const match=raw.match(/^(--[^\r\n]+)\r\n/);A(match);
+           const parts=raw.split(match[1]).slice(1,-1);
+           return new Map(parts.map(p=>{
+            const n=p.match(/filename="([^"]+)"/)?.[1],ty=p.match(/Content-Type: ([^\r\n]+)/)?.[1];
+            A(n&&ty);return [n,{ty,code:p.slice(p.indexOf('\r\n\r\n')+4,-2)}];
+           }));
+          }
+          async function upload(w,prior,m,changes,entry){
+           const {script_runtime:rt,bindings}=prior.resources;
+           const config={main_module:entry,compatibility_date:rt.compatibility_date,usage_model:rt.usage_model,
+            bindings:bindings.map(b=>b.type==='secret_text'?{type:'inherit',name:b.name}:b),
+            annotations:{'workers/message':'TEST only: verified published statistics and shared market selection'}};
+           if(rt.compatibility_flags)config.compatibility_flags=rt.compatibility_flags;
+           const f=new FormData();f.set('metadata',new Blob([JSON.stringify(config)],{type:'application/json'}));
+           for(const [n,{code,ty}] of m)f.set(n,new Blob([changes.get(n)??code],{type:ty}),n);
+           const v=(await api(w,'/versions',{method:'POST',body:f})).id,meta=(await api(w,'/versions/'+v)).resources;
+           for(const k of ['script_runtime','bindings'])A.deepEqual(meta[k],prior.resources[k]);
+           for(const k of ['handlers','named_handlers'])A.deepEqual(meta.script[k],prior.resources.script[k]);
+           return v;
+          }
+          const sizes=[['desktop',{viewport:{width:1440,height:900}}],['mobile',devices['Pixel 7']]];
+          const routes='/?b46pm=all&b46pmPeriod=all';
+          const totals=async p=>Object.fromEntries(await p.locator('#b46-prematch-panel .b46pm-stats-board .b46pm-stat').evaluateAll(es=>es.map(x=>[x.children[0].textContent,x.children[1].textContent])));
+          const report={status:'FAILED',checks:[],nextB:null,nextF:null,deploymentB:null,deploymentF:null,rollbacks:[],productionWrites:0};
+          let browser;
+          try{
+           A(a&&t);A.equal(process.env.GITHUB_RUN_ATTEMPT,'1');
+           A.equal(await active(back),oldB);A.equal(await active(front),oldF);
+           const [pvB,pvF,rawB,rawF,protectedBefore,nativeBefore,issued,ou,p01,oldAsset]=await Promise.all([
+            api(back,'/versions/'+oldB),api(front,'/versions/'+oldF),api(back,'/content/v2'),api(front,'/content/v2'),guard(),
+            read(F+'/__b46_prematch_client.js'),j(F+L),j(F+O),j(F+po),read(F+asset)
+           ]);
+           const mb=modules(rawB),mf=modules(rawF);A(mb.size>=45);A.equal(mf.size,1);
+           A.equal(hash(mb.get('ou-formula-view.mjs').code),'7234cbd6c221aed1ba59c07882eeeabaf7b6f6966c9c6e016a1b159ba53f897f');
+           A.equal(hash(mb.get('b46-poisson-1x2-shadow-test.mjs').code),'b1135261d0a1576f78b1150743bbf25e83a91fb44532c3afce29b903df993834');
+           const backCode=patchBackend(new Map([...mb].map(([k,v])=>[k,v.code])));
+           const changed=[...mb].filter(([k,r])=>backCode.get(k)!==r.code).map(([k])=>k).sort();
+           A.deepEqual(changed,['b46-poisson-1x2-shadow-test.mjs','ou-formula-view.mjs']);
+           const f=patchFacade(mf.get('worker.js').code,model);
+           A.equal(hash(f.client),'6ca0381e9e440082f0fd4dce4f543f0e013ef37c96c4c24d0900f85a376a3389');
+           A.equal(hash(oldAsset),hash(f.client));
+           A.equal(hash(f.changed),'07a89fe7c0c079024a54cb9fc3adc3a4fb6915d95a9f3ec6c2e76be4a72d97cf');
+           new vm.Script(f.changed);
+           const mStart=f.changed.indexOf(' const renderTestTimeline='),mEnd=f.changed.indexOf('  let archive=',mStart);
+           const portfolio=vm.runInNewContext(f.changed.slice(mStart,mEnd)+'\nrenderTestTimeline.portfolio',{Intl,Date});
+           const w=issued.dailyBook.window,now=Math.floor(Date.now()/1000),ict=Math.floor((now+25200)/86400)*86400-25200;
+           const kickoff=ict+7*3600,picked=kickoff-1000,settlement=kickoff+7200;
+           const r=(fixture_id,ext={})=>({fixture_id,home_id:3,away_id:4,home:'North '+fixture_id,away:'South '+fixture_id,
+             kickoff,picked_at:picked,observed:picked-5,status:'WIN',price:3,market:'1X2',pick:'DRAW',model:'market-anchored-1x2-v1',hg:1,ag:1,settled_at:settlement,...ext});
+           const o=(fixture_id,ext={})=>({fixture_id,home_id:3,away_id:4,home:'North '+fixture_id,away:'South '+fixture_id,
+             kickoff,picked_at:picked,quote_observed_at:picked-5,status:'LOSS',odds:2.1,formula_id:'A01',selection:'OVER',line:2.5,
+             bookmaker:'pinnacle',odds_source:'FULL_MARKET_CACHE_GOAL_LINE_OPENING',hg:1,ag:1,settled_at:settlement,...ext});
+           const base=[r(722101),r(722102,{status:'PENDING',kickoff:ict+21*3600,price:2,settled_at:null}),r(722103,{price:null})];
+           const formulas=[o(722101),o(722101,{formula_id:'A02',odds:2.2}),o(722104,{odds_source:'FULL_MARKET_CACHE_GOAL_LINE_CLOSING_HISTORICAL_RESEARCH_ONLY'})];
+           const mockArchive={...ou,range:{...ou.range,before:ict+172800},status:'OK',truncated:false,scope:'PUBLISHED_ARCHIVE_TEST_V1',rows:formulas,poisson:[]};
+           const mockIssued={...issued,allLedger:{...issued.allLedger,stats:{total:base.length},rows:base},testMonitor:{monitor:{},snapshotStale:false}};
+           const expected=portfolio(base,mockArchive,w).all;
+           A.equal(expected.total,3);A.equal(expected.pending,1);A.equal(expected.win,1);A.equal(expected.loss,1);A.equal(expected.units,1);A.equal(expected.daily.at(-1).cumulativeUnits,1);
+           browser=await chromium.launch({headless:true});
+           for(const [label,opts] of sizes){
+            const c=await browser.newContext({...opts,timezoneId:'Asia/Bangkok'}),p=await c.newPage();
+            let fail=false;
+            try{
+             await p.route('**'+asset,r=>r.fulfill({contentType:'application/javascript',body:f.changed}));
+             await p.route('**'+PA,r=>r.fulfill({contentType:'application/javascript',body:''}));
+             await p.route('**'+L,r=>r.fulfill({json:mockIssued}));
+             await p.route('**'+AA,r=>r.fulfill({json:fail?{...mockArchive,truncated:true}:mockArchive}));
+             await p.route('**'+O,r=>r.fulfill({json:{...mockArchive,monitor:{'722101':{phase:'FINISHED',scheduledKickoff:kickoff}}}}));
+             await p.route('**'+po,r=>r.fulfill({json:{...p01,rows:[]}}));
+             await p.goto(F+routes,{waitUntil:'domcontentloaded'});
+             await p.locator('#b46-prematch-panel .b46pm-stats-board').waitFor({timeout:25000});
+             const stats=await totals(p);
+             A.deepEqual([stats.TOTAL,stats.SETTLED,stats.PENDING,stats.WIN,stats.LOSS,stats.ROI,stats['P/L']],['3','2','1','1','1','50.00%','+1.00 U']);
+             A.equal(await p.locator('.b46pm-performance-subtitle').innerText(),'Pre-Match · Total');
+             A.match(await p.locator('.b46pm-performance-hero').innerText(),/\+1\.00/);
+             const cards=p.locator('article[data-b46-published-fixture]');
+             A.equal(await cards.count(),2);
+             const both=cards.locator('[data-b46-pm-market="O/U"]');
+             A.equal(await both.getAttribute('data-b46-pm-recorded-price'),'2.2');
+             const summary=p.locator('.b46pm-list-head').filter({hasText:'Prediction History'});
+             A.match(await summary.innerText(),/2 matches · 3 selections/);
+             await p.getByRole('button',{name:'ROI',exact:true}).click();A.equal(await p.getByRole('button',{name:'ROI',exact:true}).getAttribute('aria-pressed'),'true');
+             await p.goto(F+'/?b46pm=predictions',{waitUntil:'domcontentloaded'});
+             const tl=p.locator('#b46-test-timeline');
+             await tl.getByRole('button',{name:'Over/Under',exact:true}).click();
+             await tl.getByRole('button',{name:/^Finished · 1$/}).click();
+             const shown=tl.locator('article[data-b46-pm-unified-fixture]');
+             A.equal(await shown.count(),1);
+             A.equal(await shown.getAttribute('data-b46-pm-recorded-price'),'2.2');
+             A.equal(await shown.getAttribute('data-b46-pm-unified-fixture'),'722101');
+             fail=true;await p.goto(F+routes,{waitUntil:'domcontentloaded'});
+             await p.getByText('Full statistics could not be verified.',{exact:true}).waitFor({timeout:18000});
+             A.equal(await p.locator('#b46-prematch-panel .b46pm-stats-board').count(),0);
+             report.checks.push(label+' shared verified winner, one card with two markets, 1U each, chart, incomplete feed fails closed');
+            }finally{await c.close();}
+           }
+           A.equal(await active(back),oldB);A.equal(await active(front),oldF);A.deepEqual(await guard(),protectedBefore);
+           report.nextB=await upload(back,pvB,mb,backCode,'prematch-only-worker.mjs');
+           report.nextF=await upload(front,pvF,mf,new Map([['worker.js',f.src]]),'worker.js');
+           A.equal(await active(back),oldB);A.equal(await active(front),oldF);A.deepEqual(await guard(),protectedBefore);
+           report.deploymentB=await activate(back,report.nextB,'TEST read-only verified archive');
+           A(await retry(async()=>await active(back)===report.nextB));
+           // Existing recent feed must still work before the facade points to the archive.
+           const oldRange=await j(F+O);A.equal(oldRange.spec,undefined);A.equal(oldRange.code,ou.code);
+           report.deploymentF=await activate(front,report.nextF,'TEST unified Predictions and All Matches');
+           A(await retry(async()=>{
+             const ar=await j(F+AA);
+             return await active(front)===report.nextF&&hash(await read(F+asset))===hash(f.changed)&&ar.scope==='PUBLISHED_ARCHIVE_TEST_V1'&&ar.status==='OK'&&!ar.truncated;
+           }),'LIVE_TEST_ACTIVATION_NOT_CONFIRMED');
+           const [ii,ar]=await Promise.all([j(F+L),j(F+AA)]);
+           A.equal(ii.allLedger.rows.length,ii.allLedger.stats.total);
+           const proof=portfolio(ii.allLedger.rows,ar,ii.dailyBook.window);
+           A(proof.rows.some(x=>x.market==='1X2'));A(proof.rows.some(x=>x.market==='O/U'));A(proof.all.daily.length);
+           A.equal(proof.all.daily.at(-1).cumulativeUnits,proof.all.units);
+           A.equal(proof.all.total,proof.all.settled+proof.all.pending);
+           for(const [label,opts] of sizes){
+            const c=await browser.newContext({...opts,timezoneId:'Asia/Bangkok'}),p=await c.newPage();
+            try{
+             await p.goto(F+routes,{waitUntil:'domcontentloaded'});
+             await p.locator('#b46-prematch-panel .b46pm-stats-board').waitFor({timeout:24000});
+             const s=await totals(p);
+             A.equal(Number(s.TOTAL),Number(s.SETTLED)+Number(s.PENDING));
+             const count=await p.locator('article[data-b46-published-fixture]').count();A(count>0);
+             A.equal(await p.locator('#b46-p01-test-results').count(),0);
+             A(await p.getByText(/Same verified selections as Predictions/).isVisible());
+             await p.getByRole('button',{name:'Today',exact:true}).click();
+             A((await totals(p)).PICKS!=null);
+             await p.reload({waitUntil:'domcontentloaded'});
+             await p.locator('#b46-prematch-panel .b46pm-stats-board').waitFor({timeout:24000});
+             A((await totals(p)).PICKS!=null);
+             report.checks.push(label+' actual TEST Today and All time');
+            }finally{await c.close();}
+           }
+           A.equal(await read(F+'/__b46_prematch_client.js'),nativeBefore);
+           A.equal((await req(F+AA+'&__b46_original_ui_shell=1')).status,404);
+           A(!(await read(P+'/?b46pm=ou')).includes(asset));
+           A.deepEqual(await guard(),protectedBefore);
+           report.before={total:issued.allLedger.stats.total,settled:issued.allLedger.stats.settled,units:issued.allLedger.stats.units};
+           report.after={total:proof.all.total,fixtures:new Set(proof.rows.map(x=>x.fixture_id)).size,settled:proof.all.settled,pending:proof.all.pending,win:proof.all.win,loss:proof.all.loss,units:proof.all.units,roi:proof.all.staked?100*proof.all.units/proof.all.staked:null,
+           markets:Object.fromEntries(['1X2','O/U','BTTS'].map(m=>[m,proof.rows.filter(x=>x.market===m).length]))};
+           report.status='PASSED';
+          }catch(e){
+           console.error(e.stack);
+           for(const [w,n,prev] of [[front,report.nextF,oldF],[back,report.nextB,oldB]])
+            if(n&&await active(w)===n)report.rollbacks.push(await activate(w,prev,'Rollback TEST published statistics'));
+           throw e;
+          }finally{await browser?.close();console.log('PUBLISHED_PORTFOLIO_QA '+JSON.stringify(report));}
+          B46_PUBLISHED_PORTFOLIO
