@@ -1,0 +1,210 @@
+name: BALL46 Predictions canonical boot TEST
+on:
+  push:
+    branches: [feature/ball46-adaptive-manual-control-test-20261125]
+    paths: ['.github/workflows/b46-predictions-canonical-boot-20261126.yml']
+permissions:
+  contents: read
+concurrency:
+  group: ball46-ft-phase1-phase2-guarded-oneoff-20261126
+  cancel-in-progress: false
+jobs:
+  qa-and-release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - name: Install Chromium
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Reproduce old cards, test slow network, and release TEST only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'B46_CANONICAL_BOOT'
+          import A from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          import vm from 'node:vm';
+          import {chromium,devices} from 'playwright';
+          function patch(client){
+           const one=(from,to)=>{if(client.split(from).length!==2)throw Error('Unexpected deployed anchor '+from.slice(0,95));client=client.replace(from,()=>to);};
+           const begin='function b46AdaptiveLatestPredictions(content){';
+           const end="  let b46AdaptiveChartFormula='A02',b46AdaptiveChartDays=30;";
+           if(client.split(begin).length!==2||client.split(end).length!==2||client.indexOf(begin)>client.indexOf(end))throw Error('Adaptive fallback drift');
+           client=client.slice(0,client.indexOf(begin)) + client.slice(client.indexOf(end));
+           one("      if(mode==='predictions'&&content.isConnected&&!content.querySelector('#b46-test-timeline'))b46AdaptiveLatestPredictions(content); // B46_ADAPTIVE_CANONICAL_PREDICTIONS_V1\n","");
+           const deadStart="    if(mode==='ou-predictions'){\n      renderEmptyOuScreen(content,false);";
+           const deadEnd="    const title=mode==='predictions'?";
+           if(client.split(deadStart).length!==2||client.split(deadEnd).length!==2||client.indexOf(deadStart)>client.indexOf(deadEnd))throw Error('Legacy URL redirect drift');
+           client=client.slice(0,client.indexOf(deadStart)) + client.slice(client.indexOf(deadEnd));
+           one("       frag.append(el('p','b46pm-empty',fixtures.length?'No upcoming or live fixtures. See finished below.':'No fixtures match these filters.'));",`       // B46_TEST_PREDICTIONS_CANONICAL_BOOT_V1: a loading or unavailable O/U
+                 // feed is not an assertion that no priced prediction exists.
+                 let message=fixtures.length?'No upcoming or live fixtures. See Finished below.':'No fixtures match these filters.';
+                 if(state.market==='O/U'){
+                   if(finished.length)message='No live or upcoming O/U selections with verified pre-match odds. Select Finished below to see completed matches.';
+                   else if(ouError)message='Unable to check O/U formula data right now.';
+                   else if(!ou)message='Checking verified O/U selections…';
+                   else if(ou.status==='PARTIAL'||ou.truncated)message='No O/U selections in the available records. The formula data is incomplete.';
+                   else if(state.date==='history')message='No completed O/U selections with verified pre-match odds in the previous 7 days.';
+                   else message='No O/U selections with verified pre-match odds for this day.';
+                 }
+                 frag.append(el('p','b46pm-empty',message));`);
+           if(client.includes('b46AdaptiveLatestPredictions('))throw Error('Obsolete Predictions renderer was not fully removed');
+           return client;
+          }
+          
+          const w='ball46-premium-match-colors-test-20261120',old='c64fa7b7-5269-4671-a3d2-fac0c12f858f';
+          const F='https://'+w+'.mccarey-supon.workers.dev',asset='/__b46_prematch_timeline_test.js',legacy='/__b46_prematch_client.js',live='/?b46pm=predictions';
+          const L='/__b46_prematch_data',OU='/__b46_pm_ou_formula_timeline_test',AD='/__b46_pm_adaptive_research';
+          const {CLOUDFLARE_ACCOUNT_ID:a,CLOUDFLARE_API_TOKEN:t}=process.env;
+          const protectedWorkers=['ball46-production','nomadtips3-5usd-hub-343','nomadtips3-engine-343','ball46-prematch-only-test-20261120'];
+          const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
+          const get=(url,init={})=>fetch(url,{...init,signal:AbortSignal.timeout(24000)});
+          const api=async(w,s,init={})=>{
+           const r=await get('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/scripts/'+w+s,{...init,headers:{authorization:'Bearer '+t,...init.headers}});
+           A(r.ok,'Cloudflare '+s+' HTTP '+r.status);return s==='/content/v2'?r.text():(await r.json()).result;
+          };
+          const text=async u=>{const r=await get(u);A(r.ok,String(r.status));return r.text();};
+          const data=async u=>JSON.parse(await text(u));
+          const active=async name=>{const v=(await api(name,'/deployments')).deployments[0].versions;A.equal(v.length,1);A.equal(v[0].percentage,100);return v[0].version_id;};
+          const protect=()=>Promise.all(protectedWorkers.map(active));
+          const activate=async(id,message)=>(await api(w,'/deployments',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({strategy:'percentage',code_update_strategy:{mode:'deferred',max_delay:25},versions:[{version_id:id,percentage:100}],annotations:{'workers/message':message}})})).id;
+          const eventual=async(f,n=15)=>{for(let i=0;i<n;i++){try{if(await f())return true;}catch{}await new Promise(r=>setTimeout(r,2400));}return false;};
+          const bad='#b46pm-adaptive-predictions-latest,[data-b46-latest-adaptive-fixture]';
+          const article='article[data-b46-pm-unified-fixture]';
+          const panel='#b46-prematch-panel';
+          const view=(p)=>p.locator('#b46-test-timeline');
+          const button=(p,name)=>view(p).getByRole('button',{name,exact:typeof name==='string'});
+          const sizes=[['desktop',{viewport:{width:1440,height:900}}],['mobile',devices['Pixel 7']]];
+          const report={status:'FAILED',tests:[],next:null,deployment:null,rollback:null,productionWrites:0};
+          let next,switched=false,browser;
+          try{
+           A(a&&t);A.equal(process.env.GITHUB_RUN_ATTEMPT,'1');A.equal(await active(w),old);
+           const [prior,raw,held,client,native,d,ou,ad]=await Promise.all([
+            api(w,'/versions/'+old),api(w,'/content/v2'),protect(),text(F+asset),text(F+legacy),data(F+L),data(F+OU),data(F+AD)
+           ]);
+           A.equal(hash(client),'8837159c646d2907e4f1871139a5092061f5c56a29d7ec5abee168fb1b35c97d');
+           const boundary=raw.slice(0,raw.indexOf('\r\n')),first=raw.indexOf('\r\n\r\n')+4,last=raw.indexOf('\r\n'+boundary,first);
+           A(boundary.startsWith('--')&&first>4&&last>first);
+           A.match(raw.slice(0,first),/filename="worker.js"/);
+           A.equal((raw.match(/Content-Disposition: form-data;/g)||[]).length,1);
+           const source=raw.slice(first,last),marker='var prematchTimelineTestScript = ',i=source.indexOf(marker)+marker.length,j=source.indexOf('\n',i);
+           A(i>=marker.length&&j>i);A.equal(JSON.parse(source.slice(i,j).replace(/;$/,'')),client);
+           const candidate=patch(client);new vm.Script(candidate);
+           A.equal(hash(candidate),'6ca0381e9e440082f0fd4dce4f543f0e013ef37c96c4c24d0900f85a376a3389');
+           const candidateScript=source.slice(0,i)+JSON.stringify(candidate)+';'+source.slice(j);
+           A.equal(candidateScript.slice(candidateScript.indexOf('//# sourceMappingURL')),source.slice(source.indexOf('//# sourceMappingURL')));
+           A.equal((source.match(/B46_PRODUCTION_READ/g)||[]).length,(candidateScript.match(/B46_PRODUCTION_READ/g)||[]).length);
+           const now=Math.floor((Date.now()/1e3+25200)/86400)*86400-25200;
+           const rr=(id,opts={})=>{const k=now+((opts.status==='WIN'?8:18)*3600);return {
+            fixture_id:id,home_id:1081,away_id:2514,home:'Verification Home '+id,away:'Verification Away '+id,formula_id:'A03',selection:'OVER',line:2.5,kickoff:k,picked_at:k-700,quote_observed_at:k-720,odds:2.16,bookmaker:'pinnacle',odds_source:'FULL_MARKET_CACHE_GOAL_LINE_CLOSING',status:'PENDING',...opts};};
+           const finished=rr(7317001,{status:'WIN',hg:2,ag:1});const reject=rr(7317002,{odds_source:'FULL_MARKET_CACHE_GOAL_LINE_CLOSING_HISTORICAL_RESEARCH_ONLY'});
+           const expired=rr(7317003,{odds:null});
+           const mockOu={...ou,rows:[finished,reject,expired],monitor:{}};
+           const mockD={...d,testMonitor:{monitor:{},snapshotStale:false},allLedger:{...d.allLedger,rows:[]}};
+           const mockAd={...ad,records:[rr(7317010),rr(7317011),rr(7317012)]};
+           browser=await chromium.launch({headless:true});
+           {
+            const p=await browser.newPage({viewport:{width:1440,height:900}});
+            let open;const gate=new Promise(r=>open=r);
+            try{
+             await p.route('**'+L,async r=>{await gate;await r.fulfill({json:mockD});});
+             await p.route('**'+AD,r=>r.fulfill({json:mockAd}));
+             await p.goto(F+live,{waitUntil:'domcontentloaded'});
+             await p.locator('#b46pm-adaptive-predictions-latest article').first().waitFor({timeout:18000});
+             A.equal(await p.locator('#b46pm-adaptive-predictions-latest article').count(),3);
+             A.equal(await view(p).count(),0);
+             report.tests.push('Baseline reproduced: old rectangular Adaptive cards visible before ledger finishes');
+            }finally{open();await p.close();}
+           }
+           for(const [label,opts] of sizes){
+            const ctx=await browser.newContext({...opts,timezoneId:'Asia/Bangkok'}),p=await ctx.newPage();
+            let unlock=()=>{}, unlockOu=()=>{}, gate, gateOu;
+            const reset=()=>{gate=new Promise(r=>unlock=r);gateOu=new Promise(r=>unlockOu=r);};reset();
+            let fail=false,mainReads=0;
+            try{
+             await p.clock.install({time:new Date((now+13*3600)*1000)});
+             await p.addInitScript(sel=>{
+              window.oldPredictionsPainted=false;
+              new MutationObserver(()=>{if(new URLSearchParams(location.search).get('b46pm')==='predictions'&&document.querySelector(sel))window.oldPredictionsPainted=true;}).observe(document,{childList:true,subtree:true});
+             },bad);
+             await p.route('**'+asset,r=>r.fulfill({contentType:'application/javascript',body:candidate}));
+             await p.route('**'+L,async r=>{mainReads++;await gate;if(fail)await r.fulfill({status:503,body:'Delayed TEST ledger'});else await r.fulfill({json:mockD});});
+             await p.route('**'+AD,r=>r.fulfill({json:mockAd}));
+             await p.route('**'+OU,async r=>{await gateOu;await r.fulfill({json:mockOu});});
+             for(const way of ['open','reload']){
+              if(way==='open')await p.goto(F+live,{waitUntil:'domcontentloaded'});
+              else {reset();await p.reload({waitUntil:'domcontentloaded'});}
+              await p.locator('#b46pm-scroll-region .b46pm-inline-wait').waitFor({timeout:18000});
+              A.equal(await p.locator(bad).count(),0);
+              A.equal(await p.locator('section.workspace.singlepage > .workspace-stage:visible,section.workspace.singlepage > .workspace-view:visible').count(),0);
+              A.equal(await view(p).count(),0);
+              unlock();await view(p).waitFor({timeout:18000});
+              await button(p,'Over/Under').click();
+              await view(p).getByText('Checking verified O/U selections…',{exact:true}).waitFor({timeout:6000});
+              unlockOu();
+              await view(p).getByText(/Select Finished below/).waitFor({timeout:13000});
+              await button(p,/^Finished · 1$/).click();
+              const cards=view(p).locator(article);
+              A.deepEqual(await cards.evaluateAll(es=>es.map(e=>[e.dataset.b46PmUnifiedFixture,e.dataset.b46PmMarket,+e.dataset.b46PmRecordedPrice])),[['7317001','O/U',2.16]]);
+              await button(p,'Tomorrow').click();
+              await view(p).getByText('No O/U selections with verified pre-match odds for this day.',{exact:true}).waitFor({timeout:6000});
+              A.equal(await p.evaluate('window.oldPredictionsPainted'),false);
+             }
+             fail=true;reset();unlock();unlockOu();
+             await p.reload({waitUntil:'domcontentloaded'});
+             await p.getByText('Match data unavailable.',{exact:true}).waitFor({timeout:13000});
+             A.equal(await p.evaluate('window.oldPredictionsPainted'),false);
+             fail=false;
+             await p.getByRole('button',{name:'Retry',exact:true}).click();
+             await view(p).waitFor({timeout:18000});
+             A(mainReads>=4);
+             await p.goto(F+'/?b46pm=ou',{waitUntil:'domcontentloaded'});
+             await p.locator('#b46pm-adaptive-latest-statistics').waitFor({timeout:23000});
+             A.equal(await view(p).count(),0);
+             report.tests.push(label+' open and reload slow + HTTP failure retry: no legacy cards; verified finished O/U only; O/U Statistics unchanged');
+            }finally{unlock();unlockOu();await ctx.close();}
+           }
+           A.equal(await active(w),old);A.deepEqual(await protect(),held);
+           const {bindings,script_runtime}=prior.resources;
+           const m={main_module:'worker.js',compatibility_date:script_runtime.compatibility_date,bindings,
+            annotations:{'workers/message':'TEST Predictions no legacy fallback on boot; distinguish O/U loading and finished'}};
+           if(script_runtime.compatibility_flags)m.compatibility_flags=script_runtime.compatibility_flags;
+           if(script_runtime.usage_model)m.usage_model=script_runtime.usage_model;
+           const f=new FormData();f.set('metadata',new Blob([JSON.stringify(m)],{type:'application/json'}));
+           f.set('worker.js',new Blob([candidateScript],{type:'application/javascript+module'}),'worker.js');
+           next=(await api(w,'/versions',{method:'POST',body:f})).id;report.next=next;
+           const v=await api(w,'/versions/'+next);
+           for(const k of ['bindings','script_runtime'])A.deepEqual(v.resources[k],prior.resources[k]);
+           A.deepEqual(v.resources.script.handlers,prior.resources.script.handlers);
+           A.equal(await active(w),old);A.deepEqual(await protect(),held);
+           report.deployment=await activate(next,'TEST Predictions canonical loading only; clarify O/U Finished');switched=true;
+           A(await eventual(async()=>await active(w)===next&&hash(await text(F+asset))===hash(candidate)),'ACTIVATION_NOT_CONFIRMED');
+           for(const [label,opts] of sizes){
+            const c=await browser.newContext({...opts,timezoneId:'Asia/Bangkok'}),p=await c.newPage();
+            try{
+             await p.goto(F+live,{waitUntil:'domcontentloaded'});
+             await view(p).waitFor({timeout:25000});
+             await button(p,'Over/Under').click();
+             await view(p).getByText(/Eligible legacy O\/U/).waitFor({timeout:22000});
+             A.equal(await p.locator(bad).count(),0);
+             if(await button(p,/^Finished · /).count())await button(p,/^Finished · /).click();
+             const x=await view(p).locator(article).evaluateAll(es=>es.map(e=>[e.dataset.b46PmUnifiedFixture,e.dataset.b46PmMarket,+e.dataset.b46PmRecordedPrice]));
+             A(x.every(r=>r[1]==='O/U'&&r[2]>1)&&new Set(x.map(r=>r[0])).size===x.length);
+             await p.reload({waitUntil:'domcontentloaded'});await view(p).waitFor({timeout:25000});
+             A.equal(await p.locator(bad).count(),0);
+             report.tests.push(label+' actual TEST open/reload; today verified O/U visible on expansion: '+JSON.stringify(x));
+            }finally{await c.close();}
+           }
+           A.equal(hash(await text(F+legacy)),hash(native));
+           A.equal((await get(F+asset+'?__b46_original_ui_shell=1')).status,404);
+           A(!(await text('https://ball46.com/prematch/over-under/')).includes(asset));
+           A.deepEqual(await protect(),held);
+           report.status='PASSED';
+          }catch(e){
+           console.error(e.stack);
+           if(switched&&await active(w)===next)report.rollback=await activate(old,'Rollback TEST Predictions canonical loading');
+           throw e;
+          }finally{await browser?.close();console.log('PREDICTIONS_BOOT_QA '+JSON.stringify(report));}
+          B46_CANONICAL_BOOT
