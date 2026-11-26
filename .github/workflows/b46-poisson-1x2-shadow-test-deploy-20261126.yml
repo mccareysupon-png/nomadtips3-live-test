@@ -1,0 +1,99 @@
+name: BALL46 Poisson 1X2 isolated TEST deployment
+on:
+  push:
+    branches: [feature/ball46-adaptive-manual-control-test-20261125]
+    paths: ['.github/workflows/b46-poisson-1x2-shadow-test-deploy-20261126.yml']
+permissions:
+  contents: read
+concurrency:
+  group: ball46-ft-phase1-phase2-guarded-oneoff-20261126
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Install pinned browser test tooling
+        run: |
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+      - name: Activate TEST Workers, check controls and frontend, roll back on regressions
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'B46_P01_JS'
+          import A from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          import {chromium,devices} from 'playwright';
+          const plan=[{"name":"ball46-prematch-only-test-20261120","old":"fa6c7388-5d9d-44bd-b114-ca3499c13432","next":"e568b27b-7d69-47e7-80ac-38248aeb71e6"},{"name":"ball46-premium-match-colors-test-20261120","old":"f39b6836-f285-4c6e-b3bb-01b9edd50ce9","next":"38bc0c98-1130-4770-8f59-8b1d9c362ec3"}];
+          const [back,front]=plan;
+          const B='https://'+back.name+'.mccarey-supon.workers.dev', F='https://'+front.name+'.mccarey-supon.workers.dev', PROD='https://ball46.com';
+          const {CLOUDFLARE_API_TOKEN:t,CLOUDFLARE_ACCOUNT_ID:a}=process.env;
+          const owner=crypto.createHmac('sha256',t).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          A(t&&a);A.equal(process.env.GITHUB_RUN_ATTEMPT,'1');
+          const API='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/scripts/';
+          const delay=ms=>new Promise(r=>setTimeout(r,ms));
+          const protectedNames=['ball46-production','nomadtips3-5usd-hub-343','nomadtips3-engine-343'];
+          const control='/adaptive-control-api-test', data='/__b46_pm_poisson_1x2_data', script='/__b46_pm_poisson_1x2.js';
+          const report={status:'FAILED',noProviderCalls:true,deployed:[],rollback:[],browser:[]};
+          async function get(u,options={}){return fetch(u,{...options,redirect:'error',signal:AbortSignal.timeout(25000)});}
+          async function cf(name,p,init={}){
+           const r=await get(API+name+p,{...init,headers:{authorization:'Bearer '+t,...init.headers}});
+           const j=await r.json();if(!r.ok||!j.success)throw Error(name+' '+p+' HTTP '+r.status);return j.result;
+          }
+          async function active(s){const v=(await cf(s,'/deployments')).deployments[0].versions;A(v.length===1&&v[0].percentage===100);return v[0].version_id;}
+          async function deploy(c,id){return (await cf(c.name,'/deployments',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({strategy:'percentage',code_update_strategy:{mode:'deferred',max_delay:25},versions:[{version_id:id,percentage:100}],annotations:{'workers/message':'Poisson 1x2 isolated TEST rollout / recovery'}})})).id;}
+          async function getCtrl(){const r=await get(B+control,{headers:{authorization:'Bearer '+owner}});if(!r.ok)throw Error('CONTROL_'+r.status);return r.json();}
+          async function retry(fn){for(let i=0;i<16;i++){try{const v=await fn();if(v)return v;}catch{}await delay(3000);}return null;}
+          let browser=null;
+          try{
+           const other=await Promise.all(protectedNames.map(active));
+           const oldPublic=await get(PROD+'/?b46pm=ou');A.equal(oldPublic.status,200);A.doesNotMatch(await oldPublic.text(),/__b46_pm_poisson_1x2/);
+           for(const c of plan){
+            A.equal(await active(c.name),c.old,'BASELINE_DRIFT');
+            const [x,y]=await Promise.all([cf(c.name,'/versions/'+c.old),cf(c.name,'/versions/'+c.next)]);
+            A.deepEqual(x.resources.bindings,y.resources.bindings);A.deepEqual(x.resources.script_runtime,y.resources.script_runtime);
+            A.deepEqual(x.resources.script.handlers,y.resources.script.handlers);A.deepEqual(x.resources.script.named_handlers,y.resources.script.named_handlers);
+           }
+           const oldCtrl=await getCtrl();A.equal(oldCtrl.formulas.length,42);
+           report.deployed.push([back.name,await deploy(back,back.next)]);
+           const boot=await retry(async()=>{const j=await getCtrl();return j.poissonFormula?.formula==='P01'?j:null;});
+           A(boot,'P01_CONTROL_NOT_FOUND');A.equal(boot.formulas.length,42);A(boot.extraFormula?.formula==='E01');
+           A.equal(boot.poissonFormula.mode,'PAUSED_MANUAL');A.equal(boot.poissonFormula.total,0);A.equal(boot.poissonFormula.main.roi,null);
+           A.equal((await get(B+control)).status,401);A.equal((await get(B+'/poisson-1x2-frontend-test',{headers:{'x-b46-poisson-surface':'PREMATCH_TEST_FACADE'}})).status,404);
+           A.equal(await active(front.name),front.old);
+           report.deployed.push([front.name,await deploy(front,front.next)]);
+           const display=await retry(async()=>{const r=await get(F+data);if(!r.ok)return null;const j=await r.json();return j.testOnly&&j.formula==='P01'?j:null;});
+           A(display,'TEST_FRONT_DATA_NOT_FOUND');A.equal(display.mode,'PAUSED_MANUAL');
+           const [u,pr,deny,denyJs]=await Promise.all([get(F+'/?b46pm=ou&__b46_original_ui_shell=1'),get(PROD+'/?b46pm=ou'),get(F+data+'?__b46_original_ui_shell=1'),get(F+script+'?__b46_original_ui_shell=1')]);
+           A.equal(deny.status,404);A.equal(denyJs.status,404);
+           A.equal(u.status,200);A.doesNotMatch(await u.text(),/__b46_pm_poisson_1x2/);
+           A.equal(pr.status,200);A.doesNotMatch(await pr.text(),/__b46_pm_poisson_1x2/);
+           browser=await chromium.launch({headless:true});
+           for(const [name,opts] of [['PC',{viewport:{width:1440,height:900}}],['mobile',{...devices['Pixel 7'],defaultBrowserType:'chromium'}]]){
+            const ctx=await browser.newContext(opts);
+            const frontend=await ctx.newPage();await frontend.goto(F+'/?b46pm=1x2&b46pmPeriod=today',{waitUntil:'domcontentloaded',timeout:35000});
+            const panel=frontend.locator('#b46-p01-test-results');
+            await panel.getByText('Poisson 1×2 · TEST',{exact:true}).waitFor({state:'visible',timeout:30000});
+            await panel.getByText('PAUSED_MANUAL',{exact:false}).waitFor({state:'visible',timeout:12000});
+            A.equal(await panel.count(),1);
+            const home=await ctx.newPage();await home.addInitScript(k=>{if(location.hostname.includes('ball46-prematch-only-test-20261120'))sessionStorage.setItem('b46_ac_key',k);},owner);
+            await home.goto(B+'/adaptive-control-test',{waitUntil:'domcontentloaded',timeout:35000});
+            const menu=home.getByRole('button',{name:'1×2',exact:true});await menu.click({timeout:15000});
+            await home.getByRole('heading',{name:/Poisson 1×2/}).waitFor({state:'visible',timeout:12000});
+            A(await home.getByRole('button',{name:'เปิด Poisson',exact:true}).isEnabled());
+            A(!(await home.getByRole('button',{name:'ปิด Poisson',exact:true}).isEnabled()));
+            await home.getByRole('button',{name:'Over/Under',exact:true}).click();
+            A(await home.locator('#b46-wld-totals').isVisible());
+            report.browser.push(name);await ctx.close();
+           }
+           const other2=await Promise.all(protectedNames.map(active));A.deepEqual(other2,other);
+           A.deepEqual(await Promise.all(plan.map(x=>active(x.name))),plan.map(x=>x.next));
+           report.status='PASS';report.mode=boot.poissonFormula.mode;report.legacy=boot.formulas.length;report.dot01=boot.extraFormula.mode;report.productionUnchanged=true;
+          }catch(e){
+           report.error=e.message;
+           for(const c of [...plan].reverse())try{if(await active(c.name)===c.next)report.rollback.push([c.name,await deploy(c,c.old),await active(c.name)===c.old]);}catch(x){report.rollback.push([c.name,'FAILED',x.message]);}
+           process.exitCode=1;
+          }finally{if(browser)await browser.close();console.log('B46_P01_ROLLOUT '+JSON.stringify(report));}
+          B46_P01_JS
