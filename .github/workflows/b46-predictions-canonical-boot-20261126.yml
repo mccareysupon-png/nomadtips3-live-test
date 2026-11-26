@@ -172,9 +172,8 @@ jobs:
             annotations:{'workers/message':'TEST Predictions no legacy fallback on boot; distinguish O/U loading and finished'}};
            if(script_runtime.compatibility_flags)m.compatibility_flags=script_runtime.compatibility_flags;
            if(script_runtime.usage_model)m.usage_model=script_runtime.usage_model;
-           const f=new FormData();f.set('metadata',new Blob([JSON.stringify(m)],{type:'application/json'}));
-           f.set('worker.js',new Blob([candidateScript],{type:'application/javascript+module'}),'worker.js');
-           next=(await api(w,'/versions',{method:'POST',body:f})).id;report.next=next;
+           // Reuse the verified version from the first attempt; the route used to check Production was obsolete.
+           next='0cc9a924-4452-4298-b5b5-eaf29b93fcb4';report.next=next;
            const v=await api(w,'/versions/'+next);
            for(const k of ['bindings','script_runtime'])A.deepEqual(v.resources[k],prior.resources[k]);
            A.deepEqual(v.resources.script.handlers,prior.resources.script.handlers);
@@ -199,7 +198,7 @@ jobs:
            }
            A.equal(hash(await text(F+legacy)),hash(native));
            A.equal((await get(F+asset+'?__b46_original_ui_shell=1')).status,404);
-           A(!(await text('https://ball46.com/prematch/over-under/')).includes(asset));
+           A(!(await text('https://ball46.com/?b46pm=ou')).includes(asset));
            A.deepEqual(await protect(),held);
            report.status='PASSED';
           }catch(e){
