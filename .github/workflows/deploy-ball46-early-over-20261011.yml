@@ -1,0 +1,39 @@
+name: Deploy Ball46 Phase2 LIVE OVER Only
+on:
+  push:
+    branches: [work/ball46-early-over-stage2-20261011]
+    paths:
+      - '.github/workflows/deploy-ball46-early-over-20261011.yml'
+permissions:
+  contents: read
+concurrency:
+  group: ball46-engine343-phase2-live-over-deploy
+  cancel-in-progress: false
+jobs:
+  guarded-production:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install AST parser
+        run: npm install --no-save --ignore-scripts acorn@8
+      - name: Verify patch and deployment scripts
+        run: |
+          node --check deploy-assets/ball46-early-over-20261011/patch.mjs
+          node --check deploy-assets/ball46-early-over-20261011/deploy.mjs
+      - name: Deploy active-runtime-only Phase2 and verify Production
+        run: node deploy-assets/ball46-early-over-20261011/deploy.mjs
+      - name: Keep checkpoint and QA logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-phase2-over-${{ github.run_id }}
+          path: audit/
+          if-no-files-found: warn
+          retention-days: 30

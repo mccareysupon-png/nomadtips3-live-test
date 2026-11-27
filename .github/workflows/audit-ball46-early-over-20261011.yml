@@ -1,0 +1,20 @@
+name: Readonly Ball46 Phase2 Active Settlement Audit
+on:
+  push:
+    branches: [work/ball46-early-over-stage2-20261011]
+    paths: ['.github/workflows/audit-ball46-early-over-20261011.yml']
+permissions:
+  contents: read
+jobs:
+  readonly:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node deploy-assets/ball46-early-over-20261011/audit.mjs

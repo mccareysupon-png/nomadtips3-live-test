@@ -1,0 +1,18 @@
+import { createHash } from "node:crypto";
+import { writeFileSync } from "node:fs";
+const acc=process.env.CLOUDFLARE_ACCOUNT_ID,tok=process.env.CLOUDFLARE_API_TOKEN;
+if(!acc||!tok)throw Error("CF_AUTH_MISSING");
+const root=`https://api.cloudflare.com/client/v4/accounts/${acc}/workers`;
+const request=async p=>{const r=await fetch(root+p,{headers:{Authorization:`Bearer ${tok}`},signal:AbortSignal.timeout(35000)});const j=await r.json();if(!r.ok||j.success!==true)throw Error("CLOUDFLARE_READ_FAILED_"+r.status);return j.result;};
+const worker="nomadtips3-engine-343";
+const deployments=await request(`/scripts/${worker}/deployments`);
+const active=deployments.deployments?.[0]?.versions?.filter(x=>Number(x.percentage)===100);
+if(active?.length!==1)throw Error("ACTIVE_VERSION_AMBIGUOUS");
+const v=await request(`/workers/${worker}/versions/${active[0].version_id}?include=modules`);
+const m=v.modules?.find(x=>x.name===v.main_module);
+if(!m?.content_base64)throw Error("ACTIVE_WORKER_MODULE_MISSING");
+const source=Buffer.from(m.content_base64,"base64").toString("utf8");
+const path="/tmp/ball46-phase2-active.js";writeFileSync(path,source);
+process.env.B46_ACTIVE_SOURCE=path;
+console.log("PHASE2_PREFLIGHT",JSON.stringify({active:active[0].version_id,bytes:source.length,sha256:createHash("sha256").update(source).digest("hex")}));
+await import("./test.mjs");
